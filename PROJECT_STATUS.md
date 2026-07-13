@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 ## Estado general
 
@@ -8,22 +8,22 @@ Actualizado: 2026-07-12
 
 ## Fase actual
 
-Fase 1 — Fundaciones. E0-H1 a E0-H4 y E0-H5A completadas. Siguiente vertical: E0-H5B.
+Fase 1 — Fundaciones. E0-H1 a E0-H5B completadas. Siguiente vertical: E0-H4C.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                                                        |
-| ------------------------ | -----: | -------------------------------------------------------------------------------- |
-| E0 Fundaciones           |   85 % | identidad, sesiones y RBAC base listos; faltan invitación, recuperación y E0-H3B |
-| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                             |
-| E2 Pagos y tarifas       |    0 % | pendiente                                                                        |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                                                       |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                             |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                                               |
-| E6 Operación y dashboard |    0 % | pendiente                                                                        |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                                                   |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                                |
-| E9 Producción            |    0 % | no autorizada                                                                    |
+| Épica                    | Avance | Evidencia                                                           |
+| ------------------------ | -----: | ------------------------------------------------------------------- |
+| E0 Fundaciones           |   90 % | identidad completa; faltan operaciones DLQ, administración y E0-H3B |
+| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                |
+| E2 Pagos y tarifas       |    0 % | pendiente                                                           |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                                          |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                                  |
+| E6 Operación y dashboard |    0 % | pendiente                                                           |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                                      |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                   |
+| E9 Producción            |    0 % | no autorizada                                                       |
 
 ## Diagnóstico inicial
 
@@ -44,17 +44,19 @@ Fase 1 — Fundaciones. E0-H1 a E0-H4 y E0-H5A completadas. Siguiente vertical: 
 - Tres migraciones expand-only y tabla `job_executions`; fallo Redis y recuperación probados.
 - E0-H5A: Argon2id, sesiones opacas/rotativas, rate limit, RBAC multi-tenant y auditoría.
 - Adaptador de correo bloqueado/simulado y métricas de autenticación sin secretos.
+- E0-H5B: invitaciones y recuperación de un uso, expirables/revocables y consumo atómico.
+- Vinculación segura de cuentas, jerarquía de rol, reset Argon2id y revocación total de sesiones.
 - Migración probada desde vacío, reaplicación no-op, ausencia de drift y cliente Prisma real.
 - Resumen ejecutivo `PROJECT_OVERVIEW.md` creado y exigido como actualización de cada sesión.
 
 ## Siguiente vertical
 
-- E0-H5B: invitaciones y recuperación de contraseña seguras.
+- E0-H4C: inspección y reproceso manual auditado de DLQ.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Invitación/recuperación, administración de roles, reproceso de DLQ e integraciones externas.
+- Administración de roles/bootstrap, reproceso de DLQ e integraciones externas.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -75,16 +77,16 @@ Fase 1 — Fundaciones. E0-H1 a E0-H4 y E0-H5A completadas. Siguiente vertical: 
 - `pnpm test`: 17 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 4 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
+- `pnpm database:verify`: 5 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
-- `pnpm auth:verify`: 6 pruebas HTTP/PostgreSQL de sesiones, RBAC, tenant, replay y rate limit.
+- `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1 a E0-H4 ni E0-H5A.
+- No hay defectos abiertos en E0-H1 a E0-H5B.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- La migración inicial está aplicada localmente y `prisma migrate status` confirma esquema al día.
+- Cinco migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
 
 ## Deuda técnica
 
@@ -93,5 +95,5 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E0-H5B: tokens de invitación y recuperación de un solo uso, expirables y revocables,
-contrato de correo simulado y pruebas de replay/expiración. No habilitar envío real.
+Implementar E0-H4C: ownership organizacional explícito en eventos/jobs, consulta paginada de DLQ y
+reproceso idempotente autenticado/auditado. No habilitar proveedores ni despliegues reales.

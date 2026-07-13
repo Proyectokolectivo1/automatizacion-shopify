@@ -97,10 +97,12 @@ describe('initial database migration', () => {
           'auth_sessions',
           'auth_rate_limits',
           'audit_logs',
+          'account_action_tokens',
         ],
       ],
     );
     expect(tables.rows.map(({ table_name }) => table_name)).toEqual([
+      'account_action_tokens',
       'audit_logs',
       'auth_rate_limits',
       'auth_sessions',
@@ -116,7 +118,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('4');
+    expect(migrations.rows[0]?.count).toBe('5');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -212,6 +214,37 @@ describe('initial database migration', () => {
          (aggregate_type, aggregate_id, event_type, payload_json, correlation_id, status)
          VALUES ('store', $1, 'store.created', '{}', $2, 'published')`,
         [aggregateId, randomUUID()],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces one-use account action token purpose shapes and hash format', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Token Organization') RETURNING id`,
+    );
+    const user = await database.query<{ id: string }>(
+      `INSERT INTO users (email, password_hash, password_parameters_json)
+       VALUES ('token-user@example.test', 'argon-hash', '{}') RETURNING id`,
+    );
+    await expect(
+      database.query(
+        `INSERT INTO account_action_tokens
+         (purpose, token_hash, organization_id, user_id, expires_at)
+         VALUES ('password_reset', 'not-a-hash', $1, $2, NOW() + INTERVAL '1 hour')`,
+        [organization.rows[0]?.id, user.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await database.query(
+      `INSERT INTO account_action_tokens
+       (purpose, token_hash, user_id, expires_at)
+       VALUES ('password_reset', repeat('a', 64), $1, NOW() + INTERVAL '1 hour')`,
+      [user.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `UPDATE account_action_tokens
+         SET consumed_at = NOW(), revoked_at = NOW()
+         WHERE token_hash = repeat('a', 64)`,
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

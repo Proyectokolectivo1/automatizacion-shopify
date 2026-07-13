@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 | Fase | Vertical demostrable               | Estado                     | Criterio de salida                                        |
 | ---- | ---------------------------------- | -------------------------- | --------------------------------------------------------- |
@@ -11,7 +11,8 @@ Actualizado: 2026-07-12
 | 1D   | E0-H4A esquema y migración inicial | COMPLETADA                 | migración limpia/repetible y constraints probados         |
 | 1E   | E0-H4B outbox y colas              | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
 | 1F   | E0-H5A login, sesiones y RBAC      | COMPLETADA                 | sesión segura y permisos backend probados                 |
-| 1G   | E0-H5B invitación y recuperación   | SIGUIENTE                  | tokens de un uso y correo simulado probados               |
+| 1G   | E0-H5B invitación y recuperación   | COMPLETADA                 | tokens de un uso y correo simulado probados               |
+| 1H   | E0-H4C operaciones de DLQ          | SIGUIENTE                  | inspección/reproceso autenticados y auditados             |
 | 2    | Shopify mínimo                     | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
@@ -68,3 +69,13 @@ revocación, rate limit, auditoría, RBAC y aislamiento de tenant se probaron so
 
 Completar invitaciones y recuperación con tokens de un solo uso, hash persistido, expiración,
 revocación y replay seguro. Usar el adaptador de correo únicamente en simulación mientras DP-001 siga pendiente.
+
+Resultado: completada el 2026-07-13. Cinco migraciones y pruebas HTTP/PostgreSQL confirman emisión
+CSPRNG, consumo único/concurrente, expiración, jerarquía de roles, tenant, respuesta uniforme,
+revocación de sesiones y correo simulado fail-closed.
+
+## Octava vertical: E0-H4C
+
+Agregar ownership organizacional explícito a eventos/jobs y una superficie operativa protegida para
+consultar DLQ y reprocesar exactamente un evento de forma idempotente, auditada y desactivable. Debe
+probar tenant isolation, paginación, carreras y respuesta perdida sobre PostgreSQL/Redis reales.

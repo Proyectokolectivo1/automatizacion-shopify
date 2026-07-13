@@ -1,6 +1,6 @@
 # Decisiones y supuestos
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 | ID     | Tipo               | Decisión o supuesto                                                                         | Estado            |
 | ------ | ------------------ | ------------------------------------------------------------------------------------------- | ----------------- |
@@ -24,6 +24,9 @@ Actualizado: 2026-07-12
 | D-018  | DECISIÓN           | Argon2id v1 con 19 MiB, 2 iteraciones, p=1 y parámetros versionados                         | ACEPTADA E0-H5A   |
 | D-019  | DECISIÓN           | RBAC default-deny y coincidencia de organización obligatoria en backend                     | ACEPTADA E0-H5A   |
 | D-020  | DECISIÓN           | Correo desactivado, kill switch activo y simulación por defecto hasta resolver DP-001       | ACEPTADA temporal |
+| D-021  | DECISIÓN           | Invitación/reset usan CSPRNG, solo hash, propósito y consumo bloqueado por fila             | ACEPTADA E0-H5B   |
+| D-022  | DECISIÓN           | Owner no invita owner; admin no asigna owner/admin; invitación no cambia rol activo         | ACEPTADA E0-H5B   |
+| D-023  | DECISIÓN           | Acciones de cuenta tienen flag/kill switch propios cerrados por defecto                     | ACEPTADA E0-H5B   |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO        |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO            |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE         |

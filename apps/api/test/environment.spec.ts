@@ -22,6 +22,10 @@ describe('parseEnvironment', () => {
     expect(environment).toMatchObject({
       API_HOST: '127.0.0.1',
       API_PORT: 3001,
+      AUTH_ACCOUNT_ACTIONS_ENABLED: false,
+      AUTH_ACCOUNT_ACTIONS_KILL_SWITCH: true,
+      AUTH_INVITATION_TTL_SECONDS: 86_400,
+      AUTH_PASSWORD_RESET_TTL_SECONDS: 1_800,
       DEPENDENCY_TIMEOUT_MS: 1500,
       MINIO_API_PORT: 9100,
       MINIO_USE_SSL: false,

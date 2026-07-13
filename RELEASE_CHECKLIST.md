@@ -1,6 +1,6 @@
 # Checklist de release
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 Estado global: **NO LISTO PARA RELEASE**.
 
@@ -11,7 +11,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
-- [ ] Flags, simulación y kill switch del outbox verificados; faltan los de proveedores futuros.
+- [ ] Flags, simulación y kill switches de outbox/correo verificados; faltan proveedores futuros.
 - [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
 - [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
 - [ ] Backups y restauración con evidencia y tiempos medidos.
@@ -32,7 +32,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Constraints base de ownership, dominio, moneda, idempotencia y outbox probados.
 - [x] Outbox transaccional, publisher, reintentos y DLQ implementados.
 - [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
-- [ ] Invitación, recuperación, administración de roles y mecanismo UI cookie/CSRF completos.
+- [x] Invitación y recuperación seguras con replay, expiración y controles fail-closed probados.
+- [ ] Administración de roles, bootstrap inicial y mecanismo UI cookie/CSRF completos.
 - [ ] Inspección/reproceso manual de DLQ autenticado y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.

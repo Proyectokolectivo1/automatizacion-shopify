@@ -1,6 +1,6 @@
 # Reporte de pruebas
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 ## Baseline inicial
 
@@ -142,5 +142,36 @@ La suite usa base y colas aleatorias, limpia sus recursos y no llama proveedores
 3. La actividad de sesión escribía en cada request; ahora se actualiza como máximo una vez por minuto.
 4. Rate limits vencidos podían crecer indefinidamente; se añadió limpieza periódica con retención acotada.
 
-No existe usuario predeterminado, registro público ni envío real de correo. Invitación y recuperación
-siguen pendientes en E0-H5B.
+En ese corte no existían usuario predeterminado, registro público ni envío real de correo; la
+invitación y recuperación se completan en la iteración siguiente.
+
+## Iteración E0-H5B
+
+| Validación                  | Comando                | Resultado                                     |
+| --------------------------- | ---------------------- | --------------------------------------------- |
+| Unitarias                   | `pnpm test`            | OK, 17/17                                     |
+| Auth HTTP + PostgreSQL      | `pnpm auth:verify`     | OK, 14/14                                     |
+| Migración/constraints       | `pnpm database:verify` | OK, 5/5; cinco migraciones y sin drift        |
+| Invitación CSPRNG/solo hash | API + PostgreSQL       | OK, creación/vínculo/expiración/replay        |
+| Roles y tenant              | guards + política      | OK, sin owner→owner, admin→admin ni cruce     |
+| Consumo concurrente         | dos requests reales    | OK, exactamente un 200 y un 400               |
+| Recuperación uniforme       | cuenta conocida/ajena  | OK, mismo 202                                 |
+| Rotación y revocación       | Argon2id + sesiones    | OK, password anterior y sesiones invalidados  |
+| Flags/kill switch           | segunda API aislada    | OK, 503 en invitación y 202 uniforme en reset |
+| Correo                      | fixtures unitarios     | OK, blocked/simulated/fail-closed; sin red    |
+| Auditoría/métricas          | PostgreSQL/Prometheus  | OK, sin correo, password o token en metadata  |
+
+### Fallos encontrados y corregidos
+
+1. `pg_advisory_xact_lock` devuelve el tipo PostgreSQL `void`, no deserializable por el adapter
+   Prisma; la consulta conserva el lock y proyecta un booleano compatible.
+2. La emisión concurrente se serializa por clave lógica; el consumo se serializa por fila con
+   `FOR UPDATE`, evitando dobles usuarios/membresías y dobles resets.
+3. El rate limit incorporó scope al hash para que login y recuperación no compartan accidentalmente
+   el mismo contador.
+4. La suite outbox expuso intermitencia al publicar inmediatamente eventos con timestamp por defecto;
+   los fixtures ahora fijan `availableAt` vencido y restauran Redis antes de afirmar. Dos ejecuciones
+   consecutivas de `pnpm outbox:verify` quedaron verdes.
+
+El correo real, el bootstrap del primer owner y la administración general de roles no se presentan
+como terminados. DP-001 sigue bloqueada y E0-H4C es la siguiente vertical.

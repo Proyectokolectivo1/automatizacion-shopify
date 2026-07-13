@@ -1,8 +1,8 @@
 # Prompt para la siguiente sesión
 
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
-`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H4 y E0-H5A están completas.
-No reinicies ni reemplaces trabajo válido.
+`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5B están completas. No
+reinicies ni reemplaces trabajo válido.
 
 ## Fuentes obligatorias
 
@@ -20,19 +20,21 @@ Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integratio
 `pnpm database:verify`, `pnpm outbox:verify`, `pnpm auth:verify`, `pnpm database:status`,
 `pnpm observability:verify`, `pnpm audit --prod` y `pnpm infra:verify`. No borres volúmenes.
 
-## Siguiente vertical exacta: E0-H5B
+## Siguiente vertical exacta: E0-H4C
 
-Completa invitaciones y recuperación sin proveedor real:
+Completa operaciones seguras de DLQ sin proveedor real:
 
-- migración expand-only para tokens de invitación/recuperación, guardando solo hash;
-- token CSPRNG de un uso, propósito explícito, expiración, revocación y consumo atómico;
-- invitación que crea o vincula usuario/membresía sin permitir escalamiento de rol;
-- recuperación con respuesta uniforme, rotación de password Argon2id y revocación de sesiones;
-- adaptador de correo, fixtures y pruebas contractuales en simulación;
-- feature flag, kill switch y fallo cerrado para modo real sin proveedor;
-- rate limit, auditoría y métricas sin correo/token/password en logs;
-- pruebas PostgreSQL/HTTP de expiración, replay, tenant, rol, respuesta perdida y concurrencia;
-- contrato, seguridad, runbook y actualización completa de controles.
+- migración expand-only para ownership organizacional explícito y trazable de outbox/jobs;
+- backfill seguro de filas existentes de desarrollo y constraints/indexes compatibles con despliegue;
+- endpoints paginados para inspeccionar únicamente eventos DLQ del tenant autenticado;
+- endpoint owner/admin para reprocesar un evento DLQ, con idempotency key y resultado repetible;
+- transición atómica `dead_letter → pending`, limpieza controlada de lease/error y nuevo intento auditable;
+- protección contra tenant ajeno, rol insuficiente, evento no-DLQ y carreras concurrentes;
+- feature flag y kill switch operativos cerrados por defecto;
+- payload resumido/redactado: no devolver ni registrar secretos o PII completa;
+- auditoría y métricas acotadas para consulta, éxito, replay, denegación y fallo;
+- pruebas PostgreSQL/Redis/HTTP de paginación, tenant, RBAC, respuesta perdida, replay y concurrencia;
+- actualización de contrato, arquitectura, seguridad, runbook, pruebas y todos los controles.
 
-No habilites correo real: DP-001 sigue `BLOQUEADO_POR_DECISION`. Mantén E0-H3B y E0-H4C
-pendientes. No despliegues ni uses credenciales reales.
+No habilites correo real: DP-001 sigue `BLOQUEADO_POR_DECISION`. Mantén E0-H3B pendiente. No
+despliegues ni uses credenciales reales.

@@ -38,6 +38,20 @@ export class EnvironmentService {
     };
   }
 
+  public get accountActions(): Readonly<{
+    enabled: boolean;
+    invitationTtlSeconds: number;
+    killSwitch: boolean;
+    passwordResetTtlSeconds: number;
+  }> {
+    return {
+      enabled: this.values.AUTH_ACCOUNT_ACTIONS_ENABLED,
+      invitationTtlSeconds: this.values.AUTH_INVITATION_TTL_SECONDS,
+      killSwitch: this.values.AUTH_ACCOUNT_ACTIONS_KILL_SWITCH,
+      passwordResetTtlSeconds: this.values.AUTH_PASSWORD_RESET_TTL_SECONDS,
+    };
+  }
+
   public get emailDelivery(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

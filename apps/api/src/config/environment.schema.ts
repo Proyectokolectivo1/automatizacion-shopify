@@ -12,9 +12,13 @@ const queueName = z.string().regex(/^[a-z0-9][a-z0-9_-]{2,79}$/u);
 export const environmentSchema = z.object({
   API_HOST: nonEmpty.default('127.0.0.1'),
   API_PORT: port.default(3001),
+  AUTH_ACCOUNT_ACTIONS_ENABLED: booleanFlag('false'),
+  AUTH_ACCOUNT_ACTIONS_KILL_SWITCH: booleanFlag('true'),
   AUTH_ACCESS_TTL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(900),
   AUTH_BLOCK_DURATION_MS: z.coerce.number().int().min(10_000).max(86_400_000).default(300_000),
   AUTH_LOGIN_MAX_ATTEMPTS: z.coerce.number().int().min(2).max(20).default(5),
+  AUTH_INVITATION_TTL_SECONDS: z.coerce.number().int().min(300).max(604_800).default(86_400),
+  AUTH_PASSWORD_RESET_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400).default(1_800),
   AUTH_RATE_WINDOW_MS: z.coerce.number().int().min(10_000).max(3_600_000).default(60_000),
   AUTH_REFRESH_TTL_SECONDS: z.coerce.number().int().min(3_600).max(7_776_000).default(2_592_000),
   DEPENDENCY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(1_500),

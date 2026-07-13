@@ -13,6 +13,7 @@ import {
 import type { Request } from 'express';
 import { z } from 'zod';
 
+import { AccountActionService } from './account-action.service';
 import { AuthGuard, type AuthenticatedRequest } from './auth.guard';
 import { AuthService } from './auth.service';
 import { RbacGuard } from './rbac.guard';
@@ -24,10 +25,26 @@ const loginSchema = z.object({
   password: z.string().min(12).max(128),
 });
 const refreshSchema = z.object({ refreshToken: z.string().min(1).max(200) });
+const invitationSchema = z.object({
+  email: z.string().trim().email().max(320),
+  role: z.enum(['OWNER', 'ADMIN', 'OPERATIONS', 'LOGISTICS', 'SUPPORT', 'FINANCE', 'READ_ONLY']),
+});
+const acceptInvitationSchema = z.object({
+  password: z.string().min(12).max(128),
+  token: z.string().min(32).max(200),
+});
+const requestRecoverySchema = z.object({ email: z.string().trim().email().max(320) });
+const completeRecoverySchema = z.object({
+  newPassword: z.string().min(12).max(128),
+  token: z.string().min(32).max(200),
+});
 
 @Controller('auth')
 export class AuthController {
-  public constructor(private readonly auth: AuthService) {}
+  public constructor(
+    private readonly accountActions: AccountActionService,
+    private readonly auth: AuthService,
+  ) {}
 
   @Post('login')
   @HttpCode(200)
@@ -51,6 +68,50 @@ export class AuthController {
       ipAddress: request.ip ?? 'unknown',
       userAgent: request.header('user-agent'),
     });
+  }
+
+  @Post('organizations/:organizationId/invitations')
+  @HttpCode(202)
+  @Header('Cache-Control', 'no-store')
+  @RequirePermission('organization.manage')
+  @UseGuards(AuthGuard, RbacGuard)
+  public createInvitation(
+    @Body() body: unknown,
+    @Param('organizationId') organizationId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const input = this.parse(invitationSchema, body);
+    if (request.auth === undefined)
+      throw new BadRequestException('Missing authenticated principal');
+    return this.accountActions.createInvitation({
+      ...input,
+      organizationId,
+      principal: request.auth,
+    });
+  }
+
+  @Post('invitations/accept')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  public acceptInvitation(@Body() body: unknown) {
+    return this.accountActions.acceptInvitation(this.parse(acceptInvitationSchema, body));
+  }
+
+  @Post('password-recovery/request')
+  @HttpCode(202)
+  @Header('Cache-Control', 'no-store')
+  public requestPasswordRecovery(@Body() body: unknown, @Req() request: Request) {
+    return this.accountActions.requestPasswordRecovery({
+      ...this.parse(requestRecoverySchema, body),
+      ipAddress: request.ip ?? 'unknown',
+    });
+  }
+
+  @Post('password-recovery/complete')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  public completePasswordRecovery(@Body() body: unknown) {
+    return this.accountActions.completePasswordRecovery(this.parse(completeRecoverySchema, body));
   }
 
   @Post('logout')

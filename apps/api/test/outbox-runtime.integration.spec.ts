@@ -135,6 +135,7 @@ describe('transactional outbox runtime', () => {
       data: {
         aggregateId: aggregate.id,
         aggregateType: 'organization',
+        availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.claim.test',
         payloadJson: { schemaVersion: 1 },
@@ -174,6 +175,7 @@ describe('transactional outbox runtime', () => {
       data: {
         aggregateId: aggregate.id,
         aggregateType: 'organization',
+        availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.recovery.test',
         payloadJson: { schemaVersion: 1 },
@@ -189,12 +191,16 @@ describe('transactional outbox runtime', () => {
       prisma,
       unavailableQueue,
     );
-    await unavailablePublisher.publishBatch();
-    expect((await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } })).status).toBe(
-      'FAILED',
-    );
-    await unavailableQueue.onModuleDestroy();
-    process.env.REDIS_PORT = realPort;
+    let unavailableStatus: string;
+    try {
+      await unavailablePublisher.publishBatch();
+      unavailableStatus = (await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } }))
+        .status;
+    } finally {
+      await unavailableQueue.onModuleDestroy();
+      process.env.REDIS_PORT = realPort;
+    }
+    expect(unavailableStatus).toBe('FAILED');
     await prisma.outboxEvent.update({
       data: { availableAt: new Date(0) },
       where: { id: event.id },
@@ -219,6 +225,7 @@ describe('transactional outbox runtime', () => {
       data: {
         aggregateId: aggregate.id,
         aggregateType: 'organization',
+        availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.failure.test',
         payloadJson: { simulateFailure: true },

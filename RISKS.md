@@ -1,6 +1,6 @@
 # Registro de riesgos
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 | ID    | Riesgo                                            | Prob. | Impacto | Mitigación                                                     | Estado   |
 | ----- | ------------------------------------------------- | ----- | ------- | -------------------------------------------------------------- | -------- |
@@ -22,3 +22,5 @@ Actualizado: 2026-07-12
 | R-016 | DLQ crece sin reproceso operativo auditado        | Media | Alto    | Métricas, runbook y entregar E0-H4C antes del piloto           | Abierto  |
 | R-017 | IP de cliente incorrecta detrás de proxy          | Media | Alto    | Configurar proxy confiable y probar rate limit antes de piloto | Abierto  |
 | R-018 | UI futura almacena Bearer token de forma insegura | Media | Alto    | Prohibir localStorage; decidir cookie/CSRF antes de la UI      | Abierto  |
+| R-019 | No existe bootstrap operativo del primer owner    | Media | Alto    | Diseñar comando/procedimiento auditado antes del piloto        | Abierto  |
+| R-020 | Tokens consumidos/vencidos crecen sin retención   | Media | Medio   | Definir política y job de purga tras decisión legal DP-003     | Abierto  |

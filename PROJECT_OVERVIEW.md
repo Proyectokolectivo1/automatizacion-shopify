@@ -1,6 +1,6 @@
 # Resumen general del proyecto
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
 > Este documento debe actualizarse en cada sesión donde cambien funcionalidades, alcance, bloqueos,
 > riesgos, pruebas o el siguiente paso del proyecto.
@@ -28,7 +28,7 @@ S3-compatible, workers asíncronos, auditoría, métricas y herramientas operati
 
 Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
-Las fundaciones están aproximadamente al 85 %. Ya existe un monorepo reproducible con CI, entorno
+Las fundaciones están aproximadamente al 90 %. Ya existe un monorepo reproducible con CI, entorno
 local, observabilidad, persistencia transaccional y entrega asíncrona base. Todavía no existen flujos de negocio utilizables por
 operadores ni conexiones reales con proveedores.
 
@@ -51,6 +51,8 @@ operadores ni conexiones reales con proveedores.
 - Identidad local con Argon2id, sesiones opacas revocables y refresh rotativo con detección de replay.
 - RBAC default-deny aplicado en backend, aislamiento por organización y auditoría de acceso.
 - Rate limit y bloqueo temporal durables; adaptador de correo simulado con flag y kill switch.
+- Invitaciones y recuperación con tokens CSPRNG de un uso, expiración, revocación y consumo atómico.
+- Creación/vinculación de membresías sin escalamiento y reset Argon2id que revoca todas las sesiones.
 - Constraints para ownership, dominio Shopify, moneda, idempotencia y consistencia del outbox.
 - Migración probada desde una base vacía, reaplicada como no-op y verificada sin drift.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
@@ -60,7 +62,7 @@ operadores ni conexiones reales con proveedores.
 ### Fundaciones pendientes
 
 - Herramienta operativa autenticada para inspeccionar y reprocesar DLQ.
-- Invitaciones, recuperación de contraseña y administración auditada de usuarios/roles.
+- Administración auditada de usuarios/roles y bootstrap controlado del primer owner.
 - OpenTelemetry y alertas conectadas a un backend verificable.
 - Protección productiva del endpoint `/metrics`.
 
@@ -113,8 +115,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E0-H5B: invitaciones y recuperación de contraseña mediante tokens de un solo uso, expiración,
-revocación y adaptador de correo simulado; el envío real seguirá bloqueado por decisión de proveedor.
+E0-H4C: inspección y reproceso manual autenticado de DLQ, con ownership por tenant, idempotencia,
+auditoría, control de concurrencia y kill switch. No incluirá proveedores reales.
 
 ## Dónde consultar más detalle
 

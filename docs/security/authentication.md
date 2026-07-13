@@ -1,17 +1,17 @@
 # Seguridad de autenticación
 
-Actualizado: 2026-07-12
+Actualizado: 2026-07-13
 
-- Argon2id v1: 19 MiB, 2 iteraciones, paralelismo 1 y salida de 32 bytes; parámetros versionados por usuario.
-- Contraseña admitida por la API: 12 a 128 caracteres; hash con salt generado por Argon2.
-- Verificación dummy para reducir enumeración temporal de cuentas.
-- Tokens opacos con 256 bits CSPRNG; solo hashes SHA-256 en PostgreSQL.
-- Access 15 minutos y refresh 30 días por defecto; expiración y revocación se validan server-side.
-- Refresh rotativo con detección de replay y revocación de la sesión.
-- Rate limit durable y bloqueo temporal después de intentos fallidos.
-- RBAC default-deny y tenant validado en backend.
-- Auditoría y métricas sin contraseña, correo, IP, Authorization ni token.
+- Argon2id v1: 19 MiB, 2 iteraciones, paralelismo 1, salida 32 bytes y parámetros versionados.
+- Password de API: 12 a 128 caracteres; salt generado por Argon2.
+- Verificación dummy y respuestas uniformes contra enumeración de login/recuperación.
+- Tokens opacos CSPRNG de 256 bits; únicamente SHA-256 en PostgreSQL.
+- Access 15 minutos, refresh 30 días, invitación 24 horas y reset 30 minutos por defecto.
+- Refresh rotativo con detección de replay; invitación/reset con consumo de fila atómico.
+- Recuperar password revoca todas las sesiones activas en la misma transacción.
+- Rate limit durable separado por scope y bloqueo temporal de login.
+- RBAC default-deny, tenant en backend y jerarquía de invitación sin escalamiento.
+- Auditoría/métricas sin correo, IP, Authorization, password ni token.
+- Acciones de cuenta y correo desactivados/kill-switch activo por defecto; modo real sin proveedor falla cerrado.
 
-La API presupone HTTPS en despliegue y hoy recibe Bearer tokens. La UI futura deberá evitar
-`localStorage`; el mecanismo final cookie/CSRF se decidirá antes del piloto. MFA queda fuera del MVP,
-pero usuario, sesión y auditoría permiten incorporarlo.
+La API presupone HTTPS en despliegue. La UI futura no debe usar `localStorage`; cookie/CSRF, proxy confiable, bootstrap controlado del primer owner y MFA deberán resolverse antes del piloto.

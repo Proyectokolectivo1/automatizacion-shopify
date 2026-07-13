@@ -32,6 +32,19 @@ describe('email delivery safety controls', () => {
     expect(service.sendInvitation('user@example.test', 'secret')).toMatchObject({
       status: 'simulated',
     });
+    expect(service.takeSimulationFixture('invitation', 'user@example.test')).toMatchObject({
+      kind: 'invitation',
+      recipient: 'user@example.test',
+      token: 'secret',
+    });
+    expect(service.takeSimulationFixture('invitation', 'user@example.test')).toBeUndefined();
+
+    expect(service.sendPasswordReset('user@example.test', 'reset-secret')).toMatchObject({
+      status: 'simulated',
+    });
+    expect(service.takeSimulationFixture('password_reset', 'user@example.test')).toMatchObject({
+      token: 'reset-secret',
+    });
   });
 
   it('fails closed when real mode has no configured provider', () => {

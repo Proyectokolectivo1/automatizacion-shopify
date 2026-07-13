@@ -26,10 +26,10 @@ enum IdempotencyStatus {
 }
 
 enum OutboxStatus {
-  PENDING    @map("pending")
-  PROCESSING @map("processing")
-  PUBLISHED  @map("published")
-  FAILED     @map("failed")
+  PENDING     @map("pending")
+  PROCESSING  @map("processing")
+  PUBLISHED   @map("published")
+  FAILED      @map("failed")
   DEAD_LETTER @map("dead_letter")
 
   @@map("outbox_status")
@@ -79,36 +79,46 @@ enum AuditOutcome {
   @@map("audit_outcome")
 }
 
+enum AccountActionPurpose {
+  INVITATION     @map("invitation")
+  PASSWORD_RESET @map("password_reset")
+
+  @@map("account_action_purpose")
+}
+
 model Organization {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name            String   @db.VarChar(160)
-  timezone        String   @default("America/Bogota") @db.VarChar(64)
-  defaultCurrency String   @default("COP") @map("default_currency") @db.Char(3)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  stores          Store[]
-  memberships     OrganizationMembership[]
-  sessions        AuthSession[]
-  auditLogs       AuditLog[]
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String                   @db.VarChar(160)
+  timezone            String                   @default("America/Bogota") @db.VarChar(64)
+  defaultCurrency     String                   @default("COP") @map("default_currency") @db.Char(3)
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stores              Store[]
+  memberships         OrganizationMembership[]
+  sessions            AuthSession[]
+  auditLogs           AuditLog[]
+  accountActionTokens AccountActionToken[]
 
   @@map("organizations")
 }
 
 model User {
-  id                     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email                  String       @unique(map: "users_email_key") @db.VarChar(320)
-  passwordHash           String       @map("password_hash") @db.VarChar(512)
-  passwordAlgorithm      String       @default("argon2id-v1") @map("password_algorithm") @db.VarChar(32)
-  passwordParametersJson Json         @map("password_parameters_json") @db.JsonB
-  status                 UserStatus   @default(ACTIVE)
-  failedLoginAttempts    Int          @default(0) @map("failed_login_attempts")
-  lockedUntil            DateTime?    @map("locked_until") @db.Timestamptz(3)
-  lastLoginAt            DateTime?    @map("last_login_at") @db.Timestamptz(3)
-  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt              DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  memberships            OrganizationMembership[]
-  sessions               AuthSession[]
-  auditLogs               AuditLog[]
+  id                        String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                     String                   @unique(map: "users_email_key") @db.VarChar(320)
+  passwordHash              String                   @map("password_hash") @db.VarChar(512)
+  passwordAlgorithm         String                   @default("argon2id-v1") @map("password_algorithm") @db.VarChar(32)
+  passwordParametersJson    Json                     @map("password_parameters_json") @db.JsonB
+  status                    UserStatus               @default(ACTIVE)
+  failedLoginAttempts       Int                      @default(0) @map("failed_login_attempts")
+  lockedUntil               DateTime?                @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt               DateTime?                @map("last_login_at") @db.Timestamptz(3)
+  createdAt                 DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                 DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships               OrganizationMembership[]
+  sessions                  AuthSession[]
+  auditLogs                 AuditLog[]
+  accountActionTokens       AccountActionToken[]     @relation("AccountActionSubject")
+  issuedAccountActionTokens AccountActionToken[]     @relation("AccountActionIssuer")
 
   @@index([status, lockedUntil], map: "users_status_locked_until_idx")
   @@map("users")
@@ -186,6 +196,29 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model AccountActionToken {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purpose        AccountActionPurpose
+  tokenHash      String               @unique(map: "account_action_tokens_token_hash_key") @map("token_hash") @db.Char(64)
+  organizationId String?              @map("organization_id") @db.Uuid
+  userId         String?              @map("user_id") @db.Uuid
+  invitedEmail   String?              @map("invited_email") @db.VarChar(320)
+  invitedRole    OrganizationRole?    @map("invited_role")
+  issuedByUserId String?              @map("issued_by_user_id") @db.Uuid
+  expiresAt      DateTime             @map("expires_at") @db.Timestamptz(3)
+  consumedAt     DateTime?            @map("consumed_at") @db.Timestamptz(3)
+  revokedAt      DateTime?            @map("revoked_at") @db.Timestamptz(3)
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization   Organization?        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user           User?                @relation("AccountActionSubject", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  issuedByUser   User?                @relation("AccountActionIssuer", fields: [issuedByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([organizationId, invitedEmail, purpose, createdAt], map: "account_action_tokens_invitation_idx")
+  @@index([userId, purpose, createdAt], map: "account_action_tokens_user_idx")
+  @@index([expiresAt, consumedAt, revokedAt], map: "account_action_tokens_lifecycle_idx")
+  @@map("account_action_tokens")
+}
+
 model Store {
   id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId    String       @map("organization_id") @db.Uuid
@@ -220,23 +253,23 @@ model IdempotencyKey {
 }
 
 model OutboxEvent {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  aggregateType String       @map("aggregate_type") @db.VarChar(120)
-  aggregateId   String       @map("aggregate_id") @db.Uuid
-  eventType     String       @map("event_type") @db.VarChar(160)
-  eventVersion  Int          @default(1) @map("event_version") @db.SmallInt
-  payloadJson   Json         @map("payload_json") @db.JsonB
-  correlationId String       @map("correlation_id") @db.VarChar(128)
-  causationId   String?      @map("causation_id") @db.VarChar(128)
-  status        OutboxStatus @default(PENDING)
-  availableAt   DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
-  publishedAt   DateTime?    @map("published_at") @db.Timestamptz(3)
-  attemptCount  Int          @default(0) @map("attempt_count")
-  lockedAt      DateTime?    @map("locked_at") @db.Timestamptz(3)
-  lockedBy      String?      @map("locked_by") @db.VarChar(128)
-  lastErrorJson Json?        @map("last_error_json") @db.JsonB
-  deadLetteredAt DateTime?   @map("dead_lettered_at") @db.Timestamptz(3)
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType  String       @map("aggregate_type") @db.VarChar(120)
+  aggregateId    String       @map("aggregate_id") @db.Uuid
+  eventType      String       @map("event_type") @db.VarChar(160)
+  eventVersion   Int          @default(1) @map("event_version") @db.SmallInt
+  payloadJson    Json         @map("payload_json") @db.JsonB
+  correlationId  String       @map("correlation_id") @db.VarChar(128)
+  causationId    String?      @map("causation_id") @db.VarChar(128)
+  status         OutboxStatus @default(PENDING)
+  availableAt    DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
+  publishedAt    DateTime?    @map("published_at") @db.Timestamptz(3)
+  attemptCount   Int          @default(0) @map("attempt_count")
+  lockedAt       DateTime?    @map("locked_at") @db.Timestamptz(3)
+  lockedBy       String?      @map("locked_by") @db.VarChar(128)
+  lastErrorJson  Json?        @map("last_error_json") @db.JsonB
+  deadLetteredAt DateTime?    @map("dead_lettered_at") @db.Timestamptz(3)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
 
   @@index([status, availableAt, createdAt], map: "outbox_events_dispatch_idx")
   @@index([aggregateType, aggregateId, createdAt], map: "outbox_events_aggregate_idx")

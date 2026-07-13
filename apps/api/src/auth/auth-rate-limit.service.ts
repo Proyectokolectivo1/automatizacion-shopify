@@ -26,8 +26,8 @@ export class AuthRateLimitService implements OnModuleDestroy, OnModuleInit {
     if (this.cleanupTimer !== undefined) clearInterval(this.cleanupTimer);
   }
 
-  public async consume(email: string, ipAddress: string): Promise<boolean> {
-    const keyHash = hashSensitive(`${email}|${ipAddress}`);
+  public async consume(email: string, ipAddress: string, scope = 'login'): Promise<boolean> {
+    const keyHash = hashSensitive(`${scope}|${email}|${ipAddress}`);
     const config = this.environment.auth;
     const [row] = await this.prisma.$queryRaw<RateLimitRow[]>`
       INSERT INTO auth_rate_limits (key_hash, window_started_at, attempt_count, updated_at)
@@ -54,9 +54,9 @@ export class AuthRateLimitService implements OnModuleDestroy, OnModuleInit {
     return row?.blocked_until === null;
   }
 
-  public async clear(email: string, ipAddress: string): Promise<void> {
+  public async clear(email: string, ipAddress: string, scope = 'login'): Promise<void> {
     await this.prisma.authRateLimit.deleteMany({
-      where: { keyHash: hashSensitive(`${email}|${ipAddress}`) },
+      where: { keyHash: hashSensitive(`${scope}|${email}|${ipAddress}`) },
     });
   }
 

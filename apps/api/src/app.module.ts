@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, RequestMethod, type NestModule } from '@nes
 import { APP_FILTER } from '@nestjs/core';
 
 import { AuditService } from './auth/audit.service';
+import { AccountActionService } from './auth/account-action.service';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthRateLimitService } from './auth/auth-rate-limit.service';
 import { AuthController } from './auth/auth.controller';
@@ -30,6 +31,7 @@ import { OutboxQueueService } from './outbox/outbox-queue.service';
     EnvironmentService,
     PrismaService,
     AuditService,
+    AccountActionService,
     AuthRateLimitService,
     PasswordService,
     AuthService,
