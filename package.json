@@ -9,6 +9,9 @@
     "pnpm": "10.25.0"
   },
   "pnpm": {
+    "ignoredBuiltDependencies": [
+      "msgpackr-extract"
+    ],
     "onlyBuiltDependencies": [
       "@prisma/engines",
       "prisma"
@@ -33,6 +36,7 @@
     "infra:verify": "node scripts/verify-local-infra.mjs",
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
     "observability:verify": "node scripts/verify-observability.mjs",
+    "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",

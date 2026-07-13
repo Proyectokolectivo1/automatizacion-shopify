@@ -1,8 +1,8 @@
 import { Injectable, type OnModuleDestroy } from '@nestjs/common';
-import { Pool } from 'pg';
 import { createClient, type RedisClientType } from 'redis';
 
 import { EnvironmentService } from '../config/environment.service';
+import { PrismaService } from '../database/prisma.service';
 import { AppLoggerService } from '../observability/app-logger.service';
 import { MetricsService } from '../observability/metrics.service';
 
@@ -20,34 +20,20 @@ export interface ReadinessStatus {
 
 @Injectable()
 export class DependencyHealthService implements OnModuleDestroy {
-  private readonly pool: Pool;
   private redisClient: RedisClientType;
 
   public constructor(
     private readonly environment: EnvironmentService,
     private readonly logger: AppLoggerService,
     private readonly metrics: MetricsService,
+    private readonly prisma: PrismaService,
   ) {
-    const postgres = environment.postgres;
-    this.pool = new Pool({
-      connectionTimeoutMillis: environment.dependencyTimeoutMs,
-      database: postgres.database,
-      host: postgres.host,
-      max: 2,
-      password: postgres.password,
-      port: postgres.port,
-      query_timeout: environment.dependencyTimeoutMs,
-      user: postgres.user,
-    });
-    this.pool.on('error', (error) => {
-      this.logger.failure(error, { dependency: 'postgres' }, 'dependency_connection_error');
-    });
     this.redisClient = this.createRedisClient();
   }
 
   public async getReadiness(): Promise<ReadinessStatus> {
     const dependencies = await Promise.all([
-      this.check('postgres', () => this.pool.query('SELECT 1')),
+      this.check('postgres', () => this.prisma.$queryRaw`SELECT 1`),
       this.check('redis', () => this.pingRedis()),
       this.check('minio', () => this.pingMinio()),
     ]);
@@ -60,11 +46,10 @@ export class DependencyHealthService implements OnModuleDestroy {
     };
   }
 
-  public async onModuleDestroy(): Promise<void> {
+  public onModuleDestroy(): void {
     if (this.redisClient.isOpen) {
       this.redisClient.destroy();
     }
-    await this.pool.end();
   }
 
   private async check(

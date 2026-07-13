@@ -17,6 +17,9 @@ Actualizado: 2026-07-12
 | D-011  | DECISIÓN           | SQL versionado es la fuente de estructura; prohibido `db push` en entornos compartidos      | ACEPTADA E0-H4A   |
 | D-012  | DECISIÓN           | Migraciones expand-only y rollback por corrección hacia adelante                            | ACEPTADA E0-H4A   |
 | D-013  | DECISIÓN           | Forzar `@hono/node-server` 1.19.13 por GHSA-92pp-h63x-v22m                                  | ACEPTADA temporal |
+| D-014  | DECISIÓN           | PostgreSQL reclama outbox con lease y `FOR UPDATE SKIP LOCKED`; BullMQ no decide ownership  | ACEPTADA E0-H4B   |
+| D-015  | DECISIÓN           | UUID outbox como `jobId`, retención acotada y consumidor idempotente obligatorio            | ACEPTADA E0-H4B   |
+| D-016  | DECISIÓN           | Publisher/worker desactivados, kill switch activo y simulación activa por defecto           | ACEPTADA E0-H4B   |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO        |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO            |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE         |

@@ -94,3 +94,29 @@ permanecen explícitamente pendientes en E0-H3B.
 
 La prueba crea y elimina una base aleatoria; no borra volúmenes ni datos de desarrollo. E0-H4A no
 incluye publisher, locks, reintentos o DLQ.
+
+## Iteración E0-H4B
+
+| Validación                   | Comando                  | Resultado                                 |
+| ---------------------------- | ------------------------ | ----------------------------------------- |
+| Outbox PostgreSQL/Redis      | `pnpm outbox:verify`     | OK, 4/4                                   |
+| Atomicidad e idempotencia    | transacción serializable | OK, commit/replay/conflicto/rollback      |
+| Claim concurrente            | dos publishers           | OK, un solo job por UUID                  |
+| Redis inaccesible/recuperado | puerto aislado real      | OK, fail-fast, estado retryable y publish |
+| Reintentos y DLQ             | worker BullMQ real       | OK, 2 intentos y ejecución `dead_letter`  |
+| Migraciones                  | `pnpm database:verify`   | OK, 4/4; tres migraciones y sin drift     |
+| Unitarias                    | `pnpm test`              | OK, 8/8                                   |
+| Tipos y lint de la API       | scripts del paquete      | OK                                        |
+
+### Fallos encontrados y corregidos
+
+1. PostgreSQL no permite referenciar un valor enum nuevo en la misma transacción; la ampliación del
+   enum y las tablas runtime se separaron en migraciones consecutivas expand-only.
+2. Prisma reportó SQLSTATE `40001` dentro de `P2010`; el retry serializable reconoce ambas formas y
+   aplica espera incremental acotada.
+3. La conexión BullMQ a Redis inaccesible seguía reintentando; ahora tiene timeout y retry strategy
+   fail-fast, dejando el evento en PostgreSQL para recuperación.
+4. Eventos asíncronos `active/completed/failed` podían competir entre sí; el registro durable pasó al
+   cuerpo secuencial del processor.
+
+La suite usa base y colas aleatorias, limpia sus recursos y no llama proveedores externos.

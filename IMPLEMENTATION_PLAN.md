@@ -9,8 +9,8 @@ Actualizado: 2026-07-12
 | 1B   | E0-H2 entorno local                | COMPLETADA                 | protocolos, auth, salud y persistencia probados           |
 | 1C   | E0-H3 observabilidad base          | COMPLETADA                 | logs, correlación, errores, métricas y readiness probados |
 | 1D   | E0-H4A esquema y migración inicial | COMPLETADA                 | migración limpia/repetible y constraints probados         |
-| 1E   | E0-H4B outbox y colas              | SIGUIENTE                  | transacción, publicación, reintentos y DLQ probados       |
-| 1F   | E0-H5 autenticación y RBAC         | PENDIENTE                  | sesión segura y permisos backend probados                 |
+| 1E   | E0-H4B outbox y colas              | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
+| 1F   | E0-H5 autenticación y RBAC         | SIGUIENTE                  | sesión segura y permisos backend probados                 |
 | 2    | Shopify mínimo                     | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
@@ -50,3 +50,12 @@ base local, reaplicada como no-op, comparada sin drift y ejercitada mediante Pri
 Implementar el límite transaccional y la entrega asíncrona: Prisma lifecycle en NestJS, persistencia
 de agregado + outbox en una transacción, claim concurrente seguro, BullMQ, reintentos acotados, DLQ,
 idempotencia y pruebas de caída/recuperación. No incluir pedidos ni proveedores reales.
+
+Resultado: completada el 2026-07-12. La suite aislada confirma atomicidad, replay, rollback,
+concurrencia, Redis inaccesible/recuperado, reintentos y DLQ sobre servicios reales.
+
+## Sexta vertical: E0-H5A
+
+Implementar identidad local mínima, membresías organizacionales, almacenamiento robusto de
+contraseñas, sesiones revocables y autorización RBAC en backend. El correo permanecerá detrás de un
+adaptador con simulación, flag y kill switch mientras no exista proveedor decidido.

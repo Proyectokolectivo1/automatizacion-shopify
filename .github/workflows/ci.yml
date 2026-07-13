@@ -42,6 +42,9 @@ jobs:
       - name: Verify database migration and constraints
         run: pnpm database:verify
 
+      - name: Verify transactional outbox and queues
+        run: pnpm outbox:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

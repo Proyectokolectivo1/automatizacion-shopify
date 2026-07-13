@@ -28,8 +28,8 @@ S3-compatible, workers asíncronos, auditoría, métricas y herramientas operati
 
 Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
-Las fundaciones están aproximadamente al 65 %. Ya existe un monorepo reproducible con CI, entorno
-local, observabilidad y primera capa de datos. Todavía no existen flujos de negocio utilizables por
+Las fundaciones están aproximadamente al 75 %. Ya existe un monorepo reproducible con CI, entorno
+local, observabilidad, persistencia transaccional y entrega asíncrona base. Todavía no existen flujos de negocio utilizables por
 operadores ni conexiones reales con proveedores.
 
 ## Implementado
@@ -43,6 +43,11 @@ operadores ni conexiones reales con proveedores.
 - Pruebas de degradación y recuperación cuando Redis se detiene.
 - Prisma 7.8.0 y migración inicial expand-only.
 - Tablas `organizations`, `stores`, `idempotency_keys` y `outbox_events`.
+- Lifecycle Prisma único en NestJS y health check reutilizando ese cliente.
+- Transacción serializable de demostración con snapshot idempotente y evento outbox atómico.
+- Publisher BullMQ con claim concurrente, lease recuperable, backoff y deduplicación por evento.
+- Worker separado, ejecución durable, reintentos y DLQ; simulación y kill switch seguros.
+- Pruebas PostgreSQL/Redis de duplicado, respuesta perdida, rollback, carrera y recuperación.
 - Constraints para ownership, dominio Shopify, moneda, idempotencia y consistencia del outbox.
 - Migración probada desde una base vacía, reaplicada como no-op y verificada sin drift.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
@@ -51,10 +56,7 @@ operadores ni conexiones reales con proveedores.
 
 ### Fundaciones pendientes
 
-- Lifecycle de Prisma integrado en NestJS.
-- Escritura transaccional de agregado y evento outbox.
-- Publisher outbox, BullMQ, reintentos, backoff y DLQ.
-- Idempotencia completa ante duplicados y respuestas perdidas.
+- Herramienta operativa autenticada para inspeccionar y reprocesar DLQ.
 - Autenticación, recuperación de cuenta y RBAC.
 - OpenTelemetry y alertas conectadas a un backend verificable.
 - Protección productiva del endpoint `/metrics`.
@@ -108,8 +110,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E0-H4B: integrar Prisma en NestJS e implementar una transacción demostrable con outbox, BullMQ,
-claim concurrente seguro, reintentos, DLQ, idempotencia, modo simulación y kill switch.
+E0-H5A: identidad local mínima segura: usuario/membresía, hashing de contraseña, sesiones
+revocables y RBAC aplicado en backend, sin depender aún de correo real.
 
 ## Dónde consultar más detalle
 

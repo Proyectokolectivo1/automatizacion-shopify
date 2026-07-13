@@ -22,6 +22,13 @@ export class EnvironmentService {
     return this.values.DEPENDENCY_TIMEOUT_MS;
   }
 
+  public get databaseUrl(): string {
+    const postgres = this.postgres;
+    const user = encodeURIComponent(postgres.user);
+    const password = encodeURIComponent(postgres.password);
+    return `postgresql://${user}:${password}@${postgres.host}:${postgres.port}/${postgres.database}`;
+  }
+
   public get logLevel(): Environment['LOG_LEVEL'] {
     return this.values.LOG_LEVEL;
   }
@@ -51,6 +58,32 @@ export class EnvironmentService {
       host: this.values.REDIS_HOST,
       password: this.values.REDIS_PASSWORD,
       port: this.values.REDIS_PORT,
+    };
+  }
+
+  public get outbox(): Readonly<{
+    batchSize: number;
+    dlqName: string;
+    enabled: boolean;
+    killSwitch: boolean;
+    leaseMs: number;
+    maxAttempts: number;
+    pollIntervalMs: number;
+    queueName: string;
+    retryBaseMs: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      batchSize: this.values.OUTBOX_BATCH_SIZE,
+      dlqName: this.values.OUTBOX_DLQ_NAME,
+      enabled: this.values.OUTBOX_PUBLISHER_ENABLED,
+      killSwitch: this.values.OUTBOX_KILL_SWITCH,
+      leaseMs: this.values.OUTBOX_LEASE_MS,
+      maxAttempts: this.values.OUTBOX_MAX_ATTEMPTS,
+      pollIntervalMs: this.values.OUTBOX_POLL_INTERVAL_MS,
+      queueName: this.values.OUTBOX_QUEUE_NAME,
+      retryBaseMs: this.values.OUTBOX_RETRY_BASE_MS,
+      simulationMode: this.values.OUTBOX_SIMULATION_MODE,
     };
   }
 

@@ -9,10 +9,12 @@
     "dev": "tsx watch src/main.ts",
     "lint": "eslint src test --max-warnings=0",
     "start": "node dist/main.js",
+    "start:outbox-worker": "node dist/outbox-worker.js",
     "prisma:generate": "prisma generate --config prisma.config.ts",
     "test": "vitest run --coverage",
     "test:database": "pnpm prisma:generate && vitest run --config vitest.database.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:outbox": "pnpm prisma:generate && vitest run --config vitest.outbox.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -21,6 +23,7 @@
     "@nestjs/platform-express": "11.1.28",
     "@prisma/adapter-pg": "7.8.0",
     "@prisma/client": "7.8.0",
+    "bullmq": "5.80.2",
     "dotenv": "17.4.2",
     "pg": "8.22.0",
     "pino": "10.3.1",

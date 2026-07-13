@@ -7,6 +7,7 @@ export class MetricsService {
   private readonly requestCounter: Counter<'method' | 'route' | 'status_code'>;
   private readonly requestDuration: Histogram<'method' | 'route' | 'status_code'>;
   private readonly dependencyReady: Gauge<'dependency'>;
+  private readonly outboxEvents: Counter<'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -29,6 +30,12 @@ export class MetricsService {
       name: 'ecommerce_api_dependency_ready',
       registers: [this.registry],
     });
+    this.outboxEvents = new Counter({
+      help: 'Eventos procesados por el publicador outbox.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_outbox_events_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -44,6 +51,10 @@ export class MetricsService {
 
   public setDependencyReady(dependency: string, ready: boolean): void {
     this.dependencyReady.set({ dependency }, ready ? 1 : 0);
+  }
+
+  public recordOutbox(outcome: 'claimed' | 'dead_letter' | 'failed' | 'published'): void {
+    this.outboxEvents.inc({ outcome });
   }
 
   public get contentType(): string {

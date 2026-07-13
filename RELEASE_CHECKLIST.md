@@ -8,10 +8,10 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Prompt maestro disponible y requisitos reconciliados.
 - [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes para todo el MVP.
 - [ ] Migraciones expand/contract revisadas y probadas.
-- [ ] Idempotencia, duplicados, eventos tardíos y respuesta perdida probados.
+- [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
-- [ ] Feature flags, simulación y kill switches verificados.
+- [ ] Flags, simulación y kill switch del outbox verificados; faltan los de proveedores futuros.
 - [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
 - [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
 - [ ] Backups y restauración con evidencia y tiempos medidos.
@@ -30,7 +30,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Readiness real de PostgreSQL, Redis y MinIO con recuperación Redis probada.
 - [x] Migración inicial expand-only probada desde vacío, reaplicada y sin drift.
 - [x] Constraints base de ownership, dominio, moneda, idempotencia y outbox probados.
-- [ ] Outbox transaccional, publisher, reintentos y DLQ implementados.
+- [x] Outbox transaccional, publisher, reintentos y DLQ implementados.
+- [ ] Inspección/reproceso manual de DLQ autenticado y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

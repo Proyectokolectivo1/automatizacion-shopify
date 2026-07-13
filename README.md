@@ -44,10 +44,15 @@ los constraints sin alterar datos de desarrollo:
 ```bash
 pnpm database:verify
 pnpm database:status
+pnpm outbox:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
 `docs/runbooks/database-migrations.md`. No use `prisma db push` en entornos compartidos.
+
+El publisher y el worker outbox nacen desactivados y con kill switch. Para una prueba local controlada,
+consulte `docs/runbooks/outbox-operations.md`; el worker se ejecuta en otro proceso con
+`pnpm --filter @ecommerce/api start:outbox-worker` después de compilar.
 
 ## Estado real
 

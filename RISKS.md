@@ -18,3 +18,5 @@ Actualizado: 2026-07-12
 | R-012 | Sin trazas distribuidas ni alertas conectadas     | Media | Medio   | Entregar OpenTelemetry y reglas verificables en E0-H3B         | Abierto  |
 | R-013 | Drift entre schema Prisma y constraints SQL       | Media | Alto    | `migrate diff` contra una base temporal migrada en CI          | Mitigado |
 | R-014 | Rollback destructivo de la migración inicial      | Baja  | Alto    | Expand-only, detener escritores y corregir hacia adelante      | Mitigado |
+| R-015 | Retirar jobs demasiado pronto rompe deduplicación | Media | Alto    | Retención BullMQ acotada y consumidor idempotente              | Mitigado |
+| R-016 | DLQ crece sin reproceso operativo auditado        | Media | Alto    | Métricas, runbook y entregar E0-H4C antes del piloto           | Abierto  |

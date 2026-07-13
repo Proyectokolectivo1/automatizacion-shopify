@@ -18,12 +18,13 @@ Una organización no puede eliminarse mientras conserve tiendas (`ON DELETE REST
 debe terminar en `.myshopify.com`. Estados: `pending`, `active`, `disconnected`, `suspended`.
 
 `idempotency_keys` hace única la combinación `(scope, key)`. Estados: `processing`, `completed` y
-`failed`. `request_hash` permitirá detectar una clave reutilizada con otro contenido; el
-comportamiento transaccional se implementará en E0-H4B.
+`failed`. `request_hash` detecta una clave reutilizada con otro contenido y el snapshot permite
+repetir una respuesta perdida sin crear otro agregado.
 
 `outbox_events` registra agregado UUID, evento/version, payload, correlación, disponibilidad e
 intentos. Los intentos no pueden ser negativos y un evento `published` requiere `published_at`. El
-publicador y la DLQ no forman parte de E0-H4A.
+E0-H4B añadió leases, error redactado y estado `dead_letter`. `job_executions` conserva el estado de
+cada intento del consumidor. Consulte `outbox-events.md` para el contrato runtime.
 
 No hay API pública ni datos de negocio en esta vertical. Los checks SQL se contrastan contra el
 esquema Prisma mediante `prisma migrate diff`.

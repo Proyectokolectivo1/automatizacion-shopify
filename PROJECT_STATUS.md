@@ -8,22 +8,22 @@ Actualizado: 2026-07-12
 
 ## Fase actual
 
-Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4A completadas. Siguiente vertical: E0-H4B.
+Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4 completadas. Siguiente vertical: E0-H5A.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                                                            |
-| ------------------------ | -----: | ------------------------------------------------------------------------------------ |
-| E0 Fundaciones           |   65 % | monorepo, CI, entorno, observabilidad y esquema base; faltan publisher, colas y RBAC |
-| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                                 |
-| E2 Pagos y tarifas       |    0 % | pendiente                                                                            |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                                                           |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                                 |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                                                   |
-| E6 Operación y dashboard |    0 % | pendiente                                                                            |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                                                       |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                                    |
-| E9 Producción            |    0 % | no autorizada                                                                        |
+| Épica                    | Avance | Evidencia                                                                             |
+| ------------------------ | -----: | ------------------------------------------------------------------------------------- |
+| E0 Fundaciones           |   75 % | monorepo, CI, entorno, observabilidad, datos y colas; faltan identidad, RBAC y E0-H3B |
+| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                                  |
+| E2 Pagos y tarifas       |    0 % | pendiente                                                                             |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                                                            |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                                  |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                                                    |
+| E6 Operación y dashboard |    0 % | pendiente                                                                             |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                                                        |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                                     |
+| E9 Producción            |    0 % | no autorizada                                                                         |
 
 ## Diagnóstico inicial
 
@@ -40,17 +40,19 @@ Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4A completadas. Siguiente vert
 - Prueba de fallo y recuperación de Redis, pruebas unitarias/integración y verificación runtime en CI.
 - Contrato, arquitectura, seguridad, estrategia de pruebas y runbook de observabilidad documentados.
 - E0-H4A: Prisma 7.8.0, migración expand-only y tablas base con constraints e índices.
+- E0-H4B: lifecycle Prisma, transacción/idempotencia/outbox, BullMQ, worker, reintentos y DLQ.
+- Tres migraciones expand-only y tabla `job_executions`; fallo Redis y recuperación probados.
 - Migración probada desde vacío, reaplicación no-op, ausencia de drift y cliente Prisma real.
 - Resumen ejecutivo `PROJECT_OVERVIEW.md` creado y exigido como actualización de cada sesión.
 
-## En curso
+## Siguiente vertical
 
-- E0-H4B: escritura transaccional, publicación outbox y colas BullMQ.
+- E0-H5A: identidad local, sesiones y RBAC backend.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Publicador outbox, BullMQ, autenticación, RBAC e integraciones externas.
+- Autenticación, RBAC, reproceso operativo de DLQ e integraciones externas.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -68,15 +70,16 @@ Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4A completadas. Siguiente vert
 
 ## Pruebas
 
-- `pnpm test`: 6 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 8 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
 - `pnpm database:verify`: 4 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
+- `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1, E0-H2, E0-H3 o E0-H4A.
+- No hay defectos abiertos en E0-H1, E0-H2, E0-H3 o E0-H4.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
 - La migración inicial está aplicada localmente y `prisma migrate status` confirma esquema al día.
 
@@ -87,6 +90,5 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E0-H4B: servicio Prisma, unidad transaccional que persista agregado + outbox, publicador
-BullMQ con claim seguro, reintentos, DLQ, idempotencia y recuperación de respuesta perdida. No
-implementar todavía pedidos ni proveedores reales.
+Implementar E0-H5A: identidad y membresías mínimas, contraseña robusta, sesión revocable y guardas
+RBAC verificadas en backend. Mantener correo en adaptador/simulación hasta decidir proveedor.

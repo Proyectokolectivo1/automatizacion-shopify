@@ -85,10 +85,11 @@ describe('initial database migration', () => {
       `SELECT table_name FROM information_schema.tables
        WHERE table_schema = 'public' AND table_name = ANY($1::text[])
        ORDER BY table_name`,
-      [['organizations', 'stores', 'idempotency_keys', 'outbox_events']],
+      [['organizations', 'stores', 'idempotency_keys', 'outbox_events', 'job_executions']],
     );
     expect(tables.rows.map(({ table_name }) => table_name)).toEqual([
       'idempotency_keys',
+      'job_executions',
       'organizations',
       'outbox_events',
       'stores',
@@ -97,7 +98,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('1');
+    expect(migrations.rows[0]?.count).toBe('3');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(

@@ -19,3 +19,4 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
   readiness reales para PostgreSQL, Redis y MinIO.
 - E0-H4A no deja cliente generado versionado: `prisma generate` forma parte obligatoria de build y
   pruebas, evitando artefactos derivados obsoletos en Git.
+- E0-H4B eliminó el pool PostgreSQL paralelo del readiness; API y health comparten el lifecycle Prisma.

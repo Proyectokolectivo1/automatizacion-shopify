@@ -12,4 +12,5 @@
 8. consistencia de intentos y estado publicado del outbox;
 9. eliminación final de la base temporal.
 
-No valida publicación outbox, locks, reintentos ni DLQ; corresponden a E0-H4B.
+La evidencia histórica de esta suite no valida publicación, locks, reintentos ni DLQ; esos casos se
+validan por separado en `e0-h4b-outbox.md`.
