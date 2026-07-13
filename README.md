@@ -45,6 +45,7 @@ los constraints sin alterar datos de desarrollo:
 pnpm database:verify
 pnpm database:status
 pnpm outbox:verify
+pnpm auth:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -53,6 +54,9 @@ Las migraciones se aplican con `pnpm database:migrate`; revise primero
 El publisher y el worker outbox nacen desactivados y con kill switch. Para una prueba local controlada,
 consulte `docs/runbooks/outbox-operations.md`; el worker se ejecuta en otro proceso con
 `pnpm --filter @ecommerce/api start:outbox-worker` después de compilar.
+
+La autenticación base se valida con `pnpm auth:verify`. No existe registro público ni cuenta inicial
+por defecto; consulte `docs/runbooks/authentication.md` y no inserte contraseñas en claro.
 
 ## Estado real
 

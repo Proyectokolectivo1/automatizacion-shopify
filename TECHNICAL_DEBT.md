@@ -12,6 +12,7 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
 | TD-005 | PostCSS requiere override de seguridad transitivo    | Bajo    | Retirar cuando Next.js incluya PostCSS seguro         |
 | TD-006 | MinIO comunitario ya no recibe parches               | Alto    | Sustituir antes de piloto tras decisión de proveedor  |
 | TD-007 | Prisma tooling requiere override de Hono 1.19.13     | Bajo    | Retirar cuando Prisma lo resuelva transitivamente     |
+| TD-008 | Sesiones expiradas/revocadas aún no se archivan      | Bajo    | Definir retención y limpieza con la política legal    |
 
 ## Deuda resuelta
 

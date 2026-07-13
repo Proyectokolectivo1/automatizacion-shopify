@@ -8,6 +8,7 @@ export class MetricsService {
   private readonly requestDuration: Histogram<'method' | 'route' | 'status_code'>;
   private readonly dependencyReady: Gauge<'dependency'>;
   private readonly outboxEvents: Counter<'outcome'>;
+  private readonly authEvents: Counter<'event' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -36,6 +37,12 @@ export class MetricsService {
       name: 'ecommerce_api_outbox_events_total',
       registers: [this.registry],
     });
+    this.authEvents = new Counter({
+      help: 'Eventos de autenticación y autorización por resultado.',
+      labelNames: ['event', 'outcome'],
+      name: 'ecommerce_api_auth_events_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -55,6 +62,10 @@ export class MetricsService {
 
   public recordOutbox(outcome: 'claimed' | 'dead_letter' | 'failed' | 'published'): void {
     this.outboxEvents.inc({ outcome });
+  }
+
+  public recordAuth(event: string, outcome: string): void {
+    this.authEvents.inc({ event, outcome });
   }
 
   public get contentType(): string {

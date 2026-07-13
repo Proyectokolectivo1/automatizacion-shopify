@@ -45,6 +45,40 @@ enum JobExecutionStatus {
   @@map("job_execution_status")
 }
 
+enum UserStatus {
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+
+  @@map("user_status")
+}
+
+enum MembershipStatus {
+  ACTIVE  @map("active")
+  REVOKED @map("revoked")
+
+  @@map("membership_status")
+}
+
+enum OrganizationRole {
+  OWNER      @map("owner")
+  ADMIN      @map("admin")
+  OPERATIONS @map("operations")
+  LOGISTICS  @map("logistics")
+  SUPPORT    @map("support")
+  FINANCE    @map("finance")
+  READ_ONLY  @map("read_only")
+
+  @@map("organization_role")
+}
+
+enum AuditOutcome {
+  SUCCESS @map("success")
+  FAILURE @map("failure")
+  DENIED  @map("denied")
+
+  @@map("audit_outcome")
+}
+
 model Organization {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name            String   @db.VarChar(160)
@@ -53,8 +87,103 @@ model Organization {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   stores          Store[]
+  memberships     OrganizationMembership[]
+  sessions        AuthSession[]
+  auditLogs       AuditLog[]
 
   @@map("organizations")
+}
+
+model User {
+  id                     String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String       @unique(map: "users_email_key") @db.VarChar(320)
+  passwordHash           String       @map("password_hash") @db.VarChar(512)
+  passwordAlgorithm      String       @default("argon2id-v1") @map("password_algorithm") @db.VarChar(32)
+  passwordParametersJson Json         @map("password_parameters_json") @db.JsonB
+  status                 UserStatus   @default(ACTIVE)
+  failedLoginAttempts    Int          @default(0) @map("failed_login_attempts")
+  lockedUntil            DateTime?    @map("locked_until") @db.Timestamptz(3)
+  lastLoginAt            DateTime?    @map("last_login_at") @db.Timestamptz(3)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  memberships            OrganizationMembership[]
+  sessions               AuthSession[]
+  auditLogs               AuditLog[]
+
+  @@index([status, lockedUntil], map: "users_status_locked_until_idx")
+  @@map("users")
+}
+
+model OrganizationMembership {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole
+  status         MembershipStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([organizationId, userId], map: "organization_memberships_organization_user_key")
+  @@index([userId, status], map: "organization_memberships_user_status_idx")
+  @@index([organizationId, role, status], map: "organization_memberships_role_status_idx")
+  @@map("organization_memberships")
+}
+
+model AuthSession {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String       @map("user_id") @db.Uuid
+  organizationId   String       @map("organization_id") @db.Uuid
+  accessTokenHash  String       @unique(map: "auth_sessions_access_token_hash_key") @map("access_token_hash") @db.Char(64)
+  refreshTokenHash String       @unique(map: "auth_sessions_refresh_token_hash_key") @map("refresh_token_hash") @db.Char(64)
+  accessExpiresAt  DateTime     @map("access_expires_at") @db.Timestamptz(3)
+  refreshExpiresAt DateTime     @map("refresh_expires_at") @db.Timestamptz(3)
+  refreshVersion   Int          @default(0) @map("refresh_version")
+  userAgentHash    String?      @map("user_agent_hash") @db.Char(64)
+  ipHash           String?      @map("ip_hash") @db.Char(64)
+  lastUsedAt       DateTime?    @map("last_used_at") @db.Timestamptz(3)
+  revokedAt        DateTime?    @map("revoked_at") @db.Timestamptz(3)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  user             User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, revokedAt, refreshExpiresAt], map: "auth_sessions_user_active_idx")
+  @@index([organizationId, revokedAt], map: "auth_sessions_organization_active_idx")
+  @@map("auth_sessions")
+}
+
+model AuthRateLimit {
+  keyHash         String    @id @map("key_hash") @db.Char(64)
+  windowStartedAt DateTime  @map("window_started_at") @db.Timestamptz(3)
+  attemptCount    Int       @default(0) @map("attempt_count")
+  blockedUntil    DateTime? @map("blocked_until") @db.Timestamptz(3)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([blockedUntil], map: "auth_rate_limits_blocked_until_idx")
+  @@map("auth_rate_limits")
+}
+
+model AuditLog {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actorUserId    String?       @map("actor_user_id") @db.Uuid
+  organizationId String?       @map("organization_id") @db.Uuid
+  action         String        @db.VarChar(120)
+  outcome        AuditOutcome
+  resourceType   String?       @map("resource_type") @db.VarChar(120)
+  resourceId     String?       @map("resource_id") @db.VarChar(128)
+  correlationId  String        @map("correlation_id") @db.VarChar(128)
+  metadataJson   Json          @default("{}") @map("metadata_json") @db.JsonB
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  actorUser      User?         @relation(fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([actorUserId, createdAt], map: "audit_logs_actor_created_at_idx")
+  @@index([organizationId, createdAt], map: "audit_logs_organization_created_at_idx")
+  @@index([action, outcome, createdAt], map: "audit_logs_action_outcome_created_at_idx")
+  @@index([correlationId], map: "audit_logs_correlation_id_idx")
+  @@map("audit_logs")
 }
 
 model Store {

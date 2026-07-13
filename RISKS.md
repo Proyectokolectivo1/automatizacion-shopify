@@ -20,3 +20,5 @@ Actualizado: 2026-07-12
 | R-014 | Rollback destructivo de la migración inicial      | Baja  | Alto    | Expand-only, detener escritores y corregir hacia adelante      | Mitigado |
 | R-015 | Retirar jobs demasiado pronto rompe deduplicación | Media | Alto    | Retención BullMQ acotada y consumidor idempotente              | Mitigado |
 | R-016 | DLQ crece sin reproceso operativo auditado        | Media | Alto    | Métricas, runbook y entregar E0-H4C antes del piloto           | Abierto  |
+| R-017 | IP de cliente incorrecta detrás de proxy          | Media | Alto    | Configurar proxy confiable y probar rate limit antes de piloto | Abierto  |
+| R-018 | UI futura almacena Bearer token de forma insegura | Media | Alto    | Prohibir localStorage; decidir cookie/CSRF antes de la UI      | Abierto  |

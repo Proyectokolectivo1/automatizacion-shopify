@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "turbo run build",
+    "auth:verify": "pnpm --filter @ecommerce/api test:auth",
     "database:migrate": "pnpm --filter @ecommerce/api database:migrate",
     "database:status": "pnpm --filter @ecommerce/api database:status",
     "database:verify": "pnpm --filter @ecommerce/api test:database",

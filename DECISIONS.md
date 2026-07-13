@@ -20,6 +20,10 @@ Actualizado: 2026-07-12
 | D-014  | DECISIÓN           | PostgreSQL reclama outbox con lease y `FOR UPDATE SKIP LOCKED`; BullMQ no decide ownership  | ACEPTADA E0-H4B   |
 | D-015  | DECISIÓN           | UUID outbox como `jobId`, retención acotada y consumidor idempotente obligatorio            | ACEPTADA E0-H4B   |
 | D-016  | DECISIÓN           | Publisher/worker desactivados, kill switch activo y simulación activa por defecto           | ACEPTADA E0-H4B   |
+| D-017  | DECISIÓN           | Sesiones opacas server-side; PostgreSQL guarda solo hashes y permite revocación inmediata   | ACEPTADA E0-H5A   |
+| D-018  | DECISIÓN           | Argon2id v1 con 19 MiB, 2 iteraciones, p=1 y parámetros versionados                         | ACEPTADA E0-H5A   |
+| D-019  | DECISIÓN           | RBAC default-deny y coincidencia de organización obligatoria en backend                     | ACEPTADA E0-H5A   |
+| D-020  | DECISIÓN           | Correo desactivado, kill switch activo y simulación por defecto hasta resolver DP-001       | ACEPTADA temporal |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO        |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO            |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE         |

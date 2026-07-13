@@ -31,6 +31,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Migración inicial expand-only probada desde vacío, reaplicada y sin drift.
 - [x] Constraints base de ownership, dominio, moneda, idempotencia y outbox probados.
 - [x] Outbox transaccional, publisher, reintentos y DLQ implementados.
+- [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
+- [ ] Invitación, recuperación, administración de roles y mecanismo UI cookie/CSRF completos.
 - [ ] Inspección/reproceso manual de DLQ autenticado y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.

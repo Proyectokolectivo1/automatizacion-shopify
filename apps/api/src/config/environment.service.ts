@@ -22,6 +22,34 @@ export class EnvironmentService {
     return this.values.DEPENDENCY_TIMEOUT_MS;
   }
 
+  public get auth(): Readonly<{
+    accessTtlSeconds: number;
+    blockDurationMs: number;
+    loginMaxAttempts: number;
+    rateWindowMs: number;
+    refreshTtlSeconds: number;
+  }> {
+    return {
+      accessTtlSeconds: this.values.AUTH_ACCESS_TTL_SECONDS,
+      blockDurationMs: this.values.AUTH_BLOCK_DURATION_MS,
+      loginMaxAttempts: this.values.AUTH_LOGIN_MAX_ATTEMPTS,
+      rateWindowMs: this.values.AUTH_RATE_WINDOW_MS,
+      refreshTtlSeconds: this.values.AUTH_REFRESH_TTL_SECONDS,
+    };
+  }
+
+  public get emailDelivery(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.EMAIL_DELIVERY_ENABLED,
+      killSwitch: this.values.EMAIL_KILL_SWITCH,
+      simulationMode: this.values.EMAIL_SIMULATION_MODE,
+    };
+  }
+
   public get databaseUrl(): string {
     const postgres = this.postgres;
     const user = encodeURIComponent(postgres.user);

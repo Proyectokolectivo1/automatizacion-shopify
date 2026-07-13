@@ -10,7 +10,8 @@ Actualizado: 2026-07-12
 | 1C   | E0-H3 observabilidad base          | COMPLETADA                 | logs, correlación, errores, métricas y readiness probados |
 | 1D   | E0-H4A esquema y migración inicial | COMPLETADA                 | migración limpia/repetible y constraints probados         |
 | 1E   | E0-H4B outbox y colas              | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
-| 1F   | E0-H5 autenticación y RBAC         | SIGUIENTE                  | sesión segura y permisos backend probados                 |
+| 1F   | E0-H5A login, sesiones y RBAC      | COMPLETADA                 | sesión segura y permisos backend probados                 |
+| 1G   | E0-H5B invitación y recuperación   | SIGUIENTE                  | tokens de un uso y correo simulado probados               |
 | 2    | Shopify mínimo                     | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
@@ -59,3 +60,11 @@ concurrencia, Redis inaccesible/recuperado, reintentos y DLQ sobre servicios rea
 Implementar identidad local mínima, membresías organizacionales, almacenamiento robusto de
 contraseñas, sesiones revocables y autorización RBAC en backend. El correo permanecerá detrás de un
 adaptador con simulación, flag y kill switch mientras no exista proveedor decidido.
+
+Resultado: completada el 2026-07-12. Login uniforme, Argon2id, access/refresh opacos, rotación,
+revocación, rate limit, auditoría, RBAC y aislamiento de tenant se probaron sobre PostgreSQL real.
+
+## Séptima vertical: E0-H5B
+
+Completar invitaciones y recuperación con tokens de un solo uso, hash persistido, expiración,
+revocación y replay seguro. Usar el adaptador de correo únicamente en simulación mientras DP-001 siga pendiente.

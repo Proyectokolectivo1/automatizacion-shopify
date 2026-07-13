@@ -1,8 +1,16 @@
 import { MiddlewareConsumer, Module, RequestMethod, type NestModule } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 
+import { AuditService } from './auth/audit.service';
+import { AuthGuard } from './auth/auth.guard';
+import { AuthRateLimitService } from './auth/auth-rate-limit.service';
+import { AuthController } from './auth/auth.controller';
+import { AuthService } from './auth/auth.service';
+import { PasswordService } from './auth/password.service';
+import { RbacGuard } from './auth/rbac.guard';
 import { EnvironmentService } from './config/environment.service';
 import { PrismaService } from './database/prisma.service';
+import { EmailDeliveryService } from './email/email-delivery.service';
 import { FoundationTransactionService } from './foundation/foundation-transaction.service';
 import { DependencyHealthService } from './health/dependency-health.service';
 import { HealthController } from './health/health.controller';
@@ -17,10 +25,17 @@ import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { OutboxQueueService } from './outbox/outbox-queue.service';
 
 @Module({
-  controllers: [HealthController, MetricsController],
+  controllers: [AuthController, HealthController, MetricsController],
   providers: [
     EnvironmentService,
     PrismaService,
+    AuditService,
+    AuthRateLimitService,
+    PasswordService,
+    AuthService,
+    AuthGuard,
+    RbacGuard,
+    EmailDeliveryService,
     FoundationTransactionService,
     RequestContextService,
     AppLoggerService,

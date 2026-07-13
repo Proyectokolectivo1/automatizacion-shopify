@@ -13,7 +13,8 @@ Actualizado: 2026-07-12
 | E0-H4A     | P0             | Prisma, migración inicial, constraints e índices                 | COMPLETADA                 |
 | E0-H4B     | P0             | Outbox publisher, BullMQ, reintentos y DLQ                       | COMPLETADA                 |
 | E0-H4C     | P1             | Inspección y reproceso manual auditado de DLQ                    | PENDIENTE                  |
-| E0-H5      | P0             | Invitación, login, recuperación y RBAC                           | SIGUIENTE                  |
+| E0-H5A     | P0             | Login, sesiones revocables, rate limit y RBAC                    | COMPLETADA                 |
+| E0-H5B     | P0             | Invitación y recuperación de contraseña                          | SIGUIENTE                  |
 | E1-H1..H5  | P0             | Tiendas, webhooks, sync, clasificación y conciliación Shopify    | BLOQUEADO_POR_CREDENCIALES |
 | E2-H1..H6  | P0             | Tarifas y ciclo Wompi                                            | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7  | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |

@@ -120,3 +120,27 @@ incluye publisher, locks, reintentos o DLQ.
    cuerpo secuencial del processor.
 
 La suite usa base y colas aleatorias, limpia sus recursos y no llama proveedores externos.
+
+## Iteración E0-H5A
+
+| Validación             | Comando                | Resultado                                      |
+| ---------------------- | ---------------------- | ---------------------------------------------- |
+| Unitarias              | `pnpm test`            | OK, 17/17                                      |
+| Auth HTTP + PostgreSQL | `pnpm auth:verify`     | OK, 6/6                                        |
+| Password               | Argon2id               | OK, hash/verify/dummy y parámetros OWASP       |
+| Sesiones               | access/refresh opaco   | OK, expiración, rotación, logout y replay      |
+| Autorización           | guards backend         | OK, owner/read-only y tenant ajeno             |
+| Abuso                  | intentos repetidos     | OK, respuesta uniforme, 429 y bloqueo temporal |
+| Auditoría/métricas     | PostgreSQL/Prometheus  | OK, sin contraseña ni tokens                   |
+| Correo                 | unitarias              | OK, blocked/simulated/fail-closed              |
+| Migración temporal     | `pnpm database:verify` | OK, cuatro migraciones y sin drift             |
+
+### Fallos encontrados y corregidos
+
+1. El primer módulo Auth registraba otro Prisma; se integró en `AppModule` para conservar un solo pool.
+2. La inyección de un tipo `Pick` se borraba en runtime; se fijó el token explícito de configuración.
+3. La actividad de sesión escribía en cada request; ahora se actualiza como máximo una vez por minuto.
+4. Rate limits vencidos podían crecer indefinidamente; se añadió limpieza periódica con retención acotada.
+
+No existe usuario predeterminado, registro público ni envío real de correo. Invitación y recuperación
+siguen pendientes en E0-H5B.
