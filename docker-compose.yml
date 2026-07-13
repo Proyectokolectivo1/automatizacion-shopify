@@ -1,0 +1,82 @@
+name: ecommerce-inteligente
+
+services:
+  postgres:
+    image: postgres:17.10-alpine3.23
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?Ejecute pnpm infra:bootstrap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ejecute pnpm infra:bootstrap}
+      POSTGRES_USER: ${POSTGRES_USER:?Ejecute pnpm infra:bootstrap}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    shm_size: 128mb
+    mem_limit: 768m
+    cpus: 1.0
+    networks:
+      - backend
+
+  redis:
+    image: redis:7.4.9-alpine3.21
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Ejecute pnpm infra:bootstrap}
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --appendfsync everysec --requirepass "$${REDIS_PASSWORD}"
+    ports:
+      - '127.0.0.1:${REDIS_PORT:-6380}:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'REDISCLI_AUTH="$${REDIS_PASSWORD}" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - backend
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    environment:
+      MINIO_BUCKET: ${MINIO_BUCKET:?Ejecute pnpm infra:bootstrap}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Ejecute pnpm infra:bootstrap}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Ejecute pnpm infra:bootstrap}
+    command: server /data --console-address ':9001'
+    ports:
+      - '127.0.0.1:${MINIO_API_PORT:-9100}:9000'
+      - '127.0.0.1:${MINIO_CONSOLE_PORT:-9101}:9001'
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ['CMD', 'curl', '--fail', '--silent', 'http://localhost:9000/minio/health/live']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 512m
+    cpus: 1.0
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  minio_data:
+  postgres_data:
+  redis_data:

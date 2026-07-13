@@ -1,0 +1,36 @@
+import { randomBytes } from 'node:crypto';
+import { existsSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
+const environmentPath = resolve('.env');
+const force = process.argv.includes('--force');
+
+if (existsSync(environmentPath) && !force) {
+  console.log('El archivo .env ya existe; no se modificó. Use --force para regenerarlo.');
+  process.exit(0);
+}
+
+const secret = () => randomBytes(32).toString('base64url');
+const content = `NODE_ENV=development
+API_PORT=3001
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=5433
+POSTGRES_DB=ecommerce
+POSTGRES_USER=ecommerce
+POSTGRES_PASSWORD=${secret()}
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6380
+REDIS_PASSWORD=${secret()}
+MINIO_HOST=127.0.0.1
+MINIO_API_PORT=9100
+MINIO_CONSOLE_PORT=9101
+MINIO_ROOT_USER=ecommerce_local
+MINIO_ROOT_PASSWORD=${secret()}
+MINIO_BUCKET=ecommerce-documents
+`;
+
+writeFileSync(environmentPath, content, { encoding: 'utf8', flag: 'w', mode: 0o600 });
+console.log(
+  'Entorno local generado en .env con secretos aleatorios. El archivo está excluido de Git.',
+);
