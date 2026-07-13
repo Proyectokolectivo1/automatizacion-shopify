@@ -12,8 +12,11 @@ if (existsSync(environmentPath) && !force) {
 
 const secret = () => randomBytes(32).toString('base64url');
 const content = `NODE_ENV=development
+API_HOST=127.0.0.1
 API_PORT=3001
 NEXT_PUBLIC_API_BASE_URL=http://localhost:3001
+LOG_LEVEL=info
+DEPENDENCY_TIMEOUT_MS=1500
 POSTGRES_HOST=127.0.0.1
 POSTGRES_PORT=5433
 POSTGRES_DB=ecommerce
@@ -28,6 +31,7 @@ MINIO_CONSOLE_PORT=9101
 MINIO_ROOT_USER=ecommerce_local
 MINIO_ROOT_PASSWORD=${secret()}
 MINIO_BUCKET=ecommerce-documents
+MINIO_USE_SSL=false
 `;
 
 writeFileSync(environmentPath, content, { encoding: 'utf8', flag: 'w', mode: 0o600 });

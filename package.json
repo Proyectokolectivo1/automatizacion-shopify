@@ -24,7 +24,9 @@
     "infra:up": "docker compose up -d --wait --wait-timeout 180",
     "infra:verify": "node scripts/verify-local-infra.mjs",
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
+    "observability:verify": "node scripts/verify-observability.mjs",
     "test": "turbo run test",
+    "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",
     "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },

@@ -20,6 +20,8 @@ pnpm dev
 
 - Web: `http://localhost:3000`
 - API health: `http://localhost:3001/health`
+- API readiness: `http://localhost:3001/health/ready`
+- Métricas Prometheus: `http://localhost:3001/metrics`
 
 Copie `.env.example` a un archivo local no versionado cuando necesite cambiar valores. Nunca incluya
 credenciales reales en Git.
@@ -27,6 +29,13 @@ credenciales reales en Git.
 La infraestructura local publica PostgreSQL, Redis y MinIO solo en `127.0.0.1`. Consulte
 `docs/runbooks/local-infrastructure.md` antes de operar o solucionar fallos. No use el contenedor
 comunitario MinIO de desarrollo en producción.
+
+Para validar la observabilidad y recuperación ante caída de Redis:
+
+```bash
+pnpm test:integration
+pnpm observability:verify
+```
 
 ## Estado real
 

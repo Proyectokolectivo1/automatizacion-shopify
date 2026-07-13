@@ -1,14 +1,19 @@
 import 'reflect-metadata';
 
-import { NestFactory } from '@nestjs/core';
-
-import { AppModule } from './app.module';
+import { createApplication } from './app.factory';
+import { EnvironmentService } from './config/environment.service';
+import { AppLoggerService } from './observability/app-logger.service';
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule);
-  const port = Number.parseInt(process.env.API_PORT ?? '3001', 10);
-
-  await app.listen(port, '0.0.0.0');
+  const app = await createApplication();
+  const environment = app.get(EnvironmentService);
+  const logger = app.get(AppLoggerService);
+  await app.listen(environment.apiPort, environment.apiHost);
+  logger.event('info', { host: environment.apiHost, port: environment.apiPort }, 'api_started');
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  const message = error instanceof Error ? error.message : 'Unknown bootstrap error';
+  process.stderr.write(`API bootstrap failed: ${message}\n`);
+  process.exitCode = 1;
+});

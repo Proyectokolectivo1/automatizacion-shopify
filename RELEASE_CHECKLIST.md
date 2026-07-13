@@ -6,19 +6,19 @@ Estado global: **NO LISTO PARA RELEASE**.
 
 - [ ] Alcance MVP y criterios de aceptación completos.
 - [x] Prompt maestro disponible y requisitos reconciliados.
-- [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes.
+- [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes para todo el MVP.
 - [ ] Migraciones expand/contract revisadas y probadas.
 - [ ] Idempotencia, duplicados, eventos tardíos y respuesta perdida probados.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
-- [ ] Feature flags, modo simulación y kill switches verificados.
-- [ ] Alertas, métricas, dashboards técnicos y runbooks operativos.
+- [ ] Feature flags, simulación y kill switches verificados.
+- [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
 - [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
 - [ ] Backups y restauración con evidencia y tiempos medidos.
 - [ ] Matriz de impresoras y piloto observado completados.
 - [ ] Revisión legal de datos, retención, pagos y conversaciones.
 - [ ] Rollback documentado y smoke tests exitosos.
-- [ ] Despliegue a producción aprobado explícitamente por una persona autorizada.
+- [ ] Despliegue aprobado explícitamente por una persona autorizada.
 
 ## Evidencia de fundaciones
 
@@ -26,4 +26,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] PostgreSQL, Redis y almacenamiento S3-compatible locales con health checks.
 - [x] Persistencia local verificada después de recrear contenedores.
 - [x] Secretos de desarrollo excluidos de Git y bindings limitados a localhost.
+- [x] Logs JSON redactados, correlation ID, errores seguros y métricas base.
+- [x] Readiness real de PostgreSQL, Redis y MinIO con recuperación Redis probada.
+- [ ] OpenTelemetry y alertas conectadas a un backend verificable.
+- [ ] Acceso a `/metrics` restringido por red/proxy en producción.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

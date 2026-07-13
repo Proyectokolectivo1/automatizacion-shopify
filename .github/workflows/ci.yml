@@ -32,3 +32,23 @@ jobs:
 
       - name: Validate repository
         run: pnpm validate
+
+      - name: Generate isolated CI environment
+        run: pnpm infra:bootstrap
+
+      - name: Start local dependencies
+        run: pnpm infra:up
+
+      - name: Run API integration tests
+        run: pnpm test:integration
+
+      - name: Verify observability failure recovery
+        run: pnpm observability:verify
+
+      - name: Show dependency logs on failure
+        if: failure()
+        run: docker compose logs --tail=200 postgres redis minio
+
+      - name: Stop local dependencies
+        if: always()
+        run: pnpm infra:down
