@@ -51,6 +51,7 @@ Las migraciones se aplican con `pnpm database:migrate`; revise primero
 
 ## Estado real
 
-Consulte [PROJECT_STATUS.md](PROJECT_STATUS.md), [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) y
-[TEST_REPORT.md](TEST_REPORT.md). La existencia de estructura o diagramas no implica que una
-integración esté implementada.
+Empiece por [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) para conocer el propósito, lo implementado y lo
+pendiente. Consulte también [PROJECT_STATUS.md](PROJECT_STATUS.md),
+[IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) y [TEST_REPORT.md](TEST_REPORT.md). La existencia de
+estructura o diagramas no implica que una integración esté implementada.

@@ -10,7 +10,13 @@ Lee completamente antes de editar:
 
 1. `C:\Users\Usuario\Downloads\ESPECIFICACION_MAESTRA_ECOMMERCE_INTELIGENTE.md`.
 2. `C:\Users\Usuario\.codex\attachments\209e3c64-68f0-4f6a-b13b-8485a5bb70d8\pasted-text.txt`.
-3. Los nueve archivos de control del repositorio.
+3. `PROJECT_OVERVIEW.md` y los nueve archivos de control del repositorio.
+
+## Mantenimiento documental obligatorio
+
+Actualiza `PROJECT_OVERVIEW.md` en toda sesión donde cambien funcionalidades, alcance, bloqueos,
+riesgos, pruebas o el siguiente paso. Debe seguir explicando en lenguaje claro de qué trata el
+proyecto, qué está implementado y qué falta, sin declarar como terminadas integraciones simuladas.
 
 ## Baseline obligatorio
 

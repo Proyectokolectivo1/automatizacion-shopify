@@ -41,6 +41,7 @@ Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4A completadas. Siguiente vert
 - Contrato, arquitectura, seguridad, estrategia de pruebas y runbook de observabilidad documentados.
 - E0-H4A: Prisma 7.8.0, migración expand-only y tablas base con constraints e índices.
 - Migración probada desde vacío, reaplicación no-op, ausencia de drift y cliente Prisma real.
+- Resumen ejecutivo `PROJECT_OVERVIEW.md` creado y exigido como actualización de cada sesión.
 
 ## En curso
 
