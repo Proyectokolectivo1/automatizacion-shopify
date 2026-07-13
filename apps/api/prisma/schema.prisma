@@ -1,0 +1,101 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum StoreStatus {
+  PENDING      @map("pending")
+  ACTIVE       @map("active")
+  DISCONNECTED @map("disconnected")
+  SUSPENDED    @map("suspended")
+
+  @@map("store_status")
+}
+
+enum IdempotencyStatus {
+  PROCESSING @map("processing")
+  COMPLETED  @map("completed")
+  FAILED     @map("failed")
+
+  @@map("idempotency_status")
+}
+
+enum OutboxStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  PUBLISHED  @map("published")
+  FAILED     @map("failed")
+
+  @@map("outbox_status")
+}
+
+model Organization {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String   @db.VarChar(160)
+  timezone        String   @default("America/Bogota") @db.VarChar(64)
+  defaultCurrency String   @default("COP") @map("default_currency") @db.Char(3)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stores          Store[]
+
+  @@map("organizations")
+}
+
+model Store {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name              String       @db.VarChar(160)
+  shopifyShopDomain String       @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
+  status            StoreStatus  @default(PENDING)
+  timezone          String       @db.VarChar(64)
+  currency          String       @db.Char(3)
+  settingsJson      Json         @default("{}") @map("settings_json") @db.JsonB
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([organizationId, status], map: "stores_organization_status_idx")
+  @@index([createdAt], map: "stores_created_at_idx")
+  @@map("stores")
+}
+
+model IdempotencyKey {
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope                String            @db.VarChar(120)
+  key                  String            @db.VarChar(500)
+  requestHash          String            @map("request_hash") @db.VarChar(128)
+  responseSnapshotJson Json?             @map("response_snapshot_json") @db.JsonB
+  status               IdempotencyStatus @default(PROCESSING)
+  expiresAt            DateTime          @map("expires_at") @db.Timestamptz(3)
+  createdAt            DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@unique([scope, key], map: "idempotency_keys_scope_key_key")
+  @@index([status, expiresAt], map: "idempotency_keys_status_expires_at_idx")
+  @@map("idempotency_keys")
+}
+
+model OutboxEvent {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String       @map("aggregate_type") @db.VarChar(120)
+  aggregateId   String       @map("aggregate_id") @db.Uuid
+  eventType     String       @map("event_type") @db.VarChar(160)
+  eventVersion  Int          @default(1) @map("event_version") @db.SmallInt
+  payloadJson   Json         @map("payload_json") @db.JsonB
+  correlationId String       @map("correlation_id") @db.VarChar(128)
+  causationId   String?      @map("causation_id") @db.VarChar(128)
+  status        OutboxStatus @default(PENDING)
+  availableAt   DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
+  publishedAt   DateTime?    @map("published_at") @db.Timestamptz(3)
+  attemptCount  Int          @default(0) @map("attempt_count")
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  @@index([status, availableAt, createdAt], map: "outbox_events_dispatch_idx")
+  @@index([aggregateType, aggregateId, createdAt], map: "outbox_events_aggregate_idx")
+  @@index([correlationId], map: "outbox_events_correlation_id_idx")
+  @@map("outbox_events")
+}

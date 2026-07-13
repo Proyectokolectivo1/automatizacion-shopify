@@ -14,6 +14,7 @@ Monorepo de la plataforma interna Shopify + Wompi + Mastershop + WhatsApp + impr
 pnpm install --frozen-lockfile
 pnpm infra:bootstrap
 pnpm infra:verify
+pnpm database:migrate
 pnpm validate
 pnpm dev
 ```
@@ -36,6 +37,17 @@ Para validar la observabilidad y recuperación ante caída de Redis:
 pnpm test:integration
 pnpm observability:verify
 ```
+
+Para validar la migración inicial desde una base temporal vacía, su reaplicación, el cliente Prisma y
+los constraints sin alterar datos de desarrollo:
+
+```bash
+pnpm database:verify
+pnpm database:status
+```
+
+Las migraciones se aplican con `pnpm database:migrate`; revise primero
+`docs/runbooks/database-migrations.md`. No use `prisma db push` en entornos compartidos.
 
 ## Estado real
 

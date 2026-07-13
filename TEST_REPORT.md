@@ -64,3 +64,33 @@ MinIO fortalecida para verificar un objeto mediante protocolo S3.
 
 E0-H3 está completa. OpenTelemetry, alertas conectadas y protección productiva de `/metrics`
 permanecen explícitamente pendientes en E0-H3B.
+
+## Iteración E0-H4A
+
+| Validación         | Comando                           | Resultado                           |
+| ------------------ | --------------------------------- | ----------------------------------- |
+| Schema Prisma      | `prisma validate`                 | OK, Prisma 7.8.0                    |
+| Generación cliente | `prisma generate`                 | OK, generador CJS tipado            |
+| Migración temporal | `pnpm database:verify`            | OK, 4/4 pruebas PostgreSQL real     |
+| Base vacía         | `prisma migrate deploy`           | OK                                  |
+| Reaplicación       | segundo `migrate deploy`          | OK, no-op; una migración registrada |
+| Drift              | `prisma migrate diff --exit-code` | OK, sin diferencias                 |
+| Cliente ORM        | Prisma + `@prisma/adapter-pg`     | OK, conexión y consulta reales      |
+| FK/unique/checks   | inserts negativos PostgreSQL      | OK, SQLSTATE 23503/23505/23514      |
+| Base local         | `pnpm database:migrate`           | OK, migración aplicada              |
+| Estado local       | `pnpm database:status`            | OK, schema actualizado              |
+| Seguridad deps     | `pnpm audit --prod`               | OK tras override Hono 1.19.13       |
+
+### Fallos encontrados y corregidos
+
+1. El test inicial usaba `import.meta` bajo el módulo CommonJS de la API; se reemplazó por resolución
+   desde el directorio de trabajo sin cambiar la arquitectura de módulos.
+2. La reinstalación expuso que FlatCompat resolvía plugins Next transitivos de forma accidental; los
+   plugins requeridos quedaron como dependencias directas y versionadas del paquete web.
+3. Los scripts de build Prisma bloqueados por la política pnpm quedaron limitados explícitamente a
+   `prisma` y `@prisma/engines` mediante `onlyBuiltDependencies`.
+4. La auditoría detectó GHSA-92pp-h63x-v22m en tooling transitivo de Prisma; el override exacto a
+   `@hono/node-server` 1.19.13 eliminó el hallazgo sin introducir un servidor Hono en runtime.
+
+La prueba crea y elimina una base aleatoria; no borra volúmenes ni datos de desarrollo. E0-H4A no
+incluye publisher, locks, reintentos o DLQ.

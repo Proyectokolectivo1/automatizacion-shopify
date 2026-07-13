@@ -30,14 +30,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Validate repository
-        run: pnpm validate
-
       - name: Generate isolated CI environment
         run: pnpm infra:bootstrap
 
+      - name: Validate repository
+        run: pnpm validate
+
       - name: Start local dependencies
         run: pnpm infra:up
+
+      - name: Verify database migration and constraints
+        run: pnpm database:verify
 
       - name: Run API integration tests
         run: pnpm test:integration

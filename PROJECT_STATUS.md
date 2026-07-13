@@ -8,22 +8,22 @@ Actualizado: 2026-07-12
 
 ## Fase actual
 
-Fase 1 — Fundaciones. E0-H1, E0-H2 y E0-H3 completadas. Siguiente vertical: E0-H4A.
+Fase 1 — Fundaciones. E0-H1, E0-H2, E0-H3 y E0-H4A completadas. Siguiente vertical: E0-H4B.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                                                        |
-| ------------------------ | -----: | -------------------------------------------------------------------------------- |
-| E0 Fundaciones           |   50 % | monorepo, CI, entorno local y observabilidad; faltan datos, outbox, colas y RBAC |
-| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                             |
-| E2 Pagos y tarifas       |    0 % | pendiente                                                                        |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                                                       |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                             |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                                               |
-| E6 Operación y dashboard |    0 % | pendiente                                                                        |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                                                   |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                                |
-| E9 Producción            |    0 % | no autorizada                                                                    |
+| Épica                    | Avance | Evidencia                                                                            |
+| ------------------------ | -----: | ------------------------------------------------------------------------------------ |
+| E0 Fundaciones           |   65 % | monorepo, CI, entorno, observabilidad y esquema base; faltan publisher, colas y RBAC |
+| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                                 |
+| E2 Pagos y tarifas       |    0 % | pendiente                                                                            |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                                                           |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                                 |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                                                   |
+| E6 Operación y dashboard |    0 % | pendiente                                                                            |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                                                       |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                                    |
+| E9 Producción            |    0 % | no autorizada                                                                        |
 
 ## Diagnóstico inicial
 
@@ -39,15 +39,17 @@ Fase 1 — Fundaciones. E0-H1, E0-H2 y E0-H3 completadas. Siguiente vertical: E0
 - Métricas Prometheus con etiquetas acotadas y readiness real de PostgreSQL, Redis y MinIO.
 - Prueba de fallo y recuperación de Redis, pruebas unitarias/integración y verificación runtime en CI.
 - Contrato, arquitectura, seguridad, estrategia de pruebas y runbook de observabilidad documentados.
+- E0-H4A: Prisma 7.8.0, migración expand-only y tablas base con constraints e índices.
+- Migración probada desde vacío, reaplicación no-op, ausencia de drift y cliente Prisma real.
 
 ## En curso
 
-- E0-H4A: Prisma, primera migración expand-only y esquema transaccional mínimo.
+- E0-H4B: escritura transaccional, publicación outbox y colas BullMQ.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Persistencia base, outbox, BullMQ, autenticación, RBAC e integraciones externas.
+- Publicador outbox, BullMQ, autenticación, RBAC e integraciones externas.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -68,13 +70,14 @@ Fase 1 — Fundaciones. E0-H1, E0-H2 y E0-H3 completadas. Siguiente vertical: E0
 - `pnpm test`: 6 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
+- `pnpm database:verify`: 4 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1, E0-H2 o E0-H3.
+- No hay defectos abiertos en E0-H1, E0-H2, E0-H3 o E0-H4A.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- No existen migraciones todavía; su estado es `NO_APLICA` hasta E0-H4A.
+- La migración inicial está aplicada localmente y `prisma migrate status` confirma esquema al día.
 
 ## Deuda técnica
 
@@ -83,6 +86,6 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E0-H4A: Prisma fijado, migración inicial expand-only, tablas `organizations`, `stores`,
-`idempotency_keys` y `outbox_events`, restricciones e índices, con pruebas sobre PostgreSQL real. No
-implementar todavía publicador outbox, pedidos ni lógica de proveedores.
+Implementar E0-H4B: servicio Prisma, unidad transaccional que persista agregado + outbox, publicador
+BullMQ con claim seguro, reintentos, DLQ, idempotencia y recuperación de respuesta perdida. No
+implementar todavía pedidos ni proveedores reales.

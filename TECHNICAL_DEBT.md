@@ -11,8 +11,11 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
 | TD-004 | Node local 22.16.0 difiere del parche fijado 22.23.1 | Medio   | Actualizar toolchain y repetir validación             |
 | TD-005 | PostCSS requiere override de seguridad transitivo    | Bajo    | Retirar cuando Next.js incluya PostCSS seguro         |
 | TD-006 | MinIO comunitario ya no recibe parches               | Alto    | Sustituir antes de piloto tras decisión de proveedor  |
+| TD-007 | Prisma tooling requiere override de Hono 1.19.13     | Bajo    | Retirar cuando Prisma lo resuelva transitivamente     |
 
 ## Deuda resuelta
 
 - TD-001: el health check que solo comprobaba proceso fue reemplazado en E0-H3 por liveness y
   readiness reales para PostgreSQL, Redis y MinIO.
+- E0-H4A no deja cliente generado versionado: `prisma generate` forma parte obligatoria de build y
+  pruebas, evitando artefactos derivados obsoletos en Git.

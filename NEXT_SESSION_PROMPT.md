@@ -1,8 +1,8 @@
 # Prompt para la siguiente sesión
 
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
-`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1, E0-H2 y E0-H3 están completas. No
-reinicies ni reemplaces trabajo válido.
+`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1, E0-H2, E0-H3 y E0-H4A están
+completas. No reinicies ni reemplaces trabajo válido.
 
 ## Fuentes obligatorias
 
@@ -14,26 +14,36 @@ Lee completamente antes de editar:
 
 ## Baseline obligatorio
 
-1. Revisa `git status --short --branch`, herramientas y Docker.
-2. Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integration`,
-   `pnpm observability:verify`, `pnpm audit --prod` y `pnpm infra:verify`.
-3. No borres volúmenes ni uses `docker compose down -v`.
+Revisa Git, Node/pnpm/Docker y ejecuta:
 
-## Siguiente vertical exacta: E0-H4A
+```bash
+pnpm install --frozen-lockfile
+pnpm validate
+pnpm test:integration
+pnpm database:verify
+pnpm database:status
+pnpm observability:verify
+pnpm audit --prod
+pnpm infra:verify
+```
 
-Implementa la primera capa persistente:
+No borres volúmenes ni uses `docker compose down -v`.
 
-- Prisma con versiones exactas y configuración validada;
-- migración inicial expand-only;
-- tablas `organizations`, `stores`, `idempotency_keys` y `outbox_events`;
-- claves foráneas, unicidad, timestamps, estados, restricciones e índices explícitos;
-- prueba de migración desde base vacía y reaplicación segura/no-op;
-- pruebas de integración de constraints sobre PostgreSQL real;
-- documentación de contrato, estrategia de migración y rollback operativo.
+## Siguiente vertical exacta: E0-H4B
 
-No implementes todavía publicador outbox, BullMQ, pedidos, autenticación ni proveedores. Repite todos
-los gates y actualiza los nueve archivos de control.
+Implementa una vertical técnica pequeña y demostrable para outbox y colas:
 
-Pendiente E0-H3B: OpenTelemetry, alertas conectadas y restricción productiva de `/metrics`. Bloqueos:
-Shopify/Wompi/Meta por credenciales, Mastershop por proveedor e impresión por inventario. MinIO
-comunitario está prohibido para producción. No despliegues ni ejecutes operaciones destructivas.
+- lifecycle Prisma integrado en NestJS sin conexiones globales duplicadas;
+- transacción real que persista un agregado de prueba y su outbox de forma atómica;
+- claim concurrente seguro de eventos disponibles, sin doble publicación;
+- BullMQ con Redis, nombres/versiones de jobs y propagación de correlation ID;
+- reintentos acotados, backoff, DLQ y error redacted;
+- idempotencia ante duplicado y respuesta perdida;
+- feature flag del publisher, modo simulación y kill switch;
+- pruebas PostgreSQL/Redis reales para commit, rollback, concurrencia, caída y recuperación;
+- métricas, runbook, contrato y migración expand-only adicional si resulta necesaria.
+
+No implementes todavía pedidos ni proveedores externos. Mantén pendiente E0-H3B: OpenTelemetry,
+alertas conectadas y restricción productiva de `/metrics`. Bloqueos: Shopify/Wompi/Meta por
+credenciales, Mastershop por proveedor e impresión por inventario. MinIO comunitario sigue prohibido
+para producción. No despliegues ni ejecutes operaciones destructivas.

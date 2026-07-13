@@ -9,8 +9,8 @@ Actualizado: 2026-07-12
 | E0-H2      | P0             | Compose PostgreSQL + Redis + MinIO y health checks               | COMPLETADA                 |
 | E0-H3      | P0             | Pino, correlation ID, errores, métricas y readiness              | COMPLETADA                 |
 | E0-H3B     | P1             | OpenTelemetry, alertas conectadas y acceso productivo a métricas | PENDIENTE                  |
-| E0-H4A     | P0             | Prisma, migración inicial, constraints e índices                 | SIGUIENTE                  |
-| E0-H4B     | P0             | Outbox publisher, BullMQ, reintentos y DLQ                       | PENDIENTE                  |
+| E0-H4A     | P0             | Prisma, migración inicial, constraints e índices                 | COMPLETADA                 |
+| E0-H4B     | P0             | Outbox publisher, BullMQ, reintentos y DLQ                       | SIGUIENTE                  |
 | E0-H5      | P0             | Invitación, login, recuperación y RBAC                           | PENDIENTE                  |
 | E1-H1..H5  | P0             | Tiendas, webhooks, sync, clasificación y conciliación Shopify    | BLOQUEADO_POR_CREDENCIALES |
 | E2-H1..H6  | P0             | Tarifas y ciclo Wompi                                            | BLOQUEADO_POR_CREDENCIALES |

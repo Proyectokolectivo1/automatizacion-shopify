@@ -16,3 +16,5 @@ Actualizado: 2026-07-12
 | R-010 | Puertos estándar ocupados                         | Alta  | Bajo    | Puertos host alternos; no detener procesos ajenos              | Mitigado |
 | R-011 | `/metrics` carece de autenticación propia         | Media | Alto    | API en localhost; restringir por red/proxy antes de despliegue | Abierto  |
 | R-012 | Sin trazas distribuidas ni alertas conectadas     | Media | Medio   | Entregar OpenTelemetry y reglas verificables en E0-H3B         | Abierto  |
+| R-013 | Drift entre schema Prisma y constraints SQL       | Media | Alto    | `migrate diff` contra una base temporal migrada en CI          | Mitigado |
+| R-014 | Rollback destructivo de la migración inicial      | Baja  | Alto    | Expand-only, detener escritores y corregir hacia adelante      | Mitigado |

@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/coverage/**',
       '**/dist/**',
+      '**/src/generated/**',
       '**/next-env.d.ts',
       '**/node_modules/**',
     ],

@@ -28,6 +28,9 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Secretos de desarrollo excluidos de Git y bindings limitados a localhost.
 - [x] Logs JSON redactados, correlation ID, errores seguros y métricas base.
 - [x] Readiness real de PostgreSQL, Redis y MinIO con recuperación Redis probada.
+- [x] Migración inicial expand-only probada desde vacío, reaplicada y sin drift.
+- [x] Constraints base de ownership, dominio, moneda, idempotencia y outbox probados.
+- [ ] Outbox transaccional, publisher, reintentos y DLQ implementados.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

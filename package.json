@@ -9,12 +9,20 @@
     "pnpm": "10.25.0"
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma"
+    ],
     "overrides": {
+      "@hono/node-server": "1.19.13",
       "postcss": "8.5.10"
     }
   },
   "scripts": {
     "build": "turbo run build",
+    "database:migrate": "pnpm --filter @ecommerce/api database:migrate",
+    "database:status": "pnpm --filter @ecommerce/api database:status",
+    "database:verify": "pnpm --filter @ecommerce/api test:database",
     "dev": "turbo run dev --parallel",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

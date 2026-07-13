@@ -13,6 +13,10 @@ Actualizado: 2026-07-12
 | D-007  | DECISIÓN           | Pino 10.3.1, prom-client 15.1.3, pg 8.22.0, redis 6.1.0 y Zod 4.4.3 fijados                 | ACEPTADA E0-H3    |
 | D-008  | DECISIÓN           | Un registro Prometheus privado por app y etiquetas de ruta acotadas, nunca URL cruda        | ACEPTADA E0-H3    |
 | D-009  | DECISIÓN           | OpenTelemetry se entrega en E0-H3B; no se simulan trazas sin collector/exporter verificable | ACEPTADA          |
+| D-010  | DECISIÓN           | Prisma, cliente y adapter-pg 7.8.0 con generador CJS y versiones exactas                    | ACEPTADA E0-H4A   |
+| D-011  | DECISIÓN           | SQL versionado es la fuente de estructura; prohibido `db push` en entornos compartidos      | ACEPTADA E0-H4A   |
+| D-012  | DECISIÓN           | Migraciones expand-only y rollback por corrección hacia adelante                            | ACEPTADA E0-H4A   |
+| D-013  | DECISIÓN           | Forzar `@hono/node-server` 1.19.13 por GHSA-92pp-h63x-v22m                                  | ACEPTADA temporal |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO        |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO            |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE         |
