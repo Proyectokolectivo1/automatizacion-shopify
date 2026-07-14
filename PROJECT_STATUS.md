@@ -6,29 +6,28 @@ Actualizado: 2026-07-14
 
 `EN_DESARROLLO` — fundaciones funcionales en progreso; no listo para piloto ni producción.
 
-Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama
-`main`. La base anterior está publicada; E1-H2A/E1-H3A/E1-H4A permanecen validadas en el árbol local hasta
-instalar y autenticar GitHub CLI para abrir su PR.
+Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
+`codex/foundations-e0-h2` contiene E1-H2A a E1-H5A validadas y publicadas.
 
 ## Fase actual
 
-Fase 2 — Shopify simulado. E1-H1A a E1-H4A completadas; siguiente vertical E1-H5A de
-conciliación y reproceso de pedidos.
+Fase 2 — Shopify simulado. E1-H1A a E1-H5A completadas; siguiente vertical E2-H1A de reglas de
+tarifas y modalidades de pago simuladas.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                             |
-| ------------------------ | -----: | ----------------------------------------------------- |
-| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                 |
-| E1 Shopify               |   60 % | registro, webhooks, pedidos y clasificación simulados |
-| E2 Pagos y tarifas       |    0 % | pendiente                                             |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                            |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                  |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                    |
-| E6 Operación y dashboard |    0 % | pendiente                                             |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                        |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución     |
-| E9 Producción            |    0 % | no autorizada                                         |
+| Épica                    | Avance | Evidencia                                         |
+| ------------------------ | -----: | ------------------------------------------------- |
+| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
+| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
+| E2 Pagos y tarifas       |    0 % | pendiente                                         |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                |
+| E6 Operación y dashboard |    0 % | pendiente                                         |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                    |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución |
+| E9 Producción            |    0 % | no autorizada                                     |
 
 ## Diagnóstico inicial
 
@@ -73,16 +72,19 @@ conciliación y reproceso de pedidos.
   fail-closed ante evidencia ausente, inválida o contradictoria.
 - Máquina default-deny con historial inmutable `RECEIVED → VALIDATING → clasificación → destino`,
   outbox/auditoría atómicos, replay, carrera y pipeline Redis completo probados.
+- E1-H5A: checkpoint por tienda, detección de faltantes/fallidos/atascados e incidencias deduplicadas.
+- Inspección y reproceso tenant-safe con RBAC, idempotencia, outbox, auditoría, métricas y kill switch.
+- Evento interno explícito sin HMAC fingido, replay concurrente y resolución posterior probados.
 
 ## Siguiente vertical
 
-- E1-H5A: detectar pedidos sintéticos faltantes/fallidos y reprocesar uno de forma tenant-safe,
-  idempotente y auditada.
+- E2-H1A: modelar reglas versionadas de tarifas y modalidades de pago en simulación, sin llamar
+  Wompi, WhatsApp ni logística.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Conciliación Shopify y estados operativos posteriores en simulación mientras falten credenciales.
+- Estados operativos Shopify posteriores y conexión real mientras falten credenciales.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -91,7 +93,8 @@ conciliación y reproceso de pedidos.
 - `BLOQUEADO_POR_CREDENCIALES`: Shopify development, Wompi sandbox y Meta no suministrados.
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox Mastershop no suministrados.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de impresoras no suministrados.
-- `BLOQUEADO_POR_HERRAMIENTA`: GitHub CLI (`gh`) no está instalado; E1-H2A/E1-H3A/E1-H4A no se publicaron.
+- `BLOQUEADO_POR_HERRAMIENTA`: GitHub CLI (`gh`) no está instalado; el push funciona mediante el
+  gestor seguro existente, pero no se automatizó la creación del PR.
 
 ## Riesgos destacados
 
@@ -114,7 +117,8 @@ conciliación y reproceso de pedidos.
 - `pnpm shopify:webhooks:verify`: 5 pruebas PostgreSQL/Redis/HTTP de HMAC, sync, recovery y DLQ.
 - `pnpm shopify:orders:verify`: 4 pruebas PostgreSQL de carrera, actualización, tardíos y fail-closed.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
-- GitHub Actions: E1-H1A verde en Ubuntu; la CI ya incluye el gate de webhooks para la próxima ejecución.
+- `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
+- GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
@@ -124,15 +128,15 @@ conciliación y reproceso de pedidos.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Once migraciones expand-only están verificadas desde vacío y aplicadas al esquema local.
+- Doce migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
 Consulte `TECHNICAL_DEBT.md`. No se consideran implementados OpenTelemetry, alertas conectadas,
-conciliación, estados operativos posteriores ni integraciones reales.
+scheduler de conciliación, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E1-H5A: reconciliador simulado que detecte pedidos faltantes o fallidos y permita
-reprocesar un caso con ownership, límites, idempotencia, auditoría y métricas. No iniciar pagos,
-logística ni Shopify real.
+Implementar E2-H1A: reglas de tarifas y modalidades de pago versionadas, configurables y
+default-deny con fixtures y pruebas contractuales. No iniciar cobros, mensajes, logística ni tráfico
+real.

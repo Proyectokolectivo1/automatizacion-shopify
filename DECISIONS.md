@@ -46,6 +46,9 @@ Actualizado: 2026-07-14
 | D-040  | DECISIÓN           | Clasificación usa políticas JSON v1 versionadas por tienda y prioridad explícita             | ACEPTADA E1-H4A    |
 | D-041  | DECISIÓN           | Ausencia, invalidez o contradicción de reglas falla cerrado y deriva a retry/DLQ             | ACEPTADA E1-H4A    |
 | D-042  | DECISIÓN           | Todo cambio de estado genera historial SQL inmutable y evento outbox en la misma transacción | ACEPTADA E1-H4A    |
+| D-043  | DECISIÓN           | Checkpoint e incidencias de conciliación son durables y deduplicadas por fingerprint         | ACEPTADA E1-H5A    |
+| D-044  | DECISIÓN           | Recuperación interna se marca explícita y sin fingir firma HMAC del proveedor                | ACEPTADA E1-H5A    |
+| D-045  | DECISIÓN           | Reproceso individual reutiliza outbox bajo lock, idempotencia, RBAC y auditoría              | ACEPTADA E1-H5A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                      | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                          | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                | PENDIENTE          |

@@ -42,7 +42,7 @@ export class ShopifyOrderSyncService {
           id: command.webhookEventId,
           organizationId: command.organizationId,
           provider: 'SHOPIFY',
-          signatureValid: true,
+          OR: [{ signatureValid: true }, { reconciliationGenerated: true }],
         },
       });
       if (webhook?.providerResourceId === null || webhook?.providerResourceId === undefined) {

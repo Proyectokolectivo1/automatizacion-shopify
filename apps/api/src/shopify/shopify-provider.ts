@@ -21,7 +21,22 @@ export interface ShopifyOrderQuery {
   readonly shopDomain: string;
 }
 
+export interface ShopifyOrderListQuery {
+  readonly accessToken: string;
+  readonly cursor?: string | undefined;
+  readonly shopDomain: string;
+  readonly updatedAfter: Date;
+  readonly updatedBefore: Date;
+}
+
+export interface ShopifyOrderListResult {
+  readonly fixtureVersion: string;
+  readonly nextCursor: string | null;
+  readonly orders: readonly { readonly id: string; readonly updatedAt: Date }[];
+}
+
 export interface ShopifyProvider {
   fetchOrder(query: ShopifyOrderQuery): Promise<unknown>;
+  listOrders(query: ShopifyOrderListQuery): Promise<ShopifyOrderListResult>;
   testConnection(probe: ShopifyConnectionProbe): Promise<ShopifyConnectionResult>;
 }

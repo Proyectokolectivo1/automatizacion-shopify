@@ -8,6 +8,8 @@ import type {
   ShopifyConnectionProbe,
   ShopifyConnectionResult,
   ShopifyOrderQuery,
+  ShopifyOrderListQuery,
+  ShopifyOrderListResult,
   ShopifyProvider,
 } from './shopify-provider';
 
@@ -21,6 +23,22 @@ export class ShopifyMockProvider implements ShopifyProvider {
       throw new Error('Synthetic Shopify order fixture was not found');
     }
     return Promise.resolve(structuredClone(orderFixture));
+  }
+
+  public async listOrders(query: ShopifyOrderListQuery): Promise<ShopifyOrderListResult> {
+    if (fixture.invalidTokens.includes(query.accessToken)) {
+      throw new Error('Simulated Shopify credentials are invalid');
+    }
+    if (query.cursor !== undefined) {
+      throw new Error('Synthetic Shopify reconciliation cursor is invalid');
+    }
+    const updatedAt = new Date(orderFixture.updated_at);
+    const inWindow = updatedAt >= query.updatedAfter && updatedAt < query.updatedBefore;
+    return Promise.resolve({
+      fixtureVersion: orderFixture._fixture.version,
+      nextCursor: null,
+      orders: inWindow ? [{ id: String(orderFixture.id), updatedAt }] : [],
+    });
   }
 
   public async testConnection(probe: ShopifyConnectionProbe): Promise<ShopifyConnectionResult> {

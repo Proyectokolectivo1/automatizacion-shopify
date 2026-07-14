@@ -106,6 +106,8 @@ describe('initial database migration', () => {
           'order_items',
           'order_classification_policies',
           'order_state_history',
+          'order_reconciliation_issues',
+          'reconciliation_checkpoints',
         ],
       ],
     );
@@ -121,11 +123,13 @@ describe('initial database migration', () => {
       'job_executions',
       'order_classification_policies',
       'order_items',
+      'order_reconciliation_issues',
       'order_state_history',
       'orders',
       'organization_memberships',
       'organizations',
       'outbox_events',
+      'reconciliation_checkpoints',
       'stores',
       'users',
       'webhook_events',
@@ -134,7 +138,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('11');
+    expect(migrations.rows[0]?.count).toBe('12');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -411,6 +415,38 @@ describe('initial database migration', () => {
     await expect(
       database.query(`DELETE FROM order_state_history WHERE id = $1`, [history.rows[0]?.id]),
     ).rejects.toMatchObject({ code: 'P0001' });
+    await database.query(
+      `INSERT INTO reconciliation_checkpoints
+       (organization_id, store_id, provider, window_started_at, window_ended_at, last_run_at)
+       VALUES ($1, $2, 'shopify', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+      [organization.rows[0]?.id, store.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO reconciliation_checkpoints
+         (organization_id, store_id, provider, window_started_at, window_ended_at, last_run_at)
+         VALUES ($1, $2, 'shopify', NOW() - INTERVAL '1 hour', NOW(), NOW())`,
+        [organization.rows[0]?.id, store.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await database.query(
+      `INSERT INTO order_reconciliation_issues
+       (organization_id, store_id, provider, issue_type, fingerprint, provider_resource_id)
+       VALUES ($1, $2, 'shopify', 'missing_order', repeat('d', 64), 'missing-order')`,
+      [organization.rows[0]?.id, store.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `UPDATE order_reconciliation_issues SET status = 'resolved'
+         WHERE store_id = $1 AND fingerprint = repeat('d', 64)`,
+        [store.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(`UPDATE webhook_events SET reconciliation_generated = true WHERE id = $1`, [
+        webhook.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: '23514' });
     await expect(
       database.query(`UPDATE orders SET total_amount = -1 WHERE id = $1`, [order.rows[0]?.id]),
     ).rejects.toMatchObject({ code: '23514' });

@@ -15,6 +15,7 @@ export class MetricsService {
   private readonly shopifyWebhooks: Counter<'outcome' | 'topic'>;
   private readonly shopifyOrderSyncs: Counter<'outcome'>;
   private readonly orderClassifications: Counter<'outcome'>;
+  private readonly shopifyReconciliations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -85,6 +86,12 @@ export class MetricsService {
       name: 'ecommerce_api_order_classifications_total',
       registers: [this.registry],
     });
+    this.shopifyReconciliations = new Counter({
+      help: 'Operaciones de conciliación Shopify simuladas por resultado acotado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_shopify_reconciliations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -132,6 +139,10 @@ export class MetricsService {
 
   public recordOrderClassification(outcome: string): void {
     this.orderClassifications.inc({ outcome });
+  }
+
+  public recordShopifyReconciliation(action: string, outcome: string): void {
+    this.shopifyReconciliations.inc({ action, outcome });
   }
 
   public get contentType(): string {

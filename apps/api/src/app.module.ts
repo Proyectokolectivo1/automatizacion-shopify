@@ -24,6 +24,8 @@ import { MetricsController } from './observability/metrics.controller';
 import { MetricsService } from './observability/metrics.service';
 import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
+import { ShopifyReconciliationController } from './reconciliation/shopify-reconciliation.controller';
+import { ShopifyReconciliationService } from './reconciliation/shopify-reconciliation.service';
 import { OrderClassificationService } from './orders/order-classification.service';
 import { OrderClassifier } from './orders/order-classifier';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
@@ -49,6 +51,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     MetricsController,
     ShopifyIntegrationController,
     ShopifyWebhookController,
+    ShopifyReconciliationController,
   ],
   providers: [
     EnvironmentService,
@@ -79,6 +82,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     ShopifyWebhookService,
     ShopifyOrderNormalizer,
     ShopifyOrderSyncService,
+    ShopifyReconciliationService,
     ShopifyMockProvider,
     { provide: SHOPIFY_PROVIDER, useExisting: ShopifyMockProvider },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

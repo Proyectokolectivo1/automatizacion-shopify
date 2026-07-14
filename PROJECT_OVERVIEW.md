@@ -30,13 +30,13 @@ Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
 El repositorio canónico público es
 <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`. La base anterior está
-publicada; E1-H2A/E1-H3A/E1-H4A están validadas localmente y pendientes de PR porque GitHub CLI no está
-instalado.
+publicada; la rama `codex/foundations-e0-h2` contiene E1-H2A a E1-H5A validadas. GitHub CLI
+no está instalado, por lo que el PR aún debe abrirse desde la interfaz web.
 
-Las fundaciones están aproximadamente al 98 % y Shopify al 60 %. Ya existe un monorepo reproducible
+Las fundaciones están aproximadamente al 98 % y Shopify al 75 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
-los pedidos ya se clasifican entre prepago y COD en simulación; todavía no existen conciliación ni conexiones reales.
+los pedidos se clasifican y concilian en simulación; todavía no existen conexiones reales.
 
 ## Implementado
 
@@ -81,6 +81,8 @@ los pedidos ya se clasifican entre prepago y COD en simulación; todavía no exi
 - Políticas de clasificación v1 versionadas por tienda con prioridad explícita y evidencia sintética.
 - Máquina default-deny con historial inmutable, prepago/COD, outbox, auditoría, métricas y replay.
 - Pipeline webhook/outbox/Redis/sync/clasificación probado tras caída y recuperación de Redis.
+- Checkpoint de conciliación por tienda y detección deduplicada de faltantes, fallidos y atascados.
+- Reproceso individual tenant-safe mediante outbox con RBAC, idempotencia, auditoría y métricas.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -95,7 +97,7 @@ los pedidos ya se clasifican entre prepago y COD en simulación; todavía no exi
 - Conexión real y registro remoto de tiendas; la gestión simulada ya está implementada.
 - Registro remoto del webhook y rotación solapada de secretos; el ingreso simulado ya está implementado.
 - Conexión real para pedidos e inventario; la sincronización normalizada simulada ya está completa.
-- Conciliación de faltantes/fallidos, reproceso y estados operativos posteriores.
+- Scheduler de conciliación, paginación operativa y estados posteriores; el reproceso simulado ya existe.
 - Mock, fixtures, contrato, feature flag y kill switch mientras falten credenciales.
 
 ### Pagos y WhatsApp
@@ -133,7 +135,7 @@ los pedidos ya se clasifican entre prepago y COD en simulación; todavía no exi
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox de Mastershop.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de las impresoras Windows.
 - `BLOQUEADO_POR_DECISION`: dominio/correo, políticas COD, retención legal, atribución y RPO/RTO.
-- `BLOQUEADO_POR_HERRAMIENTA`: falta instalar/autenticar GitHub CLI para publicar E1-H2A/E1-H3A/E1-H4A.
+- `BLOQUEADO_POR_HERRAMIENTA`: falta GitHub CLI para crear el PR automáticamente; el push sí funciona.
 
 Mientras continúen estos bloqueos se deben implementar adaptadores, mocks, fixtures, pruebas de
 contrato, feature flags, modo simulación y kill switches; no se deben presentar como integraciones
@@ -141,8 +143,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E1-H5A: detectar pedidos faltantes o fallidos y reprocesar un caso de forma tenant-safe, acotada,
-auditable e idempotente. La conexión real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
+E2-H1A: reglas versionadas de tarifas y modalidades de pago, configurables y default-deny en
+simulación. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
 
 ## Dónde consultar más detalle
 

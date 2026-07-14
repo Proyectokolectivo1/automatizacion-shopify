@@ -28,7 +28,9 @@ modo simulación. No representa un contrato funcional de negocio.
 
 - `shopify.webhook.received.v1`: ordena consultar el recurso indicado por un webhook verificado. No
   contiene el cuerpo ni el identificador externo en su payload; el worker los resuelve desde el
-  agregado tenant-safe.
+  agregado tenant-safe. E1-H5A también puede emitirlo desde una incidencia `MISSING_ORDER` con
+  `payload.source=reconciliation`; el evento persistido queda marcado `reconciliation_generated`
+  y nunca se presenta como firma HMAC válida.
 - `shopify.order.synchronized.v1`: confirma una creación o actualización efectiva del snapshot.
   Incluye IDs internos de pedido/tienda, `provider=shopify`, `mode=simulation` y
   `fixtureVersion=v1`.

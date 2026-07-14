@@ -35,3 +35,5 @@ Actualizado: 2026-07-14
 | R-029 | Un snapshot tardío sobrescribe información más reciente    | Alta  | Alto    | Lock serializable y comparación estricta de `source_updated_at`    | Mitigado |
 | R-030 | PII real queda retenida sin política aprobada              | Media | Crítico | Solo fixture sintético; bloquear real hasta resolver DP-003        | Abierto  |
 | R-031 | Política comercial errónea clasifica pedidos indebidamente | Media | Crítico | Versionado, prioridad, fail-closed, simulación y aprobación previa | Abierto  |
+| R-032 | Ventana/cursor incorrectos generan falsos faltantes        | Media | Alto    | Ventana máxima, checkpoint durable, dedupe, simulación y auditoría | Mitigado |
+| R-033 | Reproceso concurrente duplica pedidos o entregas           | Alta  | Alto    | Locks, transacción serializable, idempotencia y outbox versionado  | Mitigado |

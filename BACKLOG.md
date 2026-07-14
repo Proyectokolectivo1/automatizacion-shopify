@@ -22,10 +22,11 @@ Actualizado: 2026-07-14
 | E1-H2A         | P0             | Webhook simulado con HMAC, idempotencia, persistencia y cola     | COMPLETADA                 |
 | E1-H3A         | P0             | Pedido simulado: snapshot, cliente, items y dirección            | COMPLETADA                 |
 | E1-H4A         | P0             | Clasificación configurable, estados e historial                  | COMPLETADA                 |
-| E1-H5A         | P0             | Conciliación simulada de faltantes, fallidos y reproceso         | SIGUIENTE                  |
+| E1-H5A         | P0             | Conciliación simulada de faltantes, fallidos y reproceso         | COMPLETADA                 |
 | E1-H1B/H2B/H3B | P0             | Conexión real, registro webhook y consulta de pedido             | BLOQUEADO_POR_CREDENCIALES |
-| E1-H4B/H5      | P0             | Estados operativos restantes y conciliación Shopify              | PENDIENTE                  |
-| E2-H1..H6      | P0             | Tarifas y ciclo Wompi                                            | BLOQUEADO_POR_CREDENCIALES |
+| E1-H4B/H5      | P0             | Estados operativos Shopify posteriores                           | PENDIENTE                  |
+| E2-H1A         | P0             | Reglas simuladas de tarifas y modalidades de pago                | SIGUIENTE                  |
+| E2-H2..H6      | P0             | Adaptador y ciclo Wompi real                                     | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7      | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10     | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |
 | E5-H1..H8      | P1             | Agente e impresión Windows                                       | BLOQUEADO_POR_INVENTARIO   |

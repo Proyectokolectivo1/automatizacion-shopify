@@ -422,3 +422,43 @@ Fallos encontrados y corregidos:
 
 No hubo tráfico externo ni PII real. E1-H4A está completa solo en simulación. E1-H5A es la siguiente
 vertical y la conexión Shopify real sigue `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E1-H5A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                                  | Resultado                            |
+| ----------------------- | ---------------------------------------- | ------------------------------------ |
+| Generación Prisma       | `pnpm prisma:generate`                   | OK                                   |
+| Typecheck API           | `pnpm --filter @ecommerce/api typecheck` | OK                                   |
+| Lint API                | `pnpm --filter @ecommerce/api lint`      | OK, cero advertencias                |
+| Migraciones/constraints | `pnpm database:verify`                   | OK, 8/8; doce migraciones, sin drift |
+| Reconciliación          | `pnpm shopify:reconciliation:verify`     | OK, 3/3 HTTP/PostgreSQL              |
+| Quality gate completo   | `pnpm validate`                          | OK, format/lint/types/40 unit/build  |
+| Integración base        | `pnpm test:integration`                  | OK, 3/3                              |
+| Outbox / DLQ            | `pnpm outbox:verify`; `pnpm dlq:verify`  | OK, 4/4 y 5/5                        |
+| Auth / identidad        | gates dedicados                          | OK, 14/14 y 5/5                      |
+| Registro/webhook/pedido | gates Shopify dedicados                  | OK, 4/4, 5/5 y 4/4                   |
+| Clasificación           | `pnpm orders:classification:verify`      | OK, 4/4                              |
+| Estado de esquema       | `pnpm database:status`                   | OK, doce migraciones aplicadas       |
+| Observabilidad          | `pnpm observability:verify`              | OK, caída y recuperación Redis       |
+| Dependencias            | `pnpm audit --prod`                      | OK, cero vulnerabilidades conocidas  |
+| Infraestructura         | `pnpm infra:config`; `pnpm infra:verify` | OK, salud y persistencia             |
+
+La suite confirma checkpoint y ventana por tienda, detección deduplicada de pedido faltante,
+webhook fallido y pedido atascado, inspección redactada, RBAC para operaciones y aislamiento tenant.
+Dos reprocesos concurrentes producen un único evento interno/outbox; el pedido se sincroniza por el
+pipeline existente y una ejecución posterior resuelve la incidencia. Un webhook dead letter rearma
+solo su entrega y aumenta `delivery_version`.
+
+Fallos encontrados y corregidos:
+
+1. El constraint heredado exigía firma válida para todo webhook; se reemplazó hacia adelante por
+   exclusión mutua entre HMAC válido y origen interno explícito, sin fingir autenticidad externa.
+2. PostgreSQL devolvía el retry serializable `40001` anidado por el driver Prisma; el detector ahora
+   reconoce ambos formatos y mantiene el límite de reintentos.
+3. Lint detectó acceso inseguro a un cuerpo HTTP no tipado en la prueba; se añadió el narrowing
+   explícito y el gate quedó sin advertencias.
+
+No hubo tráfico externo ni PII real. E1-H5A está completa solo en simulación; el scheduler y Shopify
+real permanecen pendientes/bloqueados. E2-H1A es la siguiente vertical.

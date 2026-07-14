@@ -54,6 +54,7 @@ pnpm shopify:verify
 pnpm shopify:webhooks:verify
 pnpm shopify:orders:verify
 pnpm orders:classification:verify
+pnpm shopify:reconciliation:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -79,6 +80,10 @@ reemplazan versiones más nuevas.
 La clasificación prepago/COD se valida con `pnpm orders:classification:verify`; consulte
 `docs/runbooks/order-classification.md`. Las reglas son versionadas por tienda, el historial es
 inmutable y todo tráfico real permanece desactivado.
+
+La reconciliación simulada se valida con `pnpm shopify:reconciliation:verify`; consulte
+`docs/runbooks/shopify-reconciliation.md`. Detecta faltantes, webhooks fallidos y pedidos atascados,
+y reprocesa exclusivamente mediante outbox con RBAC, idempotencia y kill switch.
 
 ## Estado real
 

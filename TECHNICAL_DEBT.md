@@ -22,6 +22,8 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-012 | Re-cifrado masivo de keyring aún no tiene job        | Medio   | Añadir job auditado antes de conectar tiendas reales   |
 | TD-013 | Normalizador monetario asume dos decimales           | Bajo    | Generalizar por moneda antes de admitir tiendas no COP |
 | TD-014 | Políticas de clasificación no tienen API/UI segura   | Medio   | Añadir gestión RBAC, preview y activación auditada     |
+| TD-015 | Conciliación solo se ejecuta manualmente             | Medio   | Añadir scheduler con solape, rate limit y alertas      |
+| TD-016 | Consulta de incidencias no tiene cursor              | Bajo    | Añadir paginación por cursor al construir la consola   |
 
 ## Deuda resuelta
 
@@ -37,3 +39,4 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
   trabajo funcional E1-H3A y permanece en backlog, no se registra como deuda.
 - E1-H3A resolvió la ausencia de pedido durable sin acoplarlo al payload webhook y con protección de
   snapshots tardíos.
+- E1-H5A resolvió el reproceso ad hoc mediante incidencias durables y outbox sin mutación manual.

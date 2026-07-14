@@ -83,6 +83,11 @@ export const environmentSchema = z.object({
   SHOPIFY_ORDER_SYNC_ENABLED: booleanFlag('false'),
   SHOPIFY_ORDER_SYNC_KILL_SWITCH: booleanFlag('true'),
   SHOPIFY_ORDER_SYNC_SIMULATION_MODE: booleanFlag('true'),
+  SHOPIFY_RECONCILIATION_ENABLED: booleanFlag('false'),
+  SHOPIFY_RECONCILIATION_KILL_SWITCH: booleanFlag('true'),
+  SHOPIFY_RECONCILIATION_MAX_WINDOW_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  SHOPIFY_RECONCILIATION_SIMULATION_MODE: booleanFlag('true'),
+  SHOPIFY_RECONCILIATION_STUCK_AFTER_MINUTES: z.coerce.number().int().min(1).max(1_440).default(15),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

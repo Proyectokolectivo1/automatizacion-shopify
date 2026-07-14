@@ -20,9 +20,10 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 2B   | E1-H2A webhook Shopify simulado    | COMPLETADA                 | HMAC, idempotencia, persistencia y cola probados          |
 | 2C   | E1-H3A pedido Shopify simulado     | COMPLETADA                 | snapshot, cliente, items y dirección normalizados         |
 | 2D   | E1-H4A clasificación simulada      | COMPLETADA                 | reglas, estados, historial e idempotencia probados        |
-| 2E   | E1-H5A conciliación simulada       | SIGUIENTE                  | faltantes, fallidos y reproceso acotado probados          |
+| 2E   | E1-H5A conciliación simulada       | COMPLETADA                 | faltantes, fallidos y reproceso acotado probados          |
 | 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
-| 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
+| 3A   | E2-H1A tarifas/pago simulados      | SIGUIENTE                  | reglas versionadas y decisión default-deny probadas       |
+| 3B   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -157,3 +158,14 @@ prepago, COD, ambigüedad, ausencia de regla, estado inválido, replay y carrera
 Implementar conciliación únicamente en simulación para detectar pedidos faltantes o fallidos y
 reprocesar un pedido/evento de forma tenant-safe, acotada, idempotente y auditada. Incluir métricas,
 flags, kill switch y pruebas de carrera; no consultar Shopify real ni iniciar pagos o logística.
+
+Resultado: completada el 2026-07-14. La migración doce agrega checkpoint por tienda, incidencias
+deduplicadas y origen interno explícito. Tres pruebas HTTP/PostgreSQL cubren ventana, RBAC, tenant,
+faltantes, webhooks fallidos, replay concurrente, outbox y resolución. La conexión real permanece
+cerrada y no se fingieron firmas HMAC.
+
+## Decimoquinta vertical: E2-H1A
+
+Modelar reglas versionadas de tarifas y modalidades de pago con prioridad determinista, vigencia,
+ownership por tienda y decisión fail-closed. Entregar fixtures y pruebas de contrato en simulación,
+con flags y kill switch. No crear links Wompi ni enviar WhatsApp.

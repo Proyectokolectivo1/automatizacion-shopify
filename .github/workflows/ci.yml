@@ -66,6 +66,9 @@ jobs:
       - name: Verify configurable order payment classification
         run: pnpm orders:classification:verify
 
+      - name: Verify simulated Shopify reconciliation
+        run: pnpm shopify:reconciliation:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

@@ -23,6 +23,7 @@
     "test:shopify-webhook": "pnpm prisma:generate && vitest run --config vitest.shopify-webhook.config.ts",
     "test:shopify-order": "pnpm prisma:generate && vitest run --config vitest.shopify-order.config.ts",
     "test:order-classification": "pnpm prisma:generate && vitest run --config vitest.order-classification.config.ts",
+    "test:shopify-reconciliation": "pnpm prisma:generate && vitest run --config vitest.shopify-reconciliation.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

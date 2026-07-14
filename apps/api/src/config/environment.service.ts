@@ -215,6 +215,22 @@ export class EnvironmentService {
     };
   }
 
+  public get shopifyReconciliation(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    maxWindowHours: number;
+    simulationMode: boolean;
+    stuckAfterMinutes: number;
+  }> {
+    return {
+      enabled: this.values.SHOPIFY_RECONCILIATION_ENABLED,
+      killSwitch: this.values.SHOPIFY_RECONCILIATION_KILL_SWITCH,
+      maxWindowHours: this.values.SHOPIFY_RECONCILIATION_MAX_WINDOW_HOURS,
+      simulationMode: this.values.SHOPIFY_RECONCILIATION_SIMULATION_MODE,
+      stuckAfterMinutes: this.values.SHOPIFY_RECONCILIATION_STUCK_AFTER_MINUTES,
+    };
+  }
+
   public get minioHealthUrl(): string {
     const protocol = this.values.MINIO_USE_SSL ? 'https' : 'http';
     return `${protocol}://${this.values.MINIO_HOST}:${this.values.MINIO_API_PORT}/minio/health/ready`;

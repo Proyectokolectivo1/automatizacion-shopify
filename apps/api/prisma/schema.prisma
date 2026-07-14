@@ -107,6 +107,22 @@ enum OrderState {
   @@map("order_state")
 }
 
+enum ReconciliationIssueType {
+  MISSING_ORDER  @map("missing_order")
+  FAILED_WEBHOOK @map("failed_webhook")
+  STUCK_ORDER    @map("stuck_order")
+
+  @@map("reconciliation_issue_type")
+}
+
+enum ReconciliationIssueStatus {
+  OPEN         @map("open")
+  REPROCESSING @map("reprocessing")
+  RESOLVED     @map("resolved")
+
+  @@map("reconciliation_issue_status")
+}
+
 enum AddressValidationStatus {
   UNVALIDATED @map("unvalidated")
 
@@ -176,6 +192,8 @@ model Organization {
   orderItems                  OrderItem[]
   orderClassificationPolicies OrderClassificationPolicy[]
   orderStateHistory           OrderStateHistory[]
+  reconciliationCheckpoints   ReconciliationCheckpoint[]
+  reconciliationIssues        OrderReconciliationIssue[]
 
   @@map("organizations")
 }
@@ -318,6 +336,8 @@ model Store {
   orderItems                  OrderItem[]
   orderClassificationPolicies OrderClassificationPolicy[]
   orderStateHistory           OrderStateHistory[]
+  reconciliationCheckpoints   ReconciliationCheckpoint[]
+  reconciliationIssues        OrderReconciliationIssue[]
 
   @@unique([organizationId, id], map: "stores_organization_id_id_key")
   @@index([organizationId, status], map: "stores_organization_status_idx")
@@ -350,28 +370,30 @@ model IntegrationConnection {
 }
 
 model WebhookEvent {
-  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId      String              @map("organization_id") @db.Uuid
-  storeId             String              @map("store_id") @db.Uuid
-  provider            IntegrationProvider
-  externalEventId     String              @map("external_event_id") @db.VarChar(128)
-  eventType           String              @map("event_type") @db.VarChar(160)
-  apiVersion          String              @map("api_version") @db.VarChar(32)
-  signatureValid      Boolean             @default(true) @map("signature_valid")
-  headersRedactedJson Json                @map("headers_redacted_json") @db.JsonB
-  payloadRedactedJson Json                @map("payload_redacted_json") @db.JsonB
-  payloadHash         String              @map("payload_hash") @db.Char(64)
-  providerResourceId  String?             @map("provider_resource_id") @db.VarChar(128)
-  status              WebhookEventStatus  @default(RECEIVED)
-  attemptCount        Int                 @default(0) @map("attempt_count")
-  triggeredAt         DateTime            @map("triggered_at") @db.Timestamptz(3)
-  receivedAt          DateTime            @default(now()) @map("received_at") @db.Timestamptz(3)
-  processedAt         DateTime?           @map("processed_at") @db.Timestamptz(3)
-  errorCode           String?             @map("error_code") @db.VarChar(80)
-  errorMessage        String?             @map("error_message") @db.VarChar(500)
-  organization        Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store               Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "webhook_events_store_tenant_fkey")
-  synchronizedOrder   Order?
+  id                      String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId          String                     @map("organization_id") @db.Uuid
+  storeId                 String                     @map("store_id") @db.Uuid
+  provider                IntegrationProvider
+  externalEventId         String                     @map("external_event_id") @db.VarChar(128)
+  eventType               String                     @map("event_type") @db.VarChar(160)
+  apiVersion              String                     @map("api_version") @db.VarChar(32)
+  signatureValid          Boolean                    @default(true) @map("signature_valid")
+  reconciliationGenerated Boolean                    @default(false) @map("reconciliation_generated")
+  headersRedactedJson     Json                       @map("headers_redacted_json") @db.JsonB
+  payloadRedactedJson     Json                       @map("payload_redacted_json") @db.JsonB
+  payloadHash             String                     @map("payload_hash") @db.Char(64)
+  providerResourceId      String?                    @map("provider_resource_id") @db.VarChar(128)
+  status                  WebhookEventStatus         @default(RECEIVED)
+  attemptCount            Int                        @default(0) @map("attempt_count")
+  triggeredAt             DateTime                   @map("triggered_at") @db.Timestamptz(3)
+  receivedAt              DateTime                   @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt             DateTime?                  @map("processed_at") @db.Timestamptz(3)
+  errorCode               String?                    @map("error_code") @db.VarChar(80)
+  errorMessage            String?                    @map("error_message") @db.VarChar(500)
+  organization            Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                   Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "webhook_events_store_tenant_fkey")
+  synchronizedOrder       Order?
+  reconciliationIssues    OrderReconciliationIssue[]
 
   @@unique([storeId, eventType, externalEventId], map: "webhook_events_store_type_external_key")
   @@unique([organizationId, storeId, id], map: "webhook_events_organization_store_id_key")
@@ -435,42 +457,43 @@ model CustomerAddress {
 }
 
 model Order {
-  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId        String              @map("organization_id") @db.Uuid
-  storeId               String              @map("store_id") @db.Uuid
-  customerId            String?             @map("customer_id") @db.Uuid
-  shippingAddressId     String?             @map("shipping_address_id") @db.Uuid
-  sourceWebhookEventId  String              @unique(map: "orders_source_webhook_event_key") @map("source_webhook_event_id") @db.Uuid
-  shopifyOrderId        String              @map("shopify_order_id") @db.VarChar(128)
-  shopifyOrderName      String              @map("shopify_order_name") @db.VarChar(80)
-  shopifyCheckoutId     String?             @map("shopify_checkout_id") @db.VarChar(128)
-  paymentMode           OrderPaymentMode    @default(UNCLASSIFIED) @map("payment_mode")
-  currentState          OrderState          @default(RECEIVED) @map("current_state")
-  currency              String              @db.Char(3)
-  subtotalAmount        BigInt              @map("subtotal_amount")
-  discountAmount        BigInt              @map("discount_amount")
-  taxAmount             BigInt              @map("tax_amount")
-  totalAmount           BigInt              @map("total_amount")
-  transportChargeAmount BigInt              @default(0) @map("transport_charge_amount")
-  codCollectAmount      BigInt              @default(0) @map("cod_collect_amount")
-  recognizedSaleAt      DateTime?           @map("recognized_sale_at") @db.Timestamptz(3)
-  sentAt                DateTime?           @map("sent_at") @db.Timestamptz(3)
-  deliveredAt           DateTime?           @map("delivered_at") @db.Timestamptz(3)
-  returnedAt            DateTime?           @map("returned_at") @db.Timestamptz(3)
-  cancelledAt           DateTime?           @map("cancelled_at") @db.Timestamptz(3)
-  sourceCreatedAt       DateTime            @map("source_created_at") @db.Timestamptz(3)
-  sourceUpdatedAt       DateTime            @map("source_updated_at") @db.Timestamptz(3)
-  rawSnapshotJson       Json                @map("raw_snapshot_json") @db.JsonB
-  version               Int                 @default(1)
-  createdAt             DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization          Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store                 Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_store_tenant_fkey")
-  customer              Customer?           @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_customer_tenant_fkey")
-  shippingAddress       CustomerAddress?    @relation(fields: [organizationId, storeId, shippingAddressId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_shipping_address_tenant_fkey")
-  sourceWebhookEvent    WebhookEvent        @relation(fields: [organizationId, storeId, sourceWebhookEventId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_source_webhook_tenant_fkey")
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String                     @map("organization_id") @db.Uuid
+  storeId               String                     @map("store_id") @db.Uuid
+  customerId            String?                    @map("customer_id") @db.Uuid
+  shippingAddressId     String?                    @map("shipping_address_id") @db.Uuid
+  sourceWebhookEventId  String                     @unique(map: "orders_source_webhook_event_key") @map("source_webhook_event_id") @db.Uuid
+  shopifyOrderId        String                     @map("shopify_order_id") @db.VarChar(128)
+  shopifyOrderName      String                     @map("shopify_order_name") @db.VarChar(80)
+  shopifyCheckoutId     String?                    @map("shopify_checkout_id") @db.VarChar(128)
+  paymentMode           OrderPaymentMode           @default(UNCLASSIFIED) @map("payment_mode")
+  currentState          OrderState                 @default(RECEIVED) @map("current_state")
+  currency              String                     @db.Char(3)
+  subtotalAmount        BigInt                     @map("subtotal_amount")
+  discountAmount        BigInt                     @map("discount_amount")
+  taxAmount             BigInt                     @map("tax_amount")
+  totalAmount           BigInt                     @map("total_amount")
+  transportChargeAmount BigInt                     @default(0) @map("transport_charge_amount")
+  codCollectAmount      BigInt                     @default(0) @map("cod_collect_amount")
+  recognizedSaleAt      DateTime?                  @map("recognized_sale_at") @db.Timestamptz(3)
+  sentAt                DateTime?                  @map("sent_at") @db.Timestamptz(3)
+  deliveredAt           DateTime?                  @map("delivered_at") @db.Timestamptz(3)
+  returnedAt            DateTime?                  @map("returned_at") @db.Timestamptz(3)
+  cancelledAt           DateTime?                  @map("cancelled_at") @db.Timestamptz(3)
+  sourceCreatedAt       DateTime                   @map("source_created_at") @db.Timestamptz(3)
+  sourceUpdatedAt       DateTime                   @map("source_updated_at") @db.Timestamptz(3)
+  rawSnapshotJson       Json                       @map("raw_snapshot_json") @db.JsonB
+  version               Int                        @default(1)
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                 Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_store_tenant_fkey")
+  customer              Customer?                  @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_customer_tenant_fkey")
+  shippingAddress       CustomerAddress?           @relation(fields: [organizationId, storeId, shippingAddressId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_shipping_address_tenant_fkey")
+  sourceWebhookEvent    WebhookEvent               @relation(fields: [organizationId, storeId, sourceWebhookEventId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_source_webhook_tenant_fkey")
   items                 OrderItem[]
   stateHistory          OrderStateHistory[]
+  reconciliationIssues  OrderReconciliationIssue[]
 
   @@unique([organizationId, storeId, id], map: "orders_organization_store_id_key")
   @@unique([organizationId, storeId, sourceWebhookEventId], map: "orders_source_webhook_tenant_key")
@@ -518,6 +541,55 @@ model OrderStateHistory {
   @@unique([orderId, triggerType, triggerId, toState], map: "order_state_history_trigger_transition_key")
   @@index([organizationId, orderId, createdAt], map: "order_state_history_tenant_order_created_idx")
   @@map("order_state_history")
+}
+
+model ReconciliationCheckpoint {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String              @map("organization_id") @db.Uuid
+  storeId         String              @map("store_id") @db.Uuid
+  provider        IntegrationProvider
+  providerCursor  String?             @map("provider_cursor") @db.VarChar(512)
+  windowStartedAt DateTime            @map("window_started_at") @db.Timestamptz(3)
+  windowEndedAt   DateTime            @map("window_ended_at") @db.Timestamptz(3)
+  lastRunAt       DateTime            @map("last_run_at") @db.Timestamptz(3)
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization    Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store           Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "reconciliation_checkpoints_store_tenant_fkey")
+
+  @@unique([storeId, provider], map: "reconciliation_checkpoints_store_provider_key")
+  @@index([organizationId, lastRunAt], map: "reconciliation_checkpoints_tenant_run_idx")
+  @@map("reconciliation_checkpoints")
+}
+
+model OrderReconciliationIssue {
+  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String                    @map("organization_id") @db.Uuid
+  storeId            String                    @map("store_id") @db.Uuid
+  provider           IntegrationProvider
+  issueType          ReconciliationIssueType   @map("issue_type")
+  status             ReconciliationIssueStatus @default(OPEN)
+  fingerprint        String                    @db.Char(64)
+  providerResourceId String?                   @map("provider_resource_id") @db.VarChar(128)
+  webhookEventId     String?                   @map("webhook_event_id") @db.Uuid
+  orderId            String?                   @map("order_id") @db.Uuid
+  evidenceJson       Json                      @default("{}") @map("evidence_json") @db.JsonB
+  detectionCount     Int                       @default(1) @map("detection_count")
+  firstDetectedAt    DateTime                  @default(now()) @map("first_detected_at") @db.Timestamptz(3)
+  lastDetectedAt     DateTime                  @default(now()) @map("last_detected_at") @db.Timestamptz(3)
+  reprocessStartedAt DateTime?                 @map("reprocess_started_at") @db.Timestamptz(3)
+  resolvedAt         DateTime?                 @map("resolved_at") @db.Timestamptz(3)
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization       Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store              Store                     @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "order_reconciliation_issues_store_tenant_fkey")
+  webhookEvent       WebhookEvent?             @relation(fields: [organizationId, storeId, webhookEventId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "order_reconciliation_issues_webhook_tenant_fkey")
+  order              Order?                    @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "order_reconciliation_issues_order_tenant_fkey")
+
+  @@unique([storeId, fingerprint], map: "order_reconciliation_issues_store_fingerprint_key")
+  @@index([organizationId, status, lastDetectedAt], map: "order_reconciliation_issues_tenant_status_idx")
+  @@index([storeId, issueType, status], map: "order_reconciliation_issues_store_type_status_idx")
+  @@map("order_reconciliation_issues")
 }
 
 model OrderItem {

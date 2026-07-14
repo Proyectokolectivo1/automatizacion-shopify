@@ -16,6 +16,7 @@ import { ShopifyOrderNormalizer } from '../src/shopify/shopify-order-normalizer'
 import { ShopifyOrderSyncService } from '../src/shopify/shopify-order-sync.service';
 import type {
   ShopifyConnectionResult,
+  ShopifyOrderListResult,
   ShopifyOrderQuery,
   ShopifyProvider,
 } from '../src/shopify/shopify-provider';
@@ -58,6 +59,10 @@ class MutableShopifyProvider implements ShopifyProvider {
   public fetchOrder(query: ShopifyOrderQuery): Promise<unknown> {
     if (String(this.payload.id) !== query.orderId) throw new Error('Synthetic order not found');
     return Promise.resolve(structuredClone(this.payload));
+  }
+
+  public listOrders(): Promise<ShopifyOrderListResult> {
+    return Promise.resolve({ fixtureVersion: 'v1', nextCursor: null, orders: [] });
   }
 
   public testConnection(): Promise<ShopifyConnectionResult> {

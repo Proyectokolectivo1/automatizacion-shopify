@@ -43,6 +43,9 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Pedido sintético normalizado con cliente, dirección, items, dinero entero y snapshot monotónico.
 - [x] Pipeline webhook/outbox/Redis/pedido y fallo final a DLQ probados.
 - [x] Clasificación prepago/COD versionada, default-deny, idempotente y con historial inmutable.
+- [x] Conciliación simulada detecta faltantes/fallidos/atascados y reprocesa vía outbox sin duplicar.
+- [x] Reconciliación protegida por RBAC, tenant, ventana, idempotencia, auditoría, flag y kill switch.
+- [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.
 - [ ] Mecanismo UI cookie/CSRF y MFA definidos y probados.
