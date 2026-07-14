@@ -36,6 +36,8 @@
     "infra:down": "docker compose down",
     "infra:up": "docker compose up -d --wait --wait-timeout 180",
     "infra:verify": "node scripts/verify-local-infra.mjs",
+    "identity:bootstrap": "pnpm --filter @ecommerce/api bootstrap:owner",
+    "identity:verify": "pnpm --filter @ecommerce/api test:identity",
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
     "observability:verify": "node scripts/verify-observability.mjs",
     "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",

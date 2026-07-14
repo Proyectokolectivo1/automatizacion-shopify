@@ -15,6 +15,7 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
 | TD-008 | Sesiones expiradas/revocadas aún no se archivan      | Bajo    | Definir retención y limpieza con la política legal    |
 | TD-009 | Tokens de cuenta terminales aún no se purgan         | Bajo    | Añadir job tras aprobar retención legal DP-003        |
 | TD-010 | Checks ownership legacy aún están `NOT VALID`        | Medio   | Verificar cero nulos y validar en migración contract  |
+| TD-011 | Claves idempotentes expiradas aún no se purgan       | Bajo    | Añadir job tras aprobar retención legal DP-003        |
 
 ## Deuda resuelta
 
@@ -24,3 +25,4 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
   pruebas, evitando artefactos derivados obsoletos en Git.
 - E0-H4B eliminó el pool PostgreSQL paralelo del readiness; API y health comparten el lifecycle Prisma.
 - E0-H4C eliminó la colisión de replay BullMQ mediante versiones de entrega independientes.
+- E0-H5C eliminó la ausencia de bootstrap y la administración manual insegura de membresías.

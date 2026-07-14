@@ -27,6 +27,10 @@ describe('parseEnvironment', () => {
       AUTH_INVITATION_TTL_SECONDS: 86_400,
       AUTH_PASSWORD_RESET_TTL_SECONDS: 1_800,
       DEPENDENCY_TIMEOUT_MS: 1500,
+      IDENTITY_ADMIN_ENABLED: false,
+      IDENTITY_ADMIN_KILL_SWITCH: true,
+      IDENTITY_BOOTSTRAP_ENABLED: false,
+      IDENTITY_BOOTSTRAP_KILL_SWITCH: true,
       MINIO_API_PORT: 9100,
       MINIO_USE_SSL: false,
       NODE_ENV: 'development',
@@ -51,5 +55,31 @@ describe('parseEnvironment', () => {
     } catch (error) {
       expect(String(error)).not.toContain(secret);
     }
+  });
+
+  it('normalizes empty optional bootstrap values and accepts complete local credentials', () => {
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        IDENTITY_BOOTSTRAP_EMAIL: ' ',
+        IDENTITY_BOOTSTRAP_SECRET: '',
+      }),
+    ).toMatchObject({
+      IDENTITY_BOOTSTRAP_EMAIL: undefined,
+      IDENTITY_BOOTSTRAP_SECRET: undefined,
+    });
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        IDENTITY_BOOTSTRAP_EMAIL: 'owner@example.test',
+        IDENTITY_BOOTSTRAP_ORGANIZATION_NAME: 'Local tenant',
+        IDENTITY_BOOTSTRAP_PASSWORD: 'Correct-password-123',
+        IDENTITY_BOOTSTRAP_SECRET: 'a'.repeat(32),
+      }),
+    ).toMatchObject({
+      IDENTITY_BOOTSTRAP_EMAIL: 'owner@example.test',
+      IDENTITY_BOOTSTRAP_ORGANIZATION_NAME: 'Local tenant',
+      IDENTITY_BOOTSTRAP_SECRET: 'a'.repeat(32),
+    });
   });
 });

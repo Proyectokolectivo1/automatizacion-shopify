@@ -30,6 +30,10 @@ Actualizado: 2026-07-14
 | D-024  | DECISIÓN           | Operaciones DLQ exigen ownership organizacional y permiso exclusivo owner/admin             | ACEPTADA E0-H4C    |
 | D-025  | DECISIÓN           | Reproceso usa lock/idempotencia serializable y `NOW()` de PostgreSQL para evitar clock skew | ACEPTADA E0-H4C    |
 | D-026  | DECISIÓN           | API DLQ nunca expone payload; solo resumen y categoría de error acotada                     | ACEPTADA E0-H4C    |
+| D-027  | DECISIÓN           | Bootstrap owner es local, sin argumentos, solo entorno y lock global serializable           | ACEPTADA E0-H5C    |
+| D-028  | DECISIÓN           | Administración de identidad tiene flag/kill switch independientes y permiso exclusivo       | ACEPTADA E0-H5C    |
+| D-029  | DECISIÓN           | Auto-mutación prohibida; admin no gestiona owner/admin; último owner protegido              | ACEPTADA E0-H5C    |
+| D-030  | DECISIÓN           | Cambio de rol o revocación invalida sesiones y snapshot idempotente en una transacción      | ACEPTADA E0-H5C    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE          |

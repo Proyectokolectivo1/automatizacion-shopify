@@ -16,6 +16,8 @@ import { FoundationTransactionService } from './foundation/foundation-transactio
 import { DependencyHealthService } from './health/dependency-health.service';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
+import { IdentityAdministrationController } from './identity/identity-administration.controller';
+import { IdentityAdministrationService } from './identity/identity-administration.service';
 import { AppLoggerService } from './observability/app-logger.service';
 import { GlobalExceptionFilter } from './observability/global-exception.filter';
 import { MetricsController } from './observability/metrics.controller';
@@ -28,7 +30,13 @@ import { DlqOperationsController } from './outbox/dlq-operations.controller';
 import { DlqOperationsService } from './outbox/dlq-operations.service';
 
 @Module({
-  controllers: [AuthController, DlqOperationsController, HealthController, MetricsController],
+  controllers: [
+    AuthController,
+    DlqOperationsController,
+    HealthController,
+    IdentityAdministrationController,
+    MetricsController,
+  ],
   providers: [
     EnvironmentService,
     PrismaService,
@@ -46,6 +54,7 @@ import { DlqOperationsService } from './outbox/dlq-operations.service';
     MetricsService,
     RequestObservabilityMiddleware,
     HealthService,
+    IdentityAdministrationService,
     DependencyHealthService,
     OutboxQueueService,
     OutboxPublisherService,

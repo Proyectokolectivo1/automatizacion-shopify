@@ -28,7 +28,7 @@ S3-compatible, workers asíncronos, auditoría, métricas y herramientas operati
 
 Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
-Las fundaciones están aproximadamente al 94 %. Ya existe un monorepo reproducible con CI, entorno
+Las fundaciones están aproximadamente al 98 %. Ya existe un monorepo reproducible con CI, entorno
 local, observabilidad, persistencia transaccional y entrega asíncrona base. Todavía no existen flujos de negocio utilizables por
 operadores ni conexiones reales con proveedores.
 
@@ -58,13 +58,15 @@ operadores ni conexiones reales con proveedores.
 - Ownership organizacional explícito de outbox/jobs, con backfill expand-only y entrega versionada.
 - API owner/admin para inspeccionar DLQ paginada y reprocesar un evento con idempotencia, auditoría,
   aislamiento de tenant, métricas, flag y kill switch cerrados por defecto.
+- Bootstrap local, concurrente y fail-closed del primer owner, sin argumentos ni secretos persistidos.
+- API owner/admin para listar membresías, cambiar roles y revocar acceso con locks, idempotencia,
+  protección del último owner e invalidación transaccional de sesiones.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
 
 ### Fundaciones pendientes
 
-- Administración auditada de usuarios/roles y bootstrap controlado del primer owner.
 - OpenTelemetry y alertas conectadas a un backend verificable.
 - Protección productiva del endpoint `/metrics`.
 
@@ -117,8 +119,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E0-H5C: bootstrap controlado del primer owner y administración auditada de membresías/roles, sin
-registro público ni correo real. E0-H3B permanece pendiente.
+E1-H1A: registro seguro de integraciones y ciclo de vida de tiendas Shopify con adaptador, mock,
+fixtures, prueba contractual, cifrado de token, flags, simulación y kill switch. La conexión real
+permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
 
 ## Dónde consultar más detalle
 

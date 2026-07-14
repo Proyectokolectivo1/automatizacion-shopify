@@ -42,5 +42,8 @@ export class AuditService {
     if (event.action.startsWith('outbox.dlq.')) {
       this.metrics.recordOutboxOperation(event.action, event.outcome.toLowerCase());
     }
+    if (event.action.startsWith('identity.')) {
+      this.metrics.recordIdentityOperation(event.action, event.outcome.toLowerCase());
+    }
   }
 }

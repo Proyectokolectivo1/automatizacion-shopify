@@ -64,6 +64,31 @@ export class EnvironmentService {
     };
   }
 
+  public get identityAdministration(): Readonly<{ enabled: boolean; killSwitch: boolean }> {
+    return {
+      enabled: this.values.IDENTITY_ADMIN_ENABLED,
+      killSwitch: this.values.IDENTITY_ADMIN_KILL_SWITCH,
+    };
+  }
+
+  public get identityBootstrap(): Readonly<{
+    email: string | undefined;
+    enabled: boolean;
+    killSwitch: boolean;
+    organizationName: string | undefined;
+    password: string | undefined;
+    secret: string | undefined;
+  }> {
+    return {
+      email: this.values.IDENTITY_BOOTSTRAP_EMAIL,
+      enabled: this.values.IDENTITY_BOOTSTRAP_ENABLED,
+      killSwitch: this.values.IDENTITY_BOOTSTRAP_KILL_SWITCH,
+      organizationName: this.values.IDENTITY_BOOTSTRAP_ORGANIZATION_NAME,
+      password: this.values.IDENTITY_BOOTSTRAP_PASSWORD,
+      secret: this.values.IDENTITY_BOOTSTRAP_SECRET,
+    };
+  }
+
   public get databaseUrl(): string {
     const postgres = this.postgres;
     const user = encodeURIComponent(postgres.user);

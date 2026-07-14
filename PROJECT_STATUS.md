@@ -8,13 +8,13 @@ Actualizado: 2026-07-14
 
 ## Fase actual
 
-Fase 1 — Fundaciones. E0-H1 a E0-H5B y E0-H4C completadas. Siguiente vertical: E0-H5C.
+Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 Shopify simulado.
 
 ## Avance aproximado por épica
 
 | Épica                    | Avance | Evidencia                                            |
 | ------------------------ | -----: | ---------------------------------------------------- |
-| E0 Fundaciones           |   94 % | DLQ segura completa; faltan administración y E0-H3B  |
+| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                |
 | E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual |
 | E2 Pagos y tarifas       |    0 % | pendiente                                            |
 | E3 WhatsApp              |    0 % | bloqueada por credenciales                           |
@@ -51,15 +51,17 @@ Fase 1 — Fundaciones. E0-H1 a E0-H5B y E0-H4C completadas. Siguiente vertical:
 - E0-H4C: ownership por organización, backfill expand-only, entrega BullMQ versionada y DLQ operativa.
 - Consulta paginada/redactada y reproceso idempotente owner/admin con carreras y tenant probados.
 - Auditoría, métricas, flag y kill switch de operaciones cerrados por defecto.
+- E0-H5C: bootstrap local del primer owner y administración tenant-safe de membresías/roles.
+- Locks serializables, idempotencia, último owner, jerarquía y revocación de sesiones probados.
 
 ## Siguiente vertical
 
-- E0-H5C: bootstrap inicial y administración auditada de membresías/roles.
+- E1-H1A: registro de integraciones y gestión Shopify con adaptador/mock contractual.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Administración de roles/bootstrap e integraciones externas.
+- Integraciones externas, comenzando por Shopify en simulación mientras falten credenciales.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -77,18 +79,19 @@ Fase 1 — Fundaciones. E0-H1 a E0-H5B y E0-H4C completadas. Siguiente vertical:
 
 ## Pruebas
 
-- `pnpm test`: 19 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 24 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
 - `pnpm database:verify`: 5 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
+- `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1 a E0-H5B ni E0-H4C.
+- No hay defectos abiertos en E0-H1 a E0-H5C ni E0-H4C.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
 - Seis migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
 
@@ -99,5 +102,5 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E0-H5C: bootstrap seguro del primer owner y administración de membresías/roles con
-idempotencia, tenant, auditoría y controles fail-closed. No habilitar proveedores ni despliegues reales.
+Implementar E1-H1A: registro seguro de integraciones y tiendas Shopify mediante adaptador, mock,
+fixtures y pruebas contractuales. No habilitar credenciales ni despliegues reales.

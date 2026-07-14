@@ -15,8 +15,9 @@ Actualizado: 2026-07-14
 | E0-H4C     | P1             | Inspección y reproceso manual auditado de DLQ                    | COMPLETADA                 |
 | E0-H5A     | P0             | Login, sesiones revocables, rate limit y RBAC                    | COMPLETADA                 |
 | E0-H5B     | P0             | Invitación y recuperación de contraseña                          | COMPLETADA                 |
-| E0-H5C     | P0             | Bootstrap y administración auditada de membresías/roles          | SIGUIENTE                  |
-| E1-H1..H5  | P0             | Tiendas, webhooks, sync, clasificación y conciliación Shopify    | BLOQUEADO_POR_CREDENCIALES |
+| E0-H5C     | P0             | Bootstrap y administración auditada de membresías/roles          | COMPLETADA                 |
+| E1-H1A     | P0             | Registro de integraciones y gestión de tiendas con mock Shopify  | SIGUIENTE                  |
+| E1-H1B..H5 | P0             | Conexión real, webhooks, sync, clasificación y conciliación      | BLOQUEADO_POR_CREDENCIALES |
 | E2-H1..H6  | P0             | Tarifas y ciclo Wompi                                            | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7  | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10 | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |

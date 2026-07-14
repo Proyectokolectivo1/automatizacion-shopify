@@ -13,8 +13,9 @@ Actualizado: 2026-07-14
 | 1F   | E0-H5A login, sesiones y RBAC      | COMPLETADA                 | sesión segura y permisos backend probados                 |
 | 1G   | E0-H5B invitación y recuperación   | COMPLETADA                 | tokens de un uso y correo simulado probados               |
 | 1H   | E0-H4C operaciones de DLQ          | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
-| 1I   | E0-H5C administración de identidad | SIGUIENTE                  | bootstrap y cambios de rol seguros/auditados              |
-| 2    | Shopify mínimo                     | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
+| 1I   | E0-H5C administración de identidad | COMPLETADA                 | bootstrap y cambios de rol seguros/auditados              |
+| 2A   | E1-H1A registro/tiendas Shopify    | SIGUIENTE                  | mock contractual, token cifrado y ciclo de vida probado   |
+| 2B   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
@@ -91,3 +92,15 @@ Implementar un bootstrap local, explícito y de un solo uso para el primer owner
 owner/admin para listar membresías, cambiar roles permitidos y revocar acceso. Toda mutación debe ser
 idempotente, tenant-safe, auditada y protegida con flags/kill switch. No incluir registro público,
 correo real, UI de sesión ni despliegue.
+
+Resultado: completada el 2026-07-14. Un comando sin argumentos crea exactamente un primer owner
+bajo lock global. Cinco pruebas PostgreSQL/HTTP y controles unitarios cubren doble bootstrap,
+paginación, tenant, RBAC, escalamiento, último owner, idempotencia, carreras y sesiones revocadas.
+La API y el bootstrap quedan apagados y con kill switch activo por defecto.
+
+## Décima vertical: E1-H1A
+
+Crear el registro de integraciones y el ciclo de vida mínimo de tiendas Shopify. Como no existen
+credenciales, entregar interfaz/adaptador, mock determinista, fixtures y pruebas de contrato; cifrar
+tokens en reposo con claves versionadas, no exponerlos y mantener conexión real desactivada mediante
+flag, simulación y kill switch. Probar tenant, duplicados, rotación, activar/desactivar y auditoría.

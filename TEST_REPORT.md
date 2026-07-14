@@ -205,3 +205,38 @@ como terminados. DP-001 sigue bloqueada y E0-H4C es la siguiente vertical.
 
 No se usaron proveedores ni credenciales externas. E0-H4C queda completa; E0-H5C es la siguiente
 vertical y E0-H3B continúa pendiente.
+
+## Iteración E0-H5C
+
+Fecha: 2026-07-14.
+
+| Gate                              | Comando                                  | Resultado                            |
+| --------------------------------- | ---------------------------------------- | ------------------------------------ |
+| Unitarias y controles fail-closed | `pnpm test`                              | OK, 24/24; cobertura incluida 100 %  |
+| Identidad HTTP + PostgreSQL       | `pnpm identity:verify`                   | OK, 5/5                              |
+| Tipos API                         | `pnpm --filter @ecommerce/api typecheck` | OK                                   |
+| Lint API                          | `pnpm --filter @ecommerce/api lint`      | OK                                   |
+| Quality gate completo             | `pnpm validate`                          | OK, format/lint/typecheck/test/build |
+| Integración API                   | `pnpm test:integration`                  | OK, 3/3                              |
+| Migración/constraints             | `pnpm database:verify`                   | OK, 5/5; seis migraciones, sin drift |
+| Outbox                            | `pnpm outbox:verify`                     | OK, 4/4                              |
+| DLQ                               | `pnpm dlq:verify`                        | OK, 5/5                              |
+| Auth regresión                    | `pnpm auth:verify`                       | OK, 14/14                            |
+| Estado de esquema                 | `pnpm database:status`                   | OK, schema actualizado               |
+| Observabilidad                    | `pnpm observability:verify`              | OK, caída/recuperación Redis         |
+| Dependencias                      | `pnpm audit --prod`                      | OK, cero vulnerabilidades conocidas  |
+| Infraestructura                   | `pnpm infra:verify`                      | OK, salud y persistencia             |
+
+La suite dedicada crea una base aleatoria, aplica seis migraciones y prueba bootstrap concurrente,
+ausencia de secretos en persistencia, paginación, tenant, RBAC, auto-mutación, escalamiento,
+protección del último owner, clave idempotente hashada, replay, carreras y revocación inmediata de
+sesiones. El primer intento unitario usó una opción Vitest inexistente (`--runInBand`); se corrigió el
+comando. Luego la nueva rama de normalización bajó temporalmente coverage de branches a 80 %; se
+añadieron casos de valores opcionales vacíos/configurados y quedó en 100 %.
+
+El primer quality gate encontró cinco accesos `any` en la aserción de la nueva lista HTTP. Se añadió
+un contrato tipado para esa respuesta y la siguiente ejecución de `pnpm validate` quedó verde.
+
+No hubo migración nueva: E0-H5C reutiliza membresías, sesiones, auditoría e idempotencia ya
+versionadas. No se usaron credenciales ni proveedores externos. La conexión real Shopify continúa
+`BLOQUEADO_POR_CREDENCIALES`; la siguiente vertical es E1-H1A con adaptador y mock contractual.

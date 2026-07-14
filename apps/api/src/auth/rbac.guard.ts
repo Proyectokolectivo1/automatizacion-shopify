@@ -31,7 +31,11 @@ export class RbacGuard implements CanActivate {
     if (!allowed) {
       await this.audit.record({
         action:
-          permission === 'outbox.manage' ? 'outbox.dlq.access_denied' : 'authorization.denied',
+          permission === 'outbox.manage'
+            ? 'outbox.dlq.access_denied'
+            : permission === 'identity.manage'
+              ? 'identity.access_denied'
+              : 'authorization.denied',
         actorUserId: principal?.userId,
         metadata: { permission },
         organizationId: principal?.organizationId,

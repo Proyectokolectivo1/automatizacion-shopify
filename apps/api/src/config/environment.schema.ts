@@ -8,6 +8,11 @@ const booleanFlag = (defaultValue: 'true' | 'false') =>
     .default(defaultValue)
     .transform((value) => value === 'true');
 const queueName = z.string().regex(/^[a-z0-9][a-z0-9_-]{2,79}$/u);
+const optionalTrimmed = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    schema.optional(),
+  );
 
 export const environmentSchema = z.object({
   API_HOST: nonEmpty.default('127.0.0.1'),
@@ -25,6 +30,14 @@ export const environmentSchema = z.object({
   EMAIL_DELIVERY_ENABLED: booleanFlag('false'),
   EMAIL_KILL_SWITCH: booleanFlag('true'),
   EMAIL_SIMULATION_MODE: booleanFlag('true'),
+  IDENTITY_ADMIN_ENABLED: booleanFlag('false'),
+  IDENTITY_ADMIN_KILL_SWITCH: booleanFlag('true'),
+  IDENTITY_BOOTSTRAP_EMAIL: optionalTrimmed(z.string().trim().email().max(320)),
+  IDENTITY_BOOTSTRAP_ENABLED: booleanFlag('false'),
+  IDENTITY_BOOTSTRAP_KILL_SWITCH: booleanFlag('true'),
+  IDENTITY_BOOTSTRAP_ORGANIZATION_NAME: optionalTrimmed(z.string().trim().min(1).max(160)),
+  IDENTITY_BOOTSTRAP_PASSWORD: optionalTrimmed(z.string().min(12).max(128)),
+  IDENTITY_BOOTSTRAP_SECRET: optionalTrimmed(z.string().min(32).max(512)),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   MINIO_API_PORT: port,
   MINIO_HOST: nonEmpty,

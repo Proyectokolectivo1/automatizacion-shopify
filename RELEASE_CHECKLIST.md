@@ -11,7 +11,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
-- [ ] Flags, simulación y kill switches de outbox/correo verificados; faltan proveedores futuros.
+- [ ] Flags, simulación y kill switches de outbox/correo/identidad verificados; faltan proveedores.
 - [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
 - [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
 - [ ] Backups y restauración con evidencia y tiempos medidos.
@@ -33,7 +33,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Outbox transaccional, publisher, reintentos y DLQ implementados.
 - [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
 - [x] Invitación y recuperación seguras con replay, expiración y controles fail-closed probados.
-- [ ] Administración de roles, bootstrap inicial y mecanismo UI cookie/CSRF completos.
+- [x] Administración de roles y bootstrap inicial seguros, idempotentes y auditados.
+- [ ] Mecanismo UI cookie/CSRF y MFA definidos y probados.
 - [x] Inspección/reproceso manual de DLQ autenticado, aislado, idempotente y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.

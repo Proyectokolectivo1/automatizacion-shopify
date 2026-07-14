@@ -10,6 +10,7 @@ export class MetricsService {
   private readonly outboxEvents: Counter<'outcome'>;
   private readonly authEvents: Counter<'event' | 'outcome'>;
   private readonly outboxOperations: Counter<'action' | 'outcome'>;
+  private readonly identityOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -50,6 +51,12 @@ export class MetricsService {
       name: 'ecommerce_api_outbox_operations_total',
       registers: [this.registry],
     });
+    this.identityOperations = new Counter({
+      help: 'Operaciones administrativas acotadas sobre identidades y membresías.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_identity_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -77,6 +84,10 @@ export class MetricsService {
 
   public recordOutboxOperation(action: string, outcome: string): void {
     this.outboxOperations.inc({ action, outcome });
+  }
+
+  public recordIdentityOperation(action: string, outcome: string): void {
+    this.identityOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

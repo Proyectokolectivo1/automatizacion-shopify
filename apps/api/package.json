@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "pnpm prisma:generate && tsc -p tsconfig.build.json",
+    "bootstrap:owner": "pnpm build && node dist/bootstrap-owner.js",
     "database:migrate": "prisma migrate deploy --config prisma.config.ts",
     "database:status": "prisma migrate status --config prisma.config.ts",
     "dev": "tsx watch src/main.ts",
@@ -16,6 +17,7 @@
     "test:database": "pnpm prisma:generate && vitest run --config vitest.database.config.ts",
     "test:dlq": "pnpm prisma:generate && vitest run --config vitest.dlq.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:identity": "pnpm prisma:generate && vitest run --config vitest.identity.config.ts",
     "test:outbox": "pnpm prisma:generate && vitest run --config vitest.outbox.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
