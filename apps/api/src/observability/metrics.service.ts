@@ -12,6 +12,9 @@ export class MetricsService {
   private readonly outboxOperations: Counter<'action' | 'outcome'>;
   private readonly identityOperations: Counter<'action' | 'outcome'>;
   private readonly shopifyOperations: Counter<'action' | 'outcome'>;
+  private readonly shopifyWebhooks: Counter<'outcome' | 'topic'>;
+  private readonly shopifyOrderSyncs: Counter<'outcome'>;
+  private readonly orderClassifications: Counter<'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -64,6 +67,24 @@ export class MetricsService {
       name: 'ecommerce_api_shopify_operations_total',
       registers: [this.registry],
     });
+    this.shopifyWebhooks = new Counter({
+      help: 'Entregas de webhook Shopify simuladas por topic y resultado acotados.',
+      labelNames: ['topic', 'outcome'],
+      name: 'ecommerce_api_shopify_webhooks_total',
+      registers: [this.registry],
+    });
+    this.shopifyOrderSyncs = new Counter({
+      help: 'Sincronizaciones normalizadas de pedidos Shopify por resultado acotado.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_shopify_order_sync_total',
+      registers: [this.registry],
+    });
+    this.orderClassifications = new Counter({
+      help: 'Clasificaciones de pago de pedidos por resultado acotado.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_order_classifications_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -99,6 +120,18 @@ export class MetricsService {
 
   public recordShopifyOperation(action: string, outcome: string): void {
     this.shopifyOperations.inc({ action, outcome });
+  }
+
+  public recordShopifyWebhook(topic: string, outcome: string): void {
+    this.shopifyWebhooks.inc({ outcome, topic });
+  }
+
+  public recordShopifyOrderSync(outcome: string): void {
+    this.shopifyOrderSyncs.inc({ outcome });
+  }
+
+  public recordOrderClassification(outcome: string): void {
+    this.orderClassifications.inc({ outcome });
   }
 
   public get contentType(): string {

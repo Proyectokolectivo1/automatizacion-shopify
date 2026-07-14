@@ -20,6 +20,9 @@
     "test:identity": "pnpm prisma:generate && vitest run --config vitest.identity.config.ts",
     "test:outbox": "pnpm prisma:generate && vitest run --config vitest.outbox.config.ts",
     "test:shopify": "pnpm prisma:generate && vitest run --config vitest.shopify.config.ts",
+    "test:shopify-webhook": "pnpm prisma:generate && vitest run --config vitest.shopify-webhook.config.ts",
+    "test:shopify-order": "pnpm prisma:generate && vitest run --config vitest.shopify-order.config.ts",
+    "test:order-classification": "pnpm prisma:generate && vitest run --config vitest.order-classification.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
@@ -31,6 +34,7 @@
     "@prisma/client": "7.8.0",
     "bullmq": "5.80.2",
     "dotenv": "17.4.2",
+    "express": "5.2.1",
     "pg": "8.22.0",
     "pino": "10.3.1",
     "prom-client": "15.1.3",

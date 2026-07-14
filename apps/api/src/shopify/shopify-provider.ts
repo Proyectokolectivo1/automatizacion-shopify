@@ -15,6 +15,13 @@ export interface ShopifyConnectionResult {
   readonly timezone: string;
 }
 
+export interface ShopifyOrderQuery {
+  readonly accessToken: string;
+  readonly orderId: string;
+  readonly shopDomain: string;
+}
+
 export interface ShopifyProvider {
+  fetchOrder(query: ShopifyOrderQuery): Promise<unknown>;
   testConnection(probe: ShopifyConnectionProbe): Promise<ShopifyConnectionResult>;
 }

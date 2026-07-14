@@ -17,8 +17,11 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 1H   | E0-H4C operaciones de DLQ          | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
 | 1I   | E0-H5C administración de identidad | COMPLETADA                 | bootstrap y cambios de rol seguros/auditados              |
 | 2A   | E1-H1A registro/tiendas Shopify    | COMPLETADA                 | mock contractual, token cifrado y ciclo de vida probado   |
-| 2B   | E1-H2A webhook Shopify simulado    | SIGUIENTE                  | HMAC, idempotencia, persistencia y cola probados          |
-| 2C   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
+| 2B   | E1-H2A webhook Shopify simulado    | COMPLETADA                 | HMAC, idempotencia, persistencia y cola probados          |
+| 2C   | E1-H3A pedido Shopify simulado     | COMPLETADA                 | snapshot, cliente, items y dirección normalizados         |
+| 2D   | E1-H4A clasificación simulada      | COMPLETADA                 | reglas, estados, historial e idempotencia probados        |
+| 2E   | E1-H5A conciliación simulada       | SIGUIENTE                  | faltantes, fallidos y reproceso acotado probados          |
+| 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
@@ -118,3 +121,39 @@ salud, activación/desactivación, auditoría y métricas. No hubo tráfico a Sh
 Recibir fixtures de webhooks Shopify en modo simulado: preservar cuerpo crudo, validar HMAC con
 secreto cifrado/versionado, deduplicar por tienda/topic/webhook, persistir recepción y outbox en una
 transacción, responder rápido y procesar en cola. La suscripción real queda bloqueada.
+
+Resultado: completada el 2026-07-14. La novena migración añade eventos webhook tenant-safe y secreto
+cifrado. Cuatro pruebas PostgreSQL/Redis/HTTP y dos unitarias confirman HMAC previo al parseo,
+allowlist, límite de cuerpo, replay, carrera, colisión de identificador, outbox atómico y recuperación
+tras caída de Redis. Solo se acepta el fixture sintético `orders/create`; no hubo tráfico externo.
+
+## Duodécima vertical: E1-H3A
+
+Ampliar el proveedor Shopify simulado para consultar el pedido indicado por un webhook verificado y
+persistir, en una transacción idempotente, el snapshot del pedido, cliente, items y dirección. El
+modelo debe conservar ownership por organización/tienda, dinero en unidades menores, timestamps del
+proveedor, payload normalizado versionado y trazabilidad al evento de origen. Probar replay, carrera,
+payload incompleto, tenant, pedido tardío y fallo/reintento. La API real seguirá cerrada por flags.
+
+Resultado: completada el 2026-07-14. La décima migración añade clientes, direcciones, pedidos e items
+con FKs tenant y constraints monetarios. El worker consulta el fixture mediante `ShopifyProvider`,
+valida Zod, persiste el agregado y outbox atómicamente, y evita que snapshots tardíos sobrescriban
+versiones nuevas. Las suites cubren concurrencia, replay, actualización, tardíos, Redis, DLQ y flags.
+
+## Decimotercera vertical: E1-H4A
+
+Implementar clasificación de pedido independiente del proveedor: reglas versionadas/configurables
+para pago anticipado y contraentrega, transición desde `RECEIVED`, historial inmutable, evento outbox,
+auditoría, métricas e idempotencia. Probar ambigüedad, configuración por tienda, replay, carrera y
+reglas desconocidas. Wompi, WhatsApp, Mastershop y mutaciones remotas quedan fuera de alcance.
+
+Resultado: completada el 2026-07-14. La migración once agrega políticas versionadas y un historial
+inmutable. El worker clasifica el evento sincronizado con reglas estrictas, persiste tres
+transiciones y emite `order.classified.v1` atómicamente. Pruebas unitarias, PostgreSQL y Redis cubren
+prepago, COD, ambigüedad, ausencia de regla, estado inválido, replay y carrera.
+
+## Decimocuarta vertical: E1-H5A
+
+Implementar conciliación únicamente en simulación para detectar pedidos faltantes o fallidos y
+reprocesar un pedido/evento de forma tenant-safe, acotada, idempotente y auditada. Incluir métricas,
+flags, kill switch y pruebas de carrera; no consultar Shopify real ni iniciar pagos o logística.

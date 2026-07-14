@@ -99,6 +99,13 @@ describe('initial database migration', () => {
           'audit_logs',
           'account_action_tokens',
           'integration_connections',
+          'webhook_events',
+          'customers',
+          'customer_addresses',
+          'orders',
+          'order_items',
+          'order_classification_policies',
+          'order_state_history',
         ],
       ],
     );
@@ -107,20 +114,27 @@ describe('initial database migration', () => {
       'audit_logs',
       'auth_rate_limits',
       'auth_sessions',
+      'customer_addresses',
+      'customers',
       'idempotency_keys',
       'integration_connections',
       'job_executions',
+      'order_classification_policies',
+      'order_items',
+      'order_state_history',
+      'orders',
       'organization_memberships',
       'organizations',
       'outbox_events',
       'stores',
       'users',
+      'webhook_events',
     ]);
 
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('8');
+    expect(migrations.rows[0]?.count).toBe('11');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -218,6 +232,20 @@ describe('initial database migration', () => {
        VALUES ($1, $2, 'shopify', 'Encrypted connection', $3::jsonb)`,
       [first.rows[0]?.id, store.rows[0]?.id, JSON.stringify(validEnvelope)],
     );
+    await database.query(
+      `UPDATE integration_connections
+       SET encrypted_webhook_secret = $1::jsonb
+       WHERE store_id = $2`,
+      [JSON.stringify(validEnvelope), store.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `UPDATE integration_connections
+         SET encrypted_webhook_secret = '{"webhookSecret":"plaintext"}'::jsonb
+         WHERE store_id = $1`,
+        [store.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
     await expect(
       database.query(
         `INSERT INTO integration_connections
@@ -234,6 +262,167 @@ describe('initial database migration', () => {
         [first.rows[0]?.id, store.rows[0]?.id, JSON.stringify({ accessToken: 'plaintext' })],
       ),
     ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces tenant-safe and idempotent Shopify webhook persistence', async () => {
+    const first = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Webhook Owner') RETURNING id`,
+    );
+    const second = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Foreign Webhook Owner') RETURNING id`,
+    );
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'Webhook Store', 'webhook-db.myshopify.com', 'America/Bogota', 'COP')
+       RETURNING id`,
+      [first.rows[0]?.id],
+    );
+    const values = [
+      first.rows[0]?.id,
+      store.rows[0]?.id,
+      randomUUID(),
+      'orders/create',
+      '2026-07',
+      '{}',
+      '{}',
+      'a'.repeat(64),
+    ];
+    await database.query(
+      `INSERT INTO webhook_events
+       (organization_id, store_id, provider, external_event_id, event_type, api_version,
+        headers_redacted_json, payload_redacted_json, payload_hash, triggered_at)
+       VALUES ($1, $2, 'shopify', $3, $4, $5, $6::jsonb, $7::jsonb, $8, NOW())`,
+      values,
+    );
+    await expect(
+      database.query(
+        `INSERT INTO webhook_events
+         (organization_id, store_id, provider, external_event_id, event_type, api_version,
+          headers_redacted_json, payload_redacted_json, payload_hash, triggered_at)
+         VALUES ($1, $2, 'shopify', $3, $4, $5, $6::jsonb, $7::jsonb, $8, NOW())`,
+        values,
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `INSERT INTO webhook_events
+         (organization_id, store_id, provider, external_event_id, event_type, api_version,
+          headers_redacted_json, payload_redacted_json, payload_hash, triggered_at)
+         VALUES ($1, $2, 'shopify', $3, 'orders/create', '2026-07', '{}', '{}', $4, NOW())`,
+        [second.rows[0]?.id, store.rows[0]?.id, randomUUID(), 'b'.repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+  });
+
+  it('enforces tenant ownership, money and identity constraints for normalized orders', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Order Owner') RETURNING id`,
+    );
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'Order Store', 'order-db.myshopify.com', 'America/Bogota', 'COP')
+       RETURNING id`,
+      [organization.rows[0]?.id],
+    );
+    const webhook = await database.query<{ id: string }>(
+      `INSERT INTO webhook_events
+       (organization_id, store_id, provider, external_event_id, event_type, api_version,
+        headers_redacted_json, payload_redacted_json, payload_hash, provider_resource_id, triggered_at)
+       VALUES ($1, $2, 'shopify', $3, 'orders/create', '2026-07', '{}', '{}', $4, 'order-1', NOW())
+       RETURNING id`,
+      [organization.rows[0]?.id, store.rows[0]?.id, randomUUID(), 'c'.repeat(64)],
+    );
+    const customer = await database.query<{ id: string }>(
+      `INSERT INTO customers
+       (organization_id, store_id, shopify_customer_id, email, phone_e164)
+       VALUES ($1, $2, 'customer-1', 'synthetic@example.test', '+573001112233')
+       RETURNING id`,
+      [organization.rows[0]?.id, store.rows[0]?.id],
+    );
+    const address = await database.query<{ id: string }>(
+      `INSERT INTO customer_addresses
+       (organization_id, store_id, customer_id, shopify_address_id, address1, city, country_code,
+        normalized_address)
+       VALUES ($1, $2, $3, 'address-1', 'Calle 1', 'Bogota', 'CO', 'Calle 1, Bogota, CO')
+       RETURNING id`,
+      [organization.rows[0]?.id, store.rows[0]?.id, customer.rows[0]?.id],
+    );
+    const order = await database.query<{ id: string }>(
+      `INSERT INTO orders
+       (organization_id, store_id, customer_id, shipping_address_id, source_webhook_event_id,
+        shopify_order_id, shopify_order_name, currency, subtotal_amount, discount_amount,
+        tax_amount, total_amount, source_created_at, source_updated_at, raw_snapshot_json)
+       VALUES ($1, $2, $3, $4, $5, 'order-1', '#ORDER-1', 'COP', 10000, 0, 0, 10000,
+        NOW(), NOW(), '{"synthetic":true}') RETURNING id`,
+      [
+        organization.rows[0]?.id,
+        store.rows[0]?.id,
+        customer.rows[0]?.id,
+        address.rows[0]?.id,
+        webhook.rows[0]?.id,
+      ],
+    );
+    await database.query(
+      `INSERT INTO order_items
+       (organization_id, store_id, order_id, shopify_line_item_id, product_name, quantity,
+        unit_price_amount, total_price_amount, snapshot_json)
+       VALUES ($1, $2, $3, 'line-1', 'Synthetic item', 1, 10000, 10000, '{"synthetic":true}')`,
+      [organization.rows[0]?.id, store.rows[0]?.id, order.rows[0]?.id],
+    );
+    const policy = {
+      rules: [
+        {
+          financialStatuses: ['paid'],
+          id: 'prepaid-paid',
+          paymentMode: 'prepaid',
+          priority: 100,
+        },
+      ],
+      schemaVersion: 1,
+    };
+    await database.query(
+      `INSERT INTO order_classification_policies
+       (organization_id, store_id, version, active, rules_json, activated_at)
+       VALUES ($1, $2, 1, true, $3::jsonb, NOW())`,
+      [organization.rows[0]?.id, store.rows[0]?.id, JSON.stringify(policy)],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO order_classification_policies
+         (organization_id, store_id, version, active, rules_json, activated_at)
+         VALUES ($1, $2, 2, true, $3::jsonb, NOW())`,
+        [organization.rows[0]?.id, store.rows[0]?.id, JSON.stringify(policy)],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    const history = await database.query<{ id: string }>(
+      `INSERT INTO order_state_history
+       (organization_id, store_id, order_id, from_state, to_state, trigger_type, trigger_id, reason)
+       VALUES ($1, $2, $3, 'received', 'validating', 'database_test', $4, 'test_transition')
+       RETURNING id`,
+      [organization.rows[0]?.id, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
+    );
+    await expect(
+      database.query(`UPDATE order_state_history SET reason = 'changed' WHERE id = $1`, [
+        history.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(`DELETE FROM order_state_history WHERE id = $1`, [history.rows[0]?.id]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(`UPDATE orders SET total_amount = -1 WHERE id = $1`, [order.rows[0]?.id]),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO order_items
+         (organization_id, store_id, order_id, shopify_line_item_id, product_name, quantity,
+          unit_price_amount, total_price_amount, snapshot_json)
+         VALUES ($1, $2, $3, 'line-2', 'Cross tenant item', 1, 1, 1, '{}')`,
+        [randomUUID(), store.rows[0]?.id, order.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('enforces outbox retry counters and published-state consistency', async () => {

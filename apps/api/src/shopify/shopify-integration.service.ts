@@ -16,6 +16,7 @@ import { IdempotencyStatus, Prisma } from '../generated/prisma/client';
 import { requestHash } from '../foundation/request-hash';
 import { MetricsService } from '../observability/metrics.service';
 import { RequestContextService } from '../observability/request-context.service';
+import { DEFAULT_ORDER_CLASSIFICATION_POLICY } from '../orders/order-classification-policy';
 import { ShopifyCredentialCipher } from './shopify-credential-cipher';
 import { normalizeShopifyDomain } from './shopify-domain';
 import { SHOPIFY_PROVIDER, type ShopifyProvider } from './shopify-provider';
@@ -43,6 +44,10 @@ interface RotateCommand extends StoreCommand {
   readonly accessToken: string;
 }
 
+interface ConfigureWebhookSecretCommand extends StoreCommand {
+  readonly webhookSecret: string;
+}
+
 interface LockedIdempotencyRow {
   request_hash: string;
   response_snapshot_json: Prisma.JsonValue | null;
@@ -62,6 +67,7 @@ const TEST_SCOPE = 'shopify.store.test';
 const ACTIVATE_SCOPE = 'shopify.store.activate';
 const DEACTIVATE_SCOPE = 'shopify.store.deactivate';
 const ROTATE_SCOPE = 'shopify.store.credentials.rotate';
+const WEBHOOK_SECRET_SCOPE = 'shopify.store.webhook-secret.configure';
 
 @Injectable()
 export class ShopifyIntegrationService {
@@ -115,6 +121,16 @@ export class ShopifyIntegrationService {
             provider: 'SHOPIFY',
             status: 'PENDING',
             storeId,
+          },
+        });
+        await transaction.orderClassificationPolicy.create({
+          data: {
+            activatedAt: new Date(),
+            active: true,
+            organizationId: command.organizationId,
+            rulesJson: DEFAULT_ORDER_CLASSIFICATION_POLICY,
+            storeId,
+            version: 1,
           },
         });
         return this.result(storeId, shopDomain, 'PENDING', 'UNKNOWN');
@@ -247,9 +263,40 @@ export class ShopifyIntegrationService {
     });
   }
 
+  public configureWebhookSecret(
+    command: ConfigureWebhookSecretCommand,
+  ): Promise<ShopifyStoreResult> {
+    return this.mutateStore({
+      action: 'shopify.store.webhook_secret_configured',
+      command,
+      request: {
+        operation: 'configure-webhook-secret',
+        secretHash: hashSensitive(command.webhookSecret),
+      },
+      scope: WEBHOOK_SECRET_SCOPE,
+      execute: async (transaction, connection) => {
+        const encrypted = this.cipher.encryptWebhookSecret(
+          command.webhookSecret,
+          command.organizationId,
+          command.storeId,
+        );
+        await transaction.integrationConnection.update({
+          data: { encryptedWebhookSecretJson: { ...encrypted } },
+          where: { id: connection.id },
+        });
+        return this.result(
+          command.storeId,
+          connection.store.shopifyShopDomain,
+          connection.status,
+          connection.lastHealthStatus,
+        );
+      },
+    });
+  }
+
   private mutateStore(options: {
     readonly action: string;
-    readonly command: StoreCommand | RotateCommand;
+    readonly command: ConfigureWebhookSecretCommand | RotateCommand | StoreCommand;
     readonly execute: (
       transaction: Prisma.TransactionClient,
       connection: Awaited<ReturnType<ShopifyIntegrationService['lockConnection']>>,

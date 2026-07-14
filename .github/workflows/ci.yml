@@ -57,6 +57,15 @@ jobs:
       - name: Verify simulated Shopify integration registry
         run: pnpm shopify:verify
 
+      - name: Verify simulated Shopify webhook ingress
+        run: pnpm shopify:webhooks:verify
+
+      - name: Verify simulated Shopify order synchronization
+        run: pnpm shopify:orders:verify
+
+      - name: Verify configurable order payment classification
+        run: pnpm orders:classification:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

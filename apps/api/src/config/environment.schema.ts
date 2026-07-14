@@ -55,6 +55,9 @@ export const environmentSchema = z.object({
   OUTBOX_QUEUE_NAME: queueName.default('foundation-events'),
   OUTBOX_RETRY_BASE_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_SIMULATION_MODE: booleanFlag('true'),
+  ORDER_CLASSIFICATION_ENABLED: booleanFlag('false'),
+  ORDER_CLASSIFICATION_KILL_SWITCH: booleanFlag('true'),
+  ORDER_CLASSIFICATION_SIMULATION_MODE: booleanFlag('true'),
   POSTGRES_DB: nonEmpty,
   POSTGRES_HOST: nonEmpty,
   POSTGRES_PASSWORD: nonEmpty,
@@ -68,6 +71,18 @@ export const environmentSchema = z.object({
   SHOPIFY_INTEGRATIONS_ENABLED: booleanFlag('false'),
   SHOPIFY_INTEGRATIONS_KILL_SWITCH: booleanFlag('true'),
   SHOPIFY_SIMULATION_MODE: booleanFlag('true'),
+  SHOPIFY_WEBHOOKS_ENABLED: booleanFlag('false'),
+  SHOPIFY_WEBHOOKS_KILL_SWITCH: booleanFlag('true'),
+  SHOPIFY_WEBHOOKS_MAX_BODY_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1_024)
+    .max(1_048_576)
+    .default(262_144),
+  SHOPIFY_WEBHOOKS_SIMULATION_MODE: booleanFlag('true'),
+  SHOPIFY_ORDER_SYNC_ENABLED: booleanFlag('false'),
+  SHOPIFY_ORDER_SYNC_KILL_SWITCH: booleanFlag('true'),
+  SHOPIFY_ORDER_SYNC_SIMULATION_MODE: booleanFlag('true'),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, RequestMethod, type NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 
 import { AuditService } from './auth/audit.service';
@@ -24,6 +24,8 @@ import { MetricsController } from './observability/metrics.controller';
 import { MetricsService } from './observability/metrics.service';
 import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
+import { OrderClassificationService } from './orders/order-classification.service';
+import { OrderClassifier } from './orders/order-classifier';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { OutboxQueueService } from './outbox/outbox-queue.service';
 import { DlqOperationsController } from './outbox/dlq-operations.controller';
@@ -32,7 +34,11 @@ import { ShopifyCredentialCipher } from './shopify/shopify-credential-cipher';
 import { ShopifyIntegrationController } from './shopify/shopify-integration.controller';
 import { ShopifyIntegrationService } from './shopify/shopify-integration.service';
 import { ShopifyMockProvider } from './shopify/shopify-mock.provider';
+import { ShopifyOrderNormalizer } from './shopify/shopify-order-normalizer';
+import { ShopifyOrderSyncService } from './shopify/shopify-order-sync.service';
 import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
+import { ShopifyWebhookController } from './shopify/shopify-webhook.controller';
+import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
 
 @Module({
   controllers: [
@@ -42,6 +48,7 @@ import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
     IdentityAdministrationController,
     MetricsController,
     ShopifyIntegrationController,
+    ShopifyWebhookController,
   ],
   providers: [
     EnvironmentService,
@@ -58,6 +65,8 @@ import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
     RequestContextService,
     AppLoggerService,
     MetricsService,
+    OrderClassifier,
+    OrderClassificationService,
     RequestObservabilityMiddleware,
     HealthService,
     IdentityAdministrationService,
@@ -67,15 +76,12 @@ import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
     DlqOperationsService,
     ShopifyCredentialCipher,
     ShopifyIntegrationService,
+    ShopifyWebhookService,
+    ShopifyOrderNormalizer,
+    ShopifyOrderSyncService,
     ShopifyMockProvider,
     { provide: SHOPIFY_PROVIDER, useExisting: ShopifyMockProvider },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
-export class AppModule implements NestModule {
-  public configure(consumer: MiddlewareConsumer): void {
-    consumer
-      .apply(RequestObservabilityMiddleware)
-      .forRoutes({ method: RequestMethod.ALL, path: '*splat' });
-  }
-}
+export class AppModule {}

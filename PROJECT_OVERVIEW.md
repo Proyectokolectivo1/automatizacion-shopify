@@ -28,12 +28,15 @@ S3-compatible, workers asíncronos, auditoría, métricas y herramientas operati
 
 Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
-El código, el plan de trabajo y los documentos vivos están publicados en el repositorio público
-<https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
+El repositorio canónico público es
+<https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`. La base anterior está
+publicada; E1-H2A/E1-H3A/E1-H4A están validadas localmente y pendientes de PR porque GitHub CLI no está
+instalado.
 
-Las fundaciones están aproximadamente al 98 % y Shopify al 15 %. Ya existe un monorepo reproducible
+Las fundaciones están aproximadamente al 98 % y Shopify al 60 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
-Shopify simulado. Todavía no existen flujos de pedidos utilizables ni conexiones reales.
+Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
+los pedidos ya se clasifican entre prepago y COD en simulación; todavía no existen conciliación ni conexiones reales.
 
 ## Implementado
 
@@ -67,6 +70,17 @@ Shopify simulado. Todavía no existen flujos de pedidos utilizables ni conexione
 - Registro owner/admin de tiendas Shopify con dominio canónico, tenant isolation y snapshot idempotente.
 - Token Shopify cifrado con AES-256-GCM, AAD tenant+tienda, keyring versionado y rotación comprobada.
 - Mock contractual v1 para probar, activar y desactivar, marcado siempre como simulación y cerrado por flags.
+- Ingreso `orders/create` sobre cuerpo crudo con HMAC-SHA256 constante antes de parsear JSON.
+- Secreto webhook AES-256-GCM separado del token, allowlist, límite de 256 KiB y errores seguros.
+- Evento webhook tenant-safe e idempotente con detección de colisión, outbox atómico y worker BullMQ.
+- Replay, concurrencia y caída/recuperación de Redis probados con fixture sintético versionado.
+- Consulta de pedido desacoplada mediante `ShopifyProvider` y normalizador Zod v1.
+- Clientes, direcciones, pedidos e items tenant-safe con IDs externos estables y constraints SQL.
+- Montos en unidades menores, snapshots monotónicos y evento outbox transaccional de sincronización.
+- Contrato inválido, recurso inexistente, replay, carrera, actualización, tardíos y DLQ probados.
+- Políticas de clasificación v1 versionadas por tienda con prioridad explícita y evidencia sintética.
+- Máquina default-deny con historial inmutable, prepago/COD, outbox, auditoría, métricas y replay.
+- Pipeline webhook/outbox/Redis/sync/clasificación probado tras caída y recuperación de Redis.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -79,9 +93,9 @@ Shopify simulado. Todavía no existen flujos de pedidos utilizables ni conexione
 ### Shopify
 
 - Conexión real y registro remoto de tiendas; la gestión simulada ya está implementada.
-- Validación HMAC y recepción idempotente de webhooks.
-- Sincronización de pedidos, clientes e inventario.
-- Clasificación, timeline y conciliación de pedidos.
+- Registro remoto del webhook y rotación solapada de secretos; el ingreso simulado ya está implementado.
+- Conexión real para pedidos e inventario; la sincronización normalizada simulada ya está completa.
+- Conciliación de faltantes/fallidos, reproceso y estados operativos posteriores.
 - Mock, fixtures, contrato, feature flag y kill switch mientras falten credenciales.
 
 ### Pagos y WhatsApp
@@ -119,6 +133,7 @@ Shopify simulado. Todavía no existen flujos de pedidos utilizables ni conexione
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox de Mastershop.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de las impresoras Windows.
 - `BLOQUEADO_POR_DECISION`: dominio/correo, políticas COD, retención legal, atribución y RPO/RTO.
+- `BLOQUEADO_POR_HERRAMIENTA`: falta instalar/autenticar GitHub CLI para publicar E1-H2A/E1-H3A/E1-H4A.
 
 Mientras continúen estos bloqueos se deben implementar adaptadores, mocks, fixtures, pruebas de
 contrato, feature flags, modo simulación y kill switches; no se deben presentar como integraciones
@@ -126,8 +141,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E1-H2A: webhook Shopify simulado con cuerpo crudo, HMAC, idempotencia, persistencia, outbox, cola y
-fixtures. La suscripción/conexión real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
+E1-H5A: detectar pedidos faltantes o fallidos y reprocesar un caso de forma tenant-safe, acotada,
+auditable e idempotente. La conexión real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
 
 ## Dónde consultar más detalle
 

@@ -21,6 +21,7 @@ import { ShopifyIntegrationService } from './shopify-integration.service';
 const identifierSchema = z.string().uuid();
 const idempotencyKeySchema = z.string().trim().min(8).max(200);
 const tokenSchema = z.object({ accessToken: z.string().min(16).max(512) });
+const webhookSecretSchema = z.object({ webhookSecret: z.string().min(32).max(512) });
 const registrationSchema = tokenSchema.extend({
   currency: z.string().regex(/^[A-Z]{3}$/u),
   displayName: z.string().trim().min(1).max(160),
@@ -109,6 +110,25 @@ export class ShopifyIntegrationController {
     const token = tokenSchema.safeParse(body);
     if (!token.success) throw new BadRequestException('Invalid request');
     return this.shopify.rotateCredentials({ ...parsed, accessToken: token.data.accessToken });
+  }
+
+  @Patch(':storeId/webhook-secret')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  public configureWebhookSecret(
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('organizationId') organizationId: string,
+    @Param('storeId') storeId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = this.parseStore(idempotencyKey, organizationId, storeId, request);
+    const secret = webhookSecretSchema.safeParse(body);
+    if (!secret.success) throw new BadRequestException('Invalid request');
+    return this.shopify.configureWebhookSecret({
+      ...parsed,
+      webhookSecret: secret.data.webhookSecret,
+    });
   }
 
   private parse(

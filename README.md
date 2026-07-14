@@ -51,6 +51,9 @@ pnpm dlq:verify
 pnpm auth:verify
 pnpm identity:verify
 pnpm shopify:verify
+pnpm shopify:webhooks:verify
+pnpm shopify:orders:verify
+pnpm orders:classification:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -64,6 +67,18 @@ La API DLQ se valida con `pnpm dlq:verify` y permanece desactivada con kill swit
 
 La autenticación base se valida con `pnpm auth:verify`. No existe registro público ni cuenta inicial
 por defecto; consulte `docs/runbooks/authentication.md` y no inserte contraseñas en claro.
+
+El ingreso webhook Shopify se valida con `pnpm shopify:webhooks:verify`. Solo admite fixtures
+sintéticos cuando la simulación está activa; consulte `docs/runbooks/shopify-webhooks.md`. La
+suscripción y API reales continúan bloqueadas por credenciales.
+
+La normalización de pedidos sintéticos se valida con `pnpm shopify:orders:verify`; consulte
+`docs/runbooks/shopify-order-sync.md`. Dinero se almacena en unidades menores y snapshots tardíos no
+reemplazan versiones más nuevas.
+
+La clasificación prepago/COD se valida con `pnpm orders:classification:verify`; consulte
+`docs/runbooks/order-classification.md`. Las reglas son versionadas por tienda, el historial es
+inmutable y todo tráfico real permanece desactivado.
 
 ## Estado real
 

@@ -4,6 +4,8 @@ import { Job, Queue, Worker } from 'bullmq';
 import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
 import { Prisma } from '../generated/prisma/client';
+import { OrderClassificationService } from '../orders/order-classification.service';
+import { ShopifyOrderSyncService } from '../shopify/shopify-order-sync.service';
 import type { OutboxJobData } from './outbox.types';
 
 @Injectable()
@@ -14,6 +16,8 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
   public constructor(
     private readonly environment: EnvironmentService,
     private readonly prisma: PrismaService,
+    private readonly shopifyOrderSync?: ShopifyOrderSyncService,
+    private readonly orderClassification?: OrderClassificationService,
   ) {}
 
   public onModuleInit(): void {
@@ -57,6 +61,27 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
       ) {
         throw new Error('Simulated consumer failure');
       }
+      if (this.isShopifyWebhook(job)) {
+        if (this.shopifyOrderSync === undefined) {
+          throw new Error('Shopify order sync consumer is not configured');
+        }
+        await this.shopifyOrderSync.syncFromWebhook({
+          correlationId: job.data.correlationId,
+          organizationId: job.data.organizationId,
+          webhookEventId: job.data.aggregateId,
+        });
+      }
+      if (this.isOrderSynchronized(job)) {
+        if (this.orderClassification === undefined) {
+          throw new Error('Order classification consumer is not configured');
+        }
+        await this.orderClassification.classify({
+          correlationId: job.data.correlationId,
+          eventId: job.data.eventId,
+          orderId: job.data.aggregateId,
+          organizationId: job.data.organizationId,
+        });
+      }
       await this.markCompleted(job);
     } catch (error) {
       const finalAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 1);
@@ -66,43 +91,65 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
   }
 
   private async markActive(job: Job<OutboxJobData>): Promise<void> {
-    await this.prisma.jobExecution.upsert({
-      create: {
-        aggregateId: job.data.aggregateId,
-        attempt: job.attemptsMade + 1,
-        correlationId: job.data.correlationId,
-        eventId: job.data.eventId,
-        jobId: job.data.deliveryId,
-        jobName: job.name,
-        organizationId: job.data.organizationId,
-        queueName: this.environment.outbox.queueName,
-        startedAt: new Date(),
-        status: 'ACTIVE',
-      },
-      update: {
-        attempt: job.attemptsMade + 1,
-        errorJson: Prisma.DbNull,
-        startedAt: new Date(),
-        status: 'ACTIVE',
-      },
-      where: {
-        queueName_jobId: {
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.jobExecution.upsert({
+        create: {
+          aggregateId: job.data.aggregateId,
+          attempt: job.attemptsMade + 1,
+          correlationId: job.data.correlationId,
+          eventId: job.data.eventId,
           jobId: job.data.deliveryId,
+          jobName: job.name,
+          organizationId: job.data.organizationId,
           queueName: this.environment.outbox.queueName,
+          startedAt: new Date(),
+          status: 'ACTIVE',
         },
-      },
+        update: {
+          attempt: job.attemptsMade + 1,
+          errorJson: Prisma.DbNull,
+          startedAt: new Date(),
+          status: 'ACTIVE',
+        },
+        where: {
+          queueName_jobId: {
+            jobId: job.data.deliveryId,
+            queueName: this.environment.outbox.queueName,
+          },
+        },
+      });
+      if (this.isShopifyWebhook(job)) {
+        await transaction.webhookEvent.updateMany({
+          data: { attemptCount: job.attemptsMade + 1, status: 'PROCESSING' },
+          where: { id: job.data.aggregateId, organizationId: job.data.organizationId },
+        });
+      }
     });
   }
 
   private async markCompleted(job: Job<OutboxJobData>): Promise<void> {
-    await this.prisma.jobExecution.update({
-      data: { completedAt: new Date(), status: 'COMPLETED' },
-      where: {
-        queueName_jobId: {
-          jobId: job.data.deliveryId,
-          queueName: this.environment.outbox.queueName,
+    await this.prisma.$transaction(async (transaction) => {
+      const completedAt = new Date();
+      await transaction.jobExecution.update({
+        data: { completedAt, status: 'COMPLETED' },
+        where: {
+          queueName_jobId: {
+            jobId: job.data.deliveryId,
+            queueName: this.environment.outbox.queueName,
+          },
         },
-      },
+      });
+      if (this.isShopifyWebhook(job)) {
+        await transaction.webhookEvent.updateMany({
+          data: {
+            errorCode: null,
+            errorMessage: null,
+            processedAt: completedAt,
+            status: 'PROCESSED',
+          },
+          where: { id: job.data.aggregateId, organizationId: job.data.organizationId },
+        });
+      }
     });
   }
 
@@ -138,6 +185,18 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
           },
         });
       }
+      if (this.isShopifyWebhook(job)) {
+        await transaction.webhookEvent.updateMany({
+          data: {
+            attemptCount: job.attemptsMade + 1,
+            errorCode: 'consumer_failure',
+            errorMessage: 'Webhook consumer failed',
+            processedAt: finalAttempt ? new Date() : null,
+            status: finalAttempt ? 'DEAD_LETTER' : 'FAILED',
+          },
+          where: { id: job.data.aggregateId, organizationId: job.data.organizationId },
+        });
+      }
     });
     if (finalAttempt) {
       await this.deadLetterQueue?.add(job.name, job.data, {
@@ -146,5 +205,13 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
         removeOnFail: false,
       });
     }
+  }
+
+  private isShopifyWebhook(job: Job<OutboxJobData>): boolean {
+    return job.name === 'shopify.webhook.received.v1';
+  }
+
+  private isOrderSynchronized(job: Job<OutboxJobData>): boolean {
+    return job.name === 'shopify.order.synchronized.v1';
   }
 }

@@ -177,6 +177,44 @@ export class EnvironmentService {
     };
   }
 
+  public get shopifyWebhooks(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    maxBodyBytes: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.SHOPIFY_WEBHOOKS_ENABLED,
+      killSwitch: this.values.SHOPIFY_WEBHOOKS_KILL_SWITCH,
+      maxBodyBytes: this.values.SHOPIFY_WEBHOOKS_MAX_BODY_BYTES,
+      simulationMode: this.values.SHOPIFY_WEBHOOKS_SIMULATION_MODE,
+    };
+  }
+
+  public get shopifyOrderSync(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.SHOPIFY_ORDER_SYNC_ENABLED,
+      killSwitch: this.values.SHOPIFY_ORDER_SYNC_KILL_SWITCH,
+      simulationMode: this.values.SHOPIFY_ORDER_SYNC_SIMULATION_MODE,
+    };
+  }
+
+  public get orderClassification(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.ORDER_CLASSIFICATION_ENABLED,
+      killSwitch: this.values.ORDER_CLASSIFICATION_KILL_SWITCH,
+      simulationMode: this.values.ORDER_CLASSIFICATION_SIMULATION_MODE,
+    };
+  }
+
   public get minioHealthUrl(): string {
     const protocol = this.values.MINIO_USE_SSL ? 'https' : 'http';
     return `${protocol}://${this.values.MINIO_HOST}:${this.values.MINIO_API_PORT}/minio/health/ready`;

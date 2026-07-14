@@ -295,3 +295,130 @@ E1-H1A está completa solo en simulación. La conexión real permanece
 CI remoto `29364969334`: todas las etapas verdes, incluida Shopify. La advertencia de runtime Node 20
 de las acciones se corrigió actualizando a `checkout@v6.0.2`, `setup-node@v6.0.0` y
 `pnpm/action-setup@v4.4.0`, versiones oficiales basadas en Node 24.
+
+## Iteración E1-H2A
+
+Fecha: 2026-07-14.
+
+| Validación                | Comando                        | Resultado                             |
+| ------------------------- | ------------------------------ | ------------------------------------- |
+| Quality gate completo     | `pnpm validate`                | OK, format/lint/typecheck/test/build  |
+| Unitarias                 | `pnpm test`                    | OK, 32/32; cobertura incluida 100 %   |
+| Integración API           | `pnpm test:integration`        | OK, 3/3                               |
+| Migraciones y constraints | `pnpm database:verify`         | OK, 7/7; nueve migraciones, sin drift |
+| Outbox                    | `pnpm outbox:verify`           | OK, 4/4                               |
+| DLQ                       | `pnpm dlq:verify`              | OK, 5/5                               |
+| Auth                      | `pnpm auth:verify`             | OK, 14/14                             |
+| Identidad                 | `pnpm identity:verify`         | OK, 5/5                               |
+| Shopify registro          | `pnpm shopify:verify`          | OK, 4/4                               |
+| Shopify webhook           | `pnpm shopify:webhooks:verify` | OK, 4/4                               |
+| Estado de esquema         | `pnpm database:status`         | OK, nueve migraciones aplicadas       |
+| Observabilidad            | `pnpm observability:verify`    | OK, caída/recuperación Redis          |
+| Dependencias productivas  | `pnpm audit --prod`            | OK, cero vulnerabilidades conocidas   |
+| Infraestructura           | `pnpm infra:verify`            | OK, salud y persistencia              |
+
+La suite dedicada verifica firma válida e inválida sobre bytes crudos, orden HMAC-antes-de-JSON,
+body alterado, JSON inválido, límite de 256 KiB, allowlist, tienda activa, secreto cifrado, replay,
+carrera concurrente, colisión de ID con otro payload, respuesta rápida, outbox/worker y recuperación
+después de Redis inaccesible. La base solo conserva hash y resumen redactado, no HMAC ni cuerpo.
+
+Fallos encontrados y corregidos durante la vertical:
+
+1. La prueba de recuperación intentaba republicar antes de vencer el backoff; se aisló el evento y se
+   controló `available_at` de forma determinista.
+2. El error `PayloadTooLargeError` del parser se convertía en 500; el filtro global ahora reconoce
+   únicamente la forma segura `entity.too.large` y responde 413.
+3. La observabilidad se registraba después del parser, por lo que un 413 no tenía correlation ID; el
+   middleware se movió al inicio del pipeline HTTP y el caso quedó cubierto.
+4. El test construía el runtime outbox con un cliente Prisma distinto al lifecycle Nest; ahora usa el
+   `PrismaService` administrado por la aplicación.
+
+No se contactó Shopify ni se almacenó PII real. El registro remoto del webhook y la consulta real del
+pedido permanecen `BLOQUEADO_POR_CREDENCIALES`. La siguiente vertical es E1-H3A.
+
+La publicación no se realizó: el flujo de entrega detectó que `gh` no está instalado. Los cambios
+permanecen sin commit en `codex/foundations-e0-h2`, basados exactamente en `origin/main`; no se usó el
+PAT expuesto. Debe instalarse y autenticarse GitHub CLI antes de crear rama/commit/push/PR.
+
+## Iteración E1-H3A
+
+Fecha: 2026-07-14.
+
+| Validación               | Comando                        | Resultado                            |
+| ------------------------ | ------------------------------ | ------------------------------------ |
+| Quality gate completo    | `pnpm validate`                | OK, format/lint/typecheck/test/build |
+| Unitarias                | `pnpm test`                    | OK, 35/35; cobertura incluida 100 %  |
+| Integración API          | `pnpm test:integration`        | OK, 3/3                              |
+| Migraciones/constraints  | `pnpm database:verify`         | OK, 8/8; diez migraciones, sin drift |
+| Outbox                   | `pnpm outbox:verify`           | OK, 4/4                              |
+| DLQ                      | `pnpm dlq:verify`              | OK, 5/5                              |
+| Auth                     | `pnpm auth:verify`             | OK, 14/14                            |
+| Identidad                | `pnpm identity:verify`         | OK, 5/5                              |
+| Registro Shopify         | `pnpm shopify:verify`          | OK, 4/4                              |
+| Webhook + Redis + worker | `pnpm shopify:webhooks:verify` | OK, 5/5; sync, recovery y DLQ        |
+| Pedido normalizado       | `pnpm shopify:orders:verify`   | OK, 4/4                              |
+| Estado de esquema        | `pnpm database:status`         | OK, diez migraciones aplicadas       |
+| Observabilidad           | `pnpm observability:verify`    | OK, caída/recuperación Redis         |
+| Dependencias productivas | `pnpm audit --prod`            | OK, cero vulnerabilidades conocidas  |
+| Infraestructura          | `pnpm infra:verify`            | OK, salud y persistencia             |
+
+La suite confirma normalización estricta, dinero `BIGINT`, cliente/dirección/items, carrera y replay,
+actualización monotónica, rechazo de snapshot tardío, contrato inválido, kill switch, consulta por
+adaptador, outbox atómico y recurso inexistente a DLQ. La prueba del pipeline detiene la entrega a
+Redis, recupera y verifica el pedido completo antes de marcar el webhook procesado.
+
+Fallos encontrados y corregidos:
+
+1. Prisma exigió unicidad compuesta en el lado definidor de la relación webhook→pedido; se añadió el
+   constraint tenant completo y quedó sin drift.
+2. La primera expectativa de tablas ubicaba `organizations` antes de `orders`; se corrigió al orden
+   real de PostgreSQL, sin cambios de esquema.
+3. El fixture incluía `financial_status` fuera del schema estricto; se incorporó como dato validado
+   pero sin clasificar, porque esa decisión pertenece a E1-H4A.
+4. Lint detectó un import y un argumento de contrato no usados en la suite nueva; fueron eliminados.
+
+No hubo tráfico externo ni PII real. E1-H3A está completa solo en simulación. E1-H4A es la siguiente
+vertical y la conexión Shopify real sigue `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E1-H4A
+
+Fecha: 2026-07-14.
+
+| Validación                   | Comando                             | Resultado                             |
+| ---------------------------- | ----------------------------------- | ------------------------------------- |
+| Quality gate completo        | `pnpm validate`                     | OK, format/lint/typecheck/test/build  |
+| Unitarias                    | `pnpm test`                         | OK, 40/40; cobertura incluida 100 %   |
+| Integración API              | `pnpm test:integration`             | OK, 3/3                               |
+| Migraciones/constraints      | `pnpm database:verify`              | OK, 8/8; once migraciones, sin drift  |
+| Outbox                       | `pnpm outbox:verify`                | OK, 4/4                               |
+| DLQ                          | `pnpm dlq:verify`                   | OK, 5/5                               |
+| Auth                         | `pnpm auth:verify`                  | OK, 14/14                             |
+| Identidad                    | `pnpm identity:verify`              | OK, 5/5                               |
+| Registro Shopify             | `pnpm shopify:verify`               | OK, 4/4                               |
+| Webhook + pipeline Redis     | `pnpm shopify:webhooks:verify`      | OK, 5/5; termina clasificado          |
+| Pedido normalizado           | `pnpm shopify:orders:verify`        | OK, 4/4                               |
+| Clasificación                | `pnpm orders:classification:verify` | OK, 4/4                               |
+| Estado de esquema            | `pnpm database:status`              | OK, once migraciones aplicadas        |
+| Observabilidad               | `pnpm observability:verify`         | OK, caída/recuperación Redis          |
+| Dependencias productivas     | `pnpm audit --prod`                 | OK, cero vulnerabilidades conocidas   |
+| Configuración Compose        | `pnpm infra:config`                 | OK                                    |
+| Infraestructura/persistencia | `pnpm infra:verify`                 | OK, servicios, protocolos y volúmenes |
+
+La suite confirma reglas v1 por tienda, prioridad determinista, prepago, COD y fail-closed ante
+ausencia/contradicción. Cada decisión recorre tres transiciones válidas, conserva historial
+inmutable y emite outbox/auditoría atómicos. La carrera concurrente produce un único efecto y un
+replay; el pipeline recupera Redis entre webhook y pedido, y procesa después el evento de
+clasificación hasta `READY_FOR_LOGISTICS`.
+
+Fallos encontrados y corregidos:
+
+1. La prueba de migración conservaba el conteo anterior de diez migraciones; se actualizó a once y
+   se añadieron constraints de política activa única e historial inmutable.
+2. Dos transacciones serializables concurrentes podían observar el snapshot anterior después de
+   esperar el advisory lock y chocar con el unique del historial; el retry acotado ahora reconoce
+   esa colisión, abre un snapshot nuevo y devuelve replay sin duplicar efectos.
+3. El retorno del callback transaccional ensanchaba literales y bloqueó el primer `typecheck` global;
+   se tipó el callback con `OrderClassificationResult` y el quality gate completo quedó verde.
+
+No hubo tráfico externo ni PII real. E1-H4A está completa solo en simulación. E1-H5A es la siguiente
+vertical y la conexión Shopify real sigue `BLOQUEADO_POR_CREDENCIALES`.
