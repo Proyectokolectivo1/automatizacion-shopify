@@ -92,10 +92,13 @@ Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
 - `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
+- `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
 ## Errores conocidos
 
 - No hay defectos abiertos en E0-H1 a E0-H5C ni E0-H4C.
+- El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
+  para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
 - Seis migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
 

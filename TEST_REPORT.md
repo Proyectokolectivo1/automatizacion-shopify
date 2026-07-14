@@ -251,3 +251,12 @@ Fecha: 2026-07-14.
 - Escaneo del historial Git completo: 0 candidatos.
 - `.env` confirmado como ignorado.
 - El PAT compartido en la conversación no se usó, no se guardó y debe revocarse.
+
+### Corrección del quality gate en checkout limpio
+
+- GitHub Actions expuso que `lint` se ejecutaba antes de generar el cliente Prisma ignorado por Git.
+- `pnpm validate` ahora comienza con `pnpm prisma:generate` y no depende del estado previo del equipo.
+- Verificación local: se eliminó únicamente el artefacto generado
+  `apps/api/src/generated/prisma` y `pnpm validate` lo regeneró correctamente.
+- Resultado: formatter, lint, typecheck, 24 pruebas unitarias con 100 % de cobertura y builds API/web
+  en verde.

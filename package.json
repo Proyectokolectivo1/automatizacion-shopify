@@ -41,10 +41,11 @@
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
     "observability:verify": "node scripts/verify-observability.mjs",
     "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",
+    "prisma:generate": "pnpm --filter @ecommerce/api prisma:generate",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",
-    "validate": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "validate": "pnpm prisma:generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.6",
