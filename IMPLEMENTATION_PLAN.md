@@ -2,6 +2,8 @@
 
 Actualizado: 2026-07-14
 
+Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
+
 | Fase | Vertical demostrable               | Estado                     | Criterio de salida                                        |
 | ---- | ---------------------------------- | -------------------------- | --------------------------------------------------------- |
 | 0    | Descubrimiento técnico y contratos | PARCIAL                    | inventario de accesos, proveedores e impresoras           |

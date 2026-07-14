@@ -26,3 +26,4 @@ Actualizado: 2026-07-14
 | R-020 | Tokens consumidos/vencidos crecen sin retención    | Media | Medio   | Definir política y job de purga tras decisión legal DP-003       | Abierto  |
 | R-021 | Filas legacy sin ownership bloquean operación DLQ  | Baja  | Alto    | Backfill, checks NOT VALID y consulta previa a validación final  | Mitigado |
 | R-022 | Tokens Shopify pueden filtrarse o quedar sin rotar | Media | Crítico | Cifrado versionado, redacción, rotación y mock antes de conectar | Abierto  |
+| R-023 | PAT de GitHub expuesto en la conversación          | Alta  | Crítico | No usarlo; revocarlo y conservar OAuth seguro en keyring         | Abierto  |

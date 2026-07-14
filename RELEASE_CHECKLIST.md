@@ -6,6 +6,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 
 - [ ] Alcance MVP y criterios de aceptación completos.
 - [x] Prompt maestro disponible y requisitos reconciliados.
+- [x] Código, plan y controles publicados en el repositorio canónico de GitHub.
+- [ ] PAT expuesto en la conversación revocado por su propietario.
 - [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes para todo el MVP.
 - [ ] Migraciones expand/contract revisadas y probadas; falta validar checks legacy `NOT VALID`.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.

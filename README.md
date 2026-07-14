@@ -2,6 +2,8 @@
 
 Monorepo de la plataforma interna Shopify + Wompi + Mastershop + WhatsApp + impresión + BI.
 
+Repositorio canónico: <https://github.com/Proyectokolectivo1/automatizacion-shopify>.
+
 ## Requisitos
 
 - Node.js 22.23.1 LTS
@@ -47,6 +49,7 @@ pnpm database:status
 pnpm outbox:verify
 pnpm dlq:verify
 pnpm auth:verify
+pnpm identity:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero

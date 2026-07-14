@@ -6,6 +6,9 @@ Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. E
 `EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C y E0-H4C están completas;
 E0-H3B permanece pendiente. No reinicies ni reemplaces trabajo válido.
 
+Repositorio canónico: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
+Antes de usar nuevas credenciales, confirmar que el PAT expuesto en la conversación fue revocado.
+
 ## Fuentes obligatorias
 
 Lee completamente antes de editar:

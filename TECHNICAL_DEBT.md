@@ -4,6 +4,9 @@ Actualizado: 2026-07-14
 
 No se registra como deuda lo que pertenece a una vertical futura; se registra como backlog.
 
+La publicación en GitHub no añadió deuda técnica. La revocación del PAT expuesto se registra como
+riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
+
 | ID     | Deuda                                                | Impacto | Plan                                                  |
 | ------ | ---------------------------------------------------- | ------- | ----------------------------------------------------- |
 | TD-002 | La web no tiene pruebas de componente/E2E todavía    | Bajo    | Añadir Playwright con el primer flujo de usuario      |

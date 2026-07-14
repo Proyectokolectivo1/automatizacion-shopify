@@ -240,3 +240,14 @@ un contrato tipado para esa respuesta y la siguiente ejecución de `pnpm validat
 No hubo migración nueva: E0-H5C reutiliza membresías, sesiones, auditoría e idempotencia ya
 versionadas. No se usaron credenciales ni proveedores externos. La conexión real Shopify continúa
 `BLOQUEADO_POR_CREDENCIALES`; la siguiente vertical es E1-H1A con adaptador y mock contractual.
+
+## Publicación en GitHub
+
+Fecha: 2026-07-14.
+
+- Remoto: `https://github.com/Proyectokolectivo1/automatizacion-shopify.git`.
+- Rama remota: `main`.
+- Escaneo de patrones sensibles en `HEAD`: 0 candidatos.
+- Escaneo del historial Git completo: 0 candidatos.
+- `.env` confirmado como ignorado.
+- El PAT compartido en la conversación no se usó, no se guardó y debe revocarse.

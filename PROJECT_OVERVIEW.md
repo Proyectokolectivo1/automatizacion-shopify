@@ -28,6 +28,9 @@ S3-compatible, workers asíncronos, auditoría, métricas y herramientas operati
 
 Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
+El código, el plan de trabajo y los documentos vivos están publicados en el repositorio público
+<https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
+
 Las fundaciones están aproximadamente al 98 %. Ya existe un monorepo reproducible con CI, entorno
 local, observabilidad, persistencia transaccional y entrega asíncrona base. Todavía no existen flujos de negocio utilizables por
 operadores ni conexiones reales con proveedores.
@@ -108,6 +111,7 @@ operadores ni conexiones reales con proveedores.
 
 ## Bloqueos externos
 
+- `BLOQUEADO_POR_SEGURIDAD`: revocar el PAT compartido en la conversación; no se usó ni versionó.
 - `BLOQUEADO_POR_CREDENCIALES`: Shopify development, Wompi sandbox y Meta/WhatsApp.
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox de Mastershop.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de las impresoras Windows.

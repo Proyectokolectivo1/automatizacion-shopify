@@ -34,6 +34,7 @@ Actualizado: 2026-07-14
 | D-028  | DECISIÓN           | Administración de identidad tiene flag/kill switch independientes y permiso exclusivo       | ACEPTADA E0-H5C    |
 | D-029  | DECISIÓN           | Auto-mutación prohibida; admin no gestiona owner/admin; último owner protegido              | ACEPTADA E0-H5C    |
 | D-030  | DECISIÓN           | Cambio de rol o revocación invalida sesiones y snapshot idempotente en una transacción      | ACEPTADA E0-H5C    |
+| D-031  | DECISIÓN           | Repositorio canónico `Proyectokolectivo1/automatizacion-shopify`, rama remota `main`        | ACEPTADA           |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE          |

@@ -6,6 +6,8 @@ Actualizado: 2026-07-14
 | ---------- | -------------- | ---------------------------------------------------------------- | -------------------------- |
 | DOC-001    | P0             | Incorporar y revisar el prompt maestro suministrado              | COMPLETADA                 |
 | DOC-002    | P0             | Resumen vivo de propósito, avance y trabajo pendiente            | COMPLETADA                 |
+| DOC-003    | P0             | Publicar código, plan y controles en GitHub                      | COMPLETADA                 |
+| SEC-001    | P0 seguridad   | Revocar PAT expuesto en conversación                             | PENDIENTE_USUARIO          |
 | E0-H1      | P0             | Monorepo, estándares, CI y shells ejecutables                    | COMPLETADA                 |
 | E0-H2      | P0             | Compose PostgreSQL + Redis + MinIO y health checks               | COMPLETADA                 |
 | E0-H3      | P0             | Pino, correlation ID, errores, métricas y readiness              | COMPLETADA                 |

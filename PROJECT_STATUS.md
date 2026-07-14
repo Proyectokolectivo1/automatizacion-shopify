@@ -6,6 +6,9 @@ Actualizado: 2026-07-14
 
 `EN_DESARROLLO` — fundaciones funcionales en progreso; no listo para piloto ni producción.
 
+Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama
+`main`. Plan, resumen, controles y código están publicados.
+
 ## Fase actual
 
 Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 Shopify simulado.
@@ -66,6 +69,7 @@ Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 
 
 ## Bloqueos
 
+- `BLOQUEADO_POR_SEGURIDAD`: el PAT enviado por conversación debe revocarse; no fue usado ni subido.
 - `BLOQUEADO_POR_CREDENCIALES`: Shopify development, Wompi sandbox y Meta no suministrados.
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox Mastershop no suministrados.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de impresoras no suministrados.
