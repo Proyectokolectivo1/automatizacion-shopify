@@ -28,6 +28,11 @@ import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { OutboxQueueService } from './outbox/outbox-queue.service';
 import { DlqOperationsController } from './outbox/dlq-operations.controller';
 import { DlqOperationsService } from './outbox/dlq-operations.service';
+import { ShopifyCredentialCipher } from './shopify/shopify-credential-cipher';
+import { ShopifyIntegrationController } from './shopify/shopify-integration.controller';
+import { ShopifyIntegrationService } from './shopify/shopify-integration.service';
+import { ShopifyMockProvider } from './shopify/shopify-mock.provider';
+import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
 
 @Module({
   controllers: [
@@ -36,6 +41,7 @@ import { DlqOperationsService } from './outbox/dlq-operations.service';
     HealthController,
     IdentityAdministrationController,
     MetricsController,
+    ShopifyIntegrationController,
   ],
   providers: [
     EnvironmentService,
@@ -59,6 +65,10 @@ import { DlqOperationsService } from './outbox/dlq-operations.service';
     OutboxQueueService,
     OutboxPublisherService,
     DlqOperationsService,
+    ShopifyCredentialCipher,
+    ShopifyIntegrationService,
+    ShopifyMockProvider,
+    { provide: SHOPIFY_PROVIDER, useExisting: ShopifyMockProvider },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })

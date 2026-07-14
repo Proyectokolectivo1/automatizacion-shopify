@@ -98,6 +98,7 @@ describe('initial database migration', () => {
           'auth_rate_limits',
           'audit_logs',
           'account_action_tokens',
+          'integration_connections',
         ],
       ],
     );
@@ -107,6 +108,7 @@ describe('initial database migration', () => {
       'auth_rate_limits',
       'auth_sessions',
       'idempotency_keys',
+      'integration_connections',
       'job_executions',
       'organization_memberships',
       'organizations',
@@ -118,7 +120,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('6');
+    expect(migrations.rows[0]?.count).toBe('8');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -188,6 +190,50 @@ describe('initial database migration', () => {
         values,
       ),
     ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('enforces tenant ownership and encrypted credential envelope shape', async () => {
+    const first = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Integration Owner') RETURNING id`,
+    );
+    const second = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Foreign Integration Owner') RETURNING id`,
+    );
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'Encrypted Store', 'encrypted-store.myshopify.com', 'America/Bogota', 'COP')
+       RETURNING id`,
+      [first.rows[0]?.id],
+    );
+    const validEnvelope = {
+      authTag: 'encoded-auth-tag',
+      ciphertext: 'encoded-ciphertext',
+      iv: 'encoded-iv',
+      version: 'v1',
+    };
+    await database.query(
+      `INSERT INTO integration_connections
+       (organization_id, store_id, provider, display_name, encrypted_credentials)
+       VALUES ($1, $2, 'shopify', 'Encrypted connection', $3::jsonb)`,
+      [first.rows[0]?.id, store.rows[0]?.id, JSON.stringify(validEnvelope)],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO integration_connections
+         (organization_id, store_id, provider, display_name, encrypted_credentials)
+         VALUES ($1, $2, 'wompi', 'Cross tenant', $3::jsonb)`,
+        [second.rows[0]?.id, store.rows[0]?.id, JSON.stringify(validEnvelope)],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      database.query(
+        `INSERT INTO integration_connections
+         (organization_id, store_id, provider, display_name, encrypted_credentials)
+         VALUES ($1, $2, 'wompi', 'Plain credential', $3::jsonb)`,
+        [first.rows[0]?.id, store.rows[0]?.id, JSON.stringify({ accessToken: 'plaintext' })],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
   });
 
   it('enforces outbox retry counters and published-state consistency', async () => {

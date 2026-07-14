@@ -260,3 +260,34 @@ Fecha: 2026-07-14.
   `apps/api/src/generated/prisma` y `pnpm validate` lo regeneró correctamente.
 - Resultado: formatter, lint, typecheck, 24 pruebas unitarias con 100 % de cobertura y builds API/web
   en verde.
+
+## Iteración E1-H1A
+
+Fecha: 2026-07-14.
+
+| Validación                    | Comando                                         | Resultado                            |
+| ----------------------------- | ----------------------------------------------- | ------------------------------------ |
+| Quality gate completo         | `pnpm validate`                                 | OK, format/lint/typecheck/test/build |
+| Contrato, cifrado y controles | `pnpm test`                                     | OK, 30/30; cobertura incluida 100 %  |
+| Shopify HTTP + PostgreSQL     | `pnpm shopify:verify`                           | OK, 4/4                              |
+| Migraciones y constraints     | `pnpm database:verify`                          | OK, 6/6; ocho migraciones, sin drift |
+| Esquema local                 | `pnpm database:migrate && pnpm database:status` | OK, actualizado                      |
+| Lint y tipos API              | scripts del paquete                             | OK                                   |
+
+Regresión completa: integración HTTP, outbox, DLQ, auth, identidad y observabilidad en verde.
+`pnpm audit --prod` reportó cero vulnerabilidades e `pnpm infra:verify` conservó persistencia y salud.
+
+La suite prueba registro concurrente, replay, duplicado, SSRF, RBAC, tenant ajeno, ciphertext sin
+token, AAD, keyring v1→v2, prueba saludable, activación, desactivación, rotación, mock inválido,
+auditoría, métricas, flags y kill switch. No realizó tráfico externo.
+
+Fallos encontrados y corregidos:
+
+1. Prisma esperaba otro nombre para la FK compuesta; se fijó el nombre explícito y quedó sin drift.
+2. El primer constraint aceptaba campos JSON adicionales; una migración correctiva forward-only exige
+   exactamente `version`, `iv`, `authTag` y `ciphertext`.
+3. PostgreSQL no ofrece `jsonb_object_length` en este entorno; el chequeo se reescribió con operadores
+   de existencia y resta de claves. La migración fallida local se marcó rollback y se reaplicó verde.
+
+E1-H1A está completa solo en simulación. La conexión real permanece
+`BLOQUEADO_POR_CREDENCIALES`; la siguiente vertical es E1-H2A.

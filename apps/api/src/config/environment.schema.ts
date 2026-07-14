@@ -63,6 +63,11 @@ export const environmentSchema = z.object({
   REDIS_HOST: nonEmpty,
   REDIS_PASSWORD: nonEmpty,
   REDIS_PORT: port,
+  SHOPIFY_CREDENTIAL_KEY_VERSION: optionalTrimmed(z.string().regex(/^v[1-9][0-9]*$/u)),
+  SHOPIFY_CREDENTIAL_KEYS_JSON: optionalTrimmed(z.string().max(8_192)),
+  SHOPIFY_INTEGRATIONS_ENABLED: booleanFlag('false'),
+  SHOPIFY_INTEGRATIONS_KILL_SWITCH: booleanFlag('true'),
+  SHOPIFY_SIMULATION_MODE: booleanFlag('true'),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

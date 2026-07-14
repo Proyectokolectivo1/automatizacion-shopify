@@ -11,6 +11,7 @@ export class MetricsService {
   private readonly authEvents: Counter<'event' | 'outcome'>;
   private readonly outboxOperations: Counter<'action' | 'outcome'>;
   private readonly identityOperations: Counter<'action' | 'outcome'>;
+  private readonly shopifyOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -57,6 +58,12 @@ export class MetricsService {
       name: 'ecommerce_api_identity_operations_total',
       registers: [this.registry],
     });
+    this.shopifyOperations = new Counter({
+      help: 'Operaciones acotadas sobre integraciones Shopify por resultado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_shopify_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -88,6 +95,10 @@ export class MetricsService {
 
   public recordIdentityOperation(action: string, outcome: string): void {
     this.identityOperations.inc({ action, outcome });
+  }
+
+  public recordShopifyOperation(action: string, outcome: string): void {
+    this.shopifyOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

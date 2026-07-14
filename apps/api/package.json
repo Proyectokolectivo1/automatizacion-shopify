@@ -19,6 +19,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:identity": "pnpm prisma:generate && vitest run --config vitest.identity.config.ts",
     "test:outbox": "pnpm prisma:generate && vitest run --config vitest.outbox.config.ts",
+    "test:shopify": "pnpm prisma:generate && vitest run --config vitest.shopify.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {

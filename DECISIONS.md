@@ -35,6 +35,8 @@ Actualizado: 2026-07-14
 | D-029  | DECISIÓN           | Auto-mutación prohibida; admin no gestiona owner/admin; último owner protegido              | ACEPTADA E0-H5C    |
 | D-030  | DECISIÓN           | Cambio de rol o revocación invalida sesiones y snapshot idempotente en una transacción      | ACEPTADA E0-H5C    |
 | D-031  | DECISIÓN           | Repositorio canónico `Proyectokolectivo1/automatizacion-shopify`, rama remota `main`        | ACEPTADA           |
+| D-032  | DECISIÓN           | Credenciales Shopify usan AES-256-GCM, AAD tenant+tienda y keyring versionado fuera de DB   | ACEPTADA E1-H1A    |
+| D-033  | DECISIÓN           | Solo mock Shopify v1 está vinculado; modo no simulado falla cerrado hasta adaptador real    | ACEPTADA E1-H1A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                     | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                         | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                               | PENDIENTE          |

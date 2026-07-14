@@ -38,6 +38,9 @@ describe('parseEnvironment', () => {
       OUTBOX_OPERATIONS_KILL_SWITCH: true,
       POSTGRES_PORT: 5433,
       REDIS_PORT: 6380,
+      SHOPIFY_INTEGRATIONS_ENABLED: false,
+      SHOPIFY_INTEGRATIONS_KILL_SWITCH: true,
+      SHOPIFY_SIMULATION_MODE: true,
     });
     expect(parseEnvironment({ ...validEnvironment, MINIO_USE_SSL: 'true' }).MINIO_USE_SSL).toBe(
       true,

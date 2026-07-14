@@ -11,22 +11,22 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 Shopify simulado.
+Fase 2 — Shopify simulado. E1-H1A completada; siguiente vertical E1-H2A webhook simulado.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                            |
-| ------------------------ | -----: | ---------------------------------------------------- |
-| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                |
-| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual |
-| E2 Pagos y tarifas       |    0 % | pendiente                                            |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                           |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                 |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                   |
-| E6 Operación y dashboard |    0 % | pendiente                                            |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                       |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución    |
-| E9 Producción            |    0 % | no autorizada                                        |
+| Épica                    | Avance | Evidencia                                                |
+| ------------------------ | -----: | -------------------------------------------------------- |
+| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                    |
+| E1 Shopify               |   15 % | registro/mock/cifrado completos; conexión real bloqueada |
+| E2 Pagos y tarifas       |    0 % | pendiente                                                |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                               |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                     |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                       |
+| E6 Operación y dashboard |    0 % | pendiente                                                |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                           |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución        |
+| E9 Producción            |    0 % | no autorizada                                            |
 
 ## Diagnóstico inicial
 
@@ -56,10 +56,12 @@ Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 
 - Auditoría, métricas, flag y kill switch de operaciones cerrados por defecto.
 - E0-H5C: bootstrap local del primer owner y administración tenant-safe de membresías/roles.
 - Locks serializables, idempotencia, último owner, jerarquía y revocación de sesiones probados.
+- E1-H1A: registro tenant-safe, mock Shopify v1, cifrado AES-256-GCM y ciclo de vida de tiendas.
+- Rotación versionada, SSRF, duplicados, replay, RBAC, auditoría, métricas, flags y kill switch probados.
 
 ## Siguiente vertical
 
-- E1-H1A: registro de integraciones y gestión Shopify con adaptador/mock contractual.
+- E1-H2A: recepción de webhook Shopify simulada con HMAC, idempotencia, persistencia y cola.
 
 ## Pendiente
 
@@ -83,14 +85,15 @@ Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 
 
 ## Pruebas
 
-- `pnpm test`: 24 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 30 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 5 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
+- `pnpm database:verify`: 6 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
 - `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
+- `pnpm shopify:verify`: 4 pruebas PostgreSQL/HTTP de registro, cifrado, tenant y ciclo de vida.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
@@ -100,7 +103,7 @@ Fase 1 — Fundaciones funcionales completadas salvo E0-H3B. Siguiente fase: E1 
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Seis migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
+- Ocho migraciones expand-only están verificadas desde vacío y aplicadas al esquema local.
 
 ## Deuda técnica
 
@@ -109,5 +112,5 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E1-H1A: registro seguro de integraciones y tiendas Shopify mediante adaptador, mock,
-fixtures y pruebas contractuales. No habilitar credenciales ni despliegues reales.
+Implementar E1-H2A: ingreso de webhooks Shopify con secreto simulado, validación HMAC sobre cuerpo
+crudo, idempotencia durable, outbox/cola y fixtures. No registrar webhooks ni llamar Shopify real.

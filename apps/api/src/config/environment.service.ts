@@ -161,6 +161,22 @@ export class EnvironmentService {
     };
   }
 
+  public get shopify(): Readonly<{
+    credentialKeyVersion: string | undefined;
+    credentialKeysJson: string | undefined;
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      credentialKeyVersion: this.values.SHOPIFY_CREDENTIAL_KEY_VERSION,
+      credentialKeysJson: this.values.SHOPIFY_CREDENTIAL_KEYS_JSON,
+      enabled: this.values.SHOPIFY_INTEGRATIONS_ENABLED,
+      killSwitch: this.values.SHOPIFY_INTEGRATIONS_KILL_SWITCH,
+      simulationMode: this.values.SHOPIFY_SIMULATION_MODE,
+    };
+  }
+
   public get minioHealthUrl(): string {
     const protocol = this.values.MINIO_USE_SSL ? 'https' : 'http';
     return `${protocol}://${this.values.MINIO_HOST}:${this.values.MINIO_API_PORT}/minio/health/ready`;

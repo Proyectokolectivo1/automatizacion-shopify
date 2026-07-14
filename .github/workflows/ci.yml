@@ -54,6 +54,9 @@ jobs:
       - name: Verify owner bootstrap and identity administration
         run: pnpm identity:verify
 
+      - name: Verify simulated Shopify integration registry
+        run: pnpm shopify:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

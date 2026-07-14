@@ -16,8 +16,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 1G   | E0-H5B invitación y recuperación   | COMPLETADA                 | tokens de un uso y correo simulado probados               |
 | 1H   | E0-H4C operaciones de DLQ          | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
 | 1I   | E0-H5C administración de identidad | COMPLETADA                 | bootstrap y cambios de rol seguros/auditados              |
-| 2A   | E1-H1A registro/tiendas Shopify    | SIGUIENTE                  | mock contractual, token cifrado y ciclo de vida probado   |
-| 2B   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
+| 2A   | E1-H1A registro/tiendas Shopify    | COMPLETADA                 | mock contractual, token cifrado y ciclo de vida probado   |
+| 2B   | E1-H2A webhook Shopify simulado    | SIGUIENTE                  | HMAC, idempotencia, persistencia y cola probados          |
+| 2C   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
@@ -106,3 +107,14 @@ Crear el registro de integraciones y el ciclo de vida mínimo de tiendas Shopify
 credenciales, entregar interfaz/adaptador, mock determinista, fixtures y pruebas de contrato; cifrar
 tokens en reposo con claves versionadas, no exponerlos y mantener conexión real desactivada mediante
 flag, simulación y kill switch. Probar tenant, duplicados, rotación, activar/desactivar y auditoría.
+
+Resultado: completada el 2026-07-14. Dos migraciones agregan y endurecen el registro tenant-safe; el token
+se cifra con AES-256-GCM/AAD y keyring versionado. Treinta pruebas unitarias y cuatro pruebas
+PostgreSQL/HTTP cubren mock, flags, SSRF, duplicados, concurrencia, replay, RBAC, tenant, rotación,
+salud, activación/desactivación, auditoría y métricas. No hubo tráfico a Shopify.
+
+## Undécima vertical: E1-H2A
+
+Recibir fixtures de webhooks Shopify en modo simulado: preservar cuerpo crudo, validar HMAC con
+secreto cifrado/versionado, deduplicar por tienda/topic/webhook, persistir recepción y outbox en una
+transacción, responder rápido y procesar en cola. La suscripción real queda bloqueada.

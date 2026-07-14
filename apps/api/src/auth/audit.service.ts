@@ -45,5 +45,8 @@ export class AuditService {
     if (event.action.startsWith('identity.')) {
       this.metrics.recordIdentityOperation(event.action, event.outcome.toLowerCase());
     }
+    if (event.action.startsWith('shopify.')) {
+      this.metrics.recordShopifyOperation(event.action, event.outcome.toLowerCase());
+    }
   }
 }

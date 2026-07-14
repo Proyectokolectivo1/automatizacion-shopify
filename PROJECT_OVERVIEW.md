@@ -31,9 +31,9 @@ Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 El código, el plan de trabajo y los documentos vivos están publicados en el repositorio público
 <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
 
-Las fundaciones están aproximadamente al 98 %. Ya existe un monorepo reproducible con CI, entorno
-local, observabilidad, persistencia transaccional y entrega asíncrona base. Todavía no existen flujos de negocio utilizables por
-operadores ni conexiones reales con proveedores.
+Las fundaciones están aproximadamente al 98 % y Shopify al 15 %. Ya existe un monorepo reproducible
+con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
+Shopify simulado. Todavía no existen flujos de pedidos utilizables ni conexiones reales.
 
 ## Implementado
 
@@ -64,6 +64,9 @@ operadores ni conexiones reales con proveedores.
 - Bootstrap local, concurrente y fail-closed del primer owner, sin argumentos ni secretos persistidos.
 - API owner/admin para listar membresías, cambiar roles y revocar acceso con locks, idempotencia,
   protección del último owner e invalidación transaccional de sesiones.
+- Registro owner/admin de tiendas Shopify con dominio canónico, tenant isolation y snapshot idempotente.
+- Token Shopify cifrado con AES-256-GCM, AAD tenant+tienda, keyring versionado y rotación comprobada.
+- Mock contractual v1 para probar, activar y desactivar, marcado siempre como simulación y cerrado por flags.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -75,7 +78,7 @@ operadores ni conexiones reales con proveedores.
 
 ### Shopify
 
-- Gestión y conexión de tiendas.
+- Conexión real y registro remoto de tiendas; la gestión simulada ya está implementada.
 - Validación HMAC y recepción idempotente de webhooks.
 - Sincronización de pedidos, clientes e inventario.
 - Clasificación, timeline y conciliación de pedidos.
@@ -123,9 +126,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E1-H1A: registro seguro de integraciones y ciclo de vida de tiendas Shopify con adaptador, mock,
-fixtures, prueba contractual, cifrado de token, flags, simulación y kill switch. La conexión real
-permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
+E1-H2A: webhook Shopify simulado con cuerpo crudo, HMAC, idempotencia, persistencia, outbox, cola y
+fixtures. La suscripción/conexión real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
 
 ## Dónde consultar más detalle
 

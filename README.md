@@ -50,6 +50,7 @@ pnpm outbox:verify
 pnpm dlq:verify
 pnpm auth:verify
 pnpm identity:verify
+pnpm shopify:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero

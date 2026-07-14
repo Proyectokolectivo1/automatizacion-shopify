@@ -17,6 +17,38 @@ enum StoreStatus {
   @@map("store_status")
 }
 
+enum IntegrationProvider {
+  SHOPIFY        @map("shopify")
+  WOMPI          @map("wompi")
+  MASTERSHOP     @map("mastershop")
+  WHATSAPP       @map("whatsapp")
+  META_ADS       @map("meta_ads")
+  GOOGLE_ADS     @map("google_ads")
+  TIKTOK_ADS     @map("tiktok_ads")
+  EMAIL          @map("email")
+  OBJECT_STORAGE @map("object_storage")
+
+  @@map("integration_provider")
+}
+
+enum IntegrationStatus {
+  PENDING  @map("pending")
+  TESTED   @map("tested")
+  ACTIVE   @map("active")
+  DISABLED @map("disabled")
+  ERROR    @map("error")
+
+  @@map("integration_status")
+}
+
+enum IntegrationHealthStatus {
+  UNKNOWN   @map("unknown")
+  HEALTHY   @map("healthy")
+  UNHEALTHY @map("unhealthy")
+
+  @@map("integration_health_status")
+}
+
 enum IdempotencyStatus {
   PROCESSING @map("processing")
   COMPLETED  @map("completed")
@@ -87,19 +119,20 @@ enum AccountActionPurpose {
 }
 
 model Organization {
-  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                String                   @db.VarChar(160)
-  timezone            String                   @default("America/Bogota") @db.VarChar(64)
-  defaultCurrency     String                   @default("COP") @map("default_currency") @db.Char(3)
-  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  stores              Store[]
-  memberships         OrganizationMembership[]
-  sessions            AuthSession[]
-  auditLogs           AuditLog[]
-  accountActionTokens AccountActionToken[]
-  outboxEvents        OutboxEvent[]
-  jobExecutions       JobExecution[]
+  id                     String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String                   @db.VarChar(160)
+  timezone               String                   @default("America/Bogota") @db.VarChar(64)
+  defaultCurrency        String                   @default("COP") @map("default_currency") @db.Char(3)
+  createdAt              DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stores                 Store[]
+  memberships            OrganizationMembership[]
+  sessions               AuthSession[]
+  auditLogs              AuditLog[]
+  accountActionTokens    AccountActionToken[]
+  outboxEvents           OutboxEvent[]
+  jobExecutions          JobExecution[]
+  integrationConnections IntegrationConnection[]
 
   @@map("organizations")
 }
@@ -222,21 +255,46 @@ model AccountActionToken {
 }
 
 model Store {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId    String       @map("organization_id") @db.Uuid
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  name              String       @db.VarChar(160)
-  shopifyShopDomain String       @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
-  status            StoreStatus  @default(PENDING)
-  timezone          String       @db.VarChar(64)
-  currency          String       @db.Char(3)
-  settingsJson      Json         @default("{}") @map("settings_json") @db.JsonB
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt         DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String                  @map("organization_id") @db.Uuid
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name                   String                  @db.VarChar(160)
+  shopifyShopDomain      String                  @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
+  status                 StoreStatus             @default(PENDING)
+  timezone               String                  @db.VarChar(64)
+  currency               String                  @db.Char(3)
+  settingsJson           Json                    @default("{}") @map("settings_json") @db.JsonB
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  integrationConnections IntegrationConnection[]
 
+  @@unique([organizationId, id], map: "stores_organization_id_id_key")
   @@index([organizationId, status], map: "stores_organization_status_idx")
   @@index([createdAt], map: "stores_created_at_idx")
   @@map("stores")
+}
+
+model IntegrationConnection {
+  id                       String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String                  @map("organization_id") @db.Uuid
+  storeId                  String                  @map("store_id") @db.Uuid
+  provider                 IntegrationProvider
+  displayName              String                  @map("display_name") @db.VarChar(160)
+  status                   IntegrationStatus       @default(PENDING)
+  encryptedCredentialsJson Json                    @map("encrypted_credentials") @db.JsonB
+  configJson               Json                    @default("{}") @map("config_json") @db.JsonB
+  lastHealthCheckAt        DateTime?               @map("last_health_check_at") @db.Timestamptz(3)
+  lastHealthStatus         IntegrationHealthStatus @default(UNKNOWN) @map("last_health_status")
+  credentialRotatedAt      DateTime?               @map("credential_rotated_at") @db.Timestamptz(3)
+  createdAt                DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization             Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                    Store                   @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "integration_connections_store_tenant_fkey")
+
+  @@unique([storeId, provider], map: "integration_connections_store_provider_key")
+  @@index([organizationId, provider, status], map: "integration_connections_organization_provider_status_idx")
+  @@index([status, lastHealthCheckAt], map: "integration_connections_health_idx")
+  @@map("integration_connections")
 }
 
 model IdempotencyKey {

@@ -42,6 +42,7 @@
     "observability:verify": "node scripts/verify-observability.mjs",
     "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",
     "prisma:generate": "pnpm --filter @ecommerce/api prisma:generate",
+    "shopify:verify": "pnpm --filter @ecommerce/api test:shopify",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",

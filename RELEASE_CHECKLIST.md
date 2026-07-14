@@ -13,7 +13,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
-- [ ] Flags, simulación y kill switches de outbox/correo/identidad verificados; faltan proveedores.
+- [ ] Flags, simulación y kill switches de outbox/correo/identidad/Shopify verificados; faltan proveedores reales.
 - [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
 - [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
 - [ ] Backups y restauración con evidencia y tiempos medidos.
@@ -36,6 +36,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
 - [x] Invitación y recuperación seguras con replay, expiración y controles fail-closed probados.
 - [x] Administración de roles y bootstrap inicial seguros, idempotentes y auditados.
+- [x] Registro Shopify simulado tenant-safe, cifrado, idempotente, auditable y fail-closed.
 - [ ] Mecanismo UI cookie/CSRF y MFA definidos y probados.
 - [x] Inspección/reproceso manual de DLQ autenticado, aislado, idempotente y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.

@@ -35,7 +35,9 @@ export class RbacGuard implements CanActivate {
             ? 'outbox.dlq.access_denied'
             : permission === 'identity.manage'
               ? 'identity.access_denied'
-              : 'authorization.denied',
+              : permission === 'integration.manage'
+                ? 'shopify.integration.access_denied'
+                : 'authorization.denied',
         actorUserId: principal?.userId,
         metadata: { permission },
         organizationId: principal?.organizationId,
