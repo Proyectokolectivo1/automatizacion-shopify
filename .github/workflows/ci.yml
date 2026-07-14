@@ -45,6 +45,9 @@ jobs:
       - name: Verify transactional outbox and queues
         run: pnpm outbox:verify
 
+      - name: Verify tenant-safe DLQ operations
+        run: pnpm dlq:verify
+
       - name: Verify authentication, sessions and RBAC
         run: pnpm auth:verify
 

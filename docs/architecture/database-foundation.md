@@ -3,6 +3,7 @@
 ```mermaid
 erDiagram
     ORGANIZATIONS ||--o{ STORES : owns
+    ORGANIZATIONS ||--o{ OUTBOX_EVENTS : owns
     ORGANIZATIONS {
       uuid id PK
       varchar name
@@ -27,11 +28,13 @@ erDiagram
     }
     OUTBOX_EVENTS {
       uuid id PK
+      uuid organization_id FK
       uuid aggregate_id
       varchar event_type
       outbox_status status
       timestamptz available_at
       int attempt_count
+      int delivery_version
     }
 ```
 

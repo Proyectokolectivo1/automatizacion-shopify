@@ -14,6 +14,7 @@
     "test": "vitest run --coverage",
     "test:auth": "pnpm prisma:generate && vitest run --config vitest.auth.config.ts",
     "test:database": "pnpm prisma:generate && vitest run --config vitest.database.config.ts",
+    "test:dlq": "pnpm prisma:generate && vitest run --config vitest.dlq.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:outbox": "pnpm prisma:generate && vitest run --config vitest.outbox.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"

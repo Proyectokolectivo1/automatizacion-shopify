@@ -39,5 +39,8 @@ export class AuditService {
     if (event.action.startsWith('auth.') || event.action.startsWith('authorization.')) {
       this.metrics.recordAuth(event.action, event.outcome.toLowerCase());
     }
+    if (event.action.startsWith('outbox.dlq.')) {
+      this.metrics.recordOutboxOperation(event.action, event.outcome.toLowerCase());
+    }
   }
 }

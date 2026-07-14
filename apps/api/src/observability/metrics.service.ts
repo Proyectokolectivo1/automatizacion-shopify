@@ -9,6 +9,7 @@ export class MetricsService {
   private readonly dependencyReady: Gauge<'dependency'>;
   private readonly outboxEvents: Counter<'outcome'>;
   private readonly authEvents: Counter<'event' | 'outcome'>;
+  private readonly outboxOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -43,6 +44,12 @@ export class MetricsService {
       name: 'ecommerce_api_auth_events_total',
       registers: [this.registry],
     });
+    this.outboxOperations = new Counter({
+      help: 'Operaciones acotadas sobre la cola de eventos fallidos.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_outbox_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -66,6 +73,10 @@ export class MetricsService {
 
   public recordAuth(event: string, outcome: string): void {
     this.authEvents.inc({ event, outcome });
+  }
+
+  public recordOutboxOperation(action: string, outcome: string): void {
+    this.outboxOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

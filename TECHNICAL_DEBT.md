@@ -1,6 +1,6 @@
 # Deuda técnica
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 No se registra como deuda lo que pertenece a una vertical futura; se registra como backlog.
 
@@ -14,6 +14,7 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
 | TD-007 | Prisma tooling requiere override de Hono 1.19.13     | Bajo    | Retirar cuando Prisma lo resuelva transitivamente     |
 | TD-008 | Sesiones expiradas/revocadas aún no se archivan      | Bajo    | Definir retención y limpieza con la política legal    |
 | TD-009 | Tokens de cuenta terminales aún no se purgan         | Bajo    | Añadir job tras aprobar retención legal DP-003        |
+| TD-010 | Checks ownership legacy aún están `NOT VALID`        | Medio   | Verificar cero nulos y validar en migración contract  |
 
 ## Deuda resuelta
 
@@ -22,3 +23,4 @@ No se registra como deuda lo que pertenece a una vertical futura; se registra co
 - E0-H4A no deja cliente generado versionado: `prisma generate` forma parte obligatoria de build y
   pruebas, evitando artefactos derivados obsoletos en Git.
 - E0-H4B eliminó el pool PostgreSQL paralelo del readiness; API y health comparten el lifecycle Prisma.
+- E0-H4C eliminó la colisión de replay BullMQ mediante versiones de entrega independientes.

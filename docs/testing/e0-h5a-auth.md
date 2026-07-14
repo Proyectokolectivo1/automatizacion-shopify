@@ -2,7 +2,7 @@
 
 Actualizado: 2026-07-12
 
-`pnpm auth:verify` crea una base PostgreSQL temporal, aplica las cuatro migraciones y levanta la API.
+`pnpm auth:verify` crea una base PostgreSQL temporal, aplica todas las migraciones vigentes y levanta la API.
 Verifica seis escenarios:
 
 - Argon2id y persistencia exclusiva de hashes de tokens;

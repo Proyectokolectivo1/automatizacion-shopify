@@ -82,6 +82,7 @@ export class FoundationTransactionService {
                 aggregateType: 'organization',
                 correlationId: command.correlationId,
                 eventType: 'foundation.organization.created',
+                organizationId: organization.id,
                 payloadJson: {
                   organizationId: organization.id,
                   schemaVersion: 1,

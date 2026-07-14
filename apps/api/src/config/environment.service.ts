@@ -129,6 +129,13 @@ export class EnvironmentService {
     };
   }
 
+  public get outboxOperations(): Readonly<{ enabled: boolean; killSwitch: boolean }> {
+    return {
+      enabled: this.values.OUTBOX_OPERATIONS_ENABLED,
+      killSwitch: this.values.OUTBOX_OPERATIONS_KILL_SWITCH,
+    };
+  }
+
   public get minioHealthUrl(): string {
     const protocol = this.values.MINIO_USE_SSL ? 'https' : 'http';
     return `${protocol}://${this.values.MINIO_HOST}:${this.values.MINIO_API_PORT}/minio/health/ready`;

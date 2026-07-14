@@ -1,6 +1,6 @@
 # Seguridad de autenticación
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 - Argon2id v1: 19 MiB, 2 iteraciones, paralelismo 1, salida 32 bytes y parámetros versionados.
 - Password de API: 12 a 128 caracteres; salt generado por Argon2.
@@ -13,5 +13,7 @@ Actualizado: 2026-07-13
 - RBAC default-deny, tenant en backend y jerarquía de invitación sin escalamiento.
 - Auditoría/métricas sin correo, IP, Authorization, password ni token.
 - Acciones de cuenta y correo desactivados/kill-switch activo por defecto; modo real sin proveedor falla cerrado.
+- Operaciones DLQ requieren permiso `outbox.manage`, tenant coincidente y controles fail-closed.
+- La API DLQ no devuelve payload y guarda la clave idempotente solo como SHA-256; cada acción se audita.
 
 La API presupone HTTPS en despliegue. La UI futura no debe usar `localStorage`; cookie/CSRF, proxy confiable, bootstrap controlado del primer owner y MFA deberán resolverse antes del piloto.

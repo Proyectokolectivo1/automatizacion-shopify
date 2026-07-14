@@ -1,6 +1,6 @@
 # Reporte de pruebas
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 ## Baseline inicial
 
@@ -175,3 +175,33 @@ invitación y recuperación se completan en la iteración siguiente.
 
 El correo real, el bootstrap del primer owner y la administración general de roles no se presentan
 como terminados. DP-001 sigue bloqueada y E0-H4C es la siguiente vertical.
+
+## Iteración E0-H4C
+
+| Validación                   | Comando                | Resultado                                     |
+| ---------------------------- | ---------------------- | --------------------------------------------- |
+| Quality gate completo        | `pnpm validate`        | OK; format, lint, tipos, 19 unitarias y build |
+| Migración/constraints        | `pnpm database:verify` | OK, 5/5; seis migraciones y sin drift         |
+| Outbox/worker                | `pnpm outbox:verify`   | OK, 4/4; evento y ejecución llegan a DLQ      |
+| Operaciones HTTP/PG/Redis    | `pnpm dlq:verify`      | OK, 5/5                                       |
+| Paginación/redacción         | API real               | OK, tenant propio y sin payload/PII           |
+| RBAC/tenant                  | owner/read-only/ajeno  | OK, 200/403/403 y auditoría                   |
+| Idempotencia/respuesta caída | requests concurrentes  | OK, mismo 202/snapshot y un solo efecto       |
+| Carrera entre operadores     | claves distintas       | OK, exactamente un 202 y un 409               |
+| Entrega nueva                | PostgreSQL + BullMQ    | OK, `eventId-v2`, sin colisión con v1         |
+| Flags/kill switch            | unitarias              | OK, 503 cuando cualquiera cierra la operación |
+| Auditoría/métricas           | PostgreSQL/Prometheus  | OK, labels acotadas y clave original ausente  |
+| Backfill local               | consulta SQL           | OK, 0 eventos/jobs sin ownership              |
+
+### Fallos encontrados y corregidos
+
+1. BullMQ rechazó `:` en IDs personalizados; la versión de entrega usa el separador permitido `-v`.
+2. El worker cambiaba `published → dead_letter` sin limpiar `published_at`, violando el check SQL;
+   ambos estados durables se actualizan ahora dentro de una transacción compatible con constraints.
+3. El reloj host estaba varios segundos adelantado frente a PostgreSQL; usar `new Date()` dejaba el
+   replay pendiente en el futuro. La transición usa `NOW()` de la base bloqueada.
+4. Las ejecuciones antiguas podían colisionar con un replay usando el UUID original. Cada reproceso
+   incrementa `delivery_version`; los jobs tardíos no cambian una generación posterior.
+
+No se usaron proveedores ni credenciales externas. E0-H4C queda completa; E0-H5C es la siguiente
+vertical y E0-H3B continúa pendiente.

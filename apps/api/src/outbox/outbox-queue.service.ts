@@ -12,7 +12,7 @@ export class OutboxQueueService implements OnModuleDestroy {
 
   public async enqueue(data: OutboxJobData): Promise<void> {
     this.queue ??= this.createQueue();
-    await this.queue.add(data.eventType, data, { jobId: data.eventId });
+    await this.queue.add(data.eventType, data, { jobId: data.deliveryId });
   }
 
   public async onModuleDestroy(): Promise<void> {

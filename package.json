@@ -27,6 +27,7 @@
     "database:migrate": "pnpm --filter @ecommerce/api database:migrate",
     "database:status": "pnpm --filter @ecommerce/api database:status",
     "database:verify": "pnpm --filter @ecommerce/api test:database",
+    "dlq:verify": "pnpm --filter @ecommerce/api test:dlq",
     "dev": "turbo run dev --parallel",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

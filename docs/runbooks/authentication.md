@@ -2,7 +2,7 @@
 
 Actualizado: 2026-07-13
 
-Ejecute `pnpm auth:verify` para crear una base temporal, aplicar cinco migraciones, iniciar la API y verificar sesiones, RBAC, invitaciones y recuperación. La suite usa correo simulado y elimina la base al finalizar.
+Ejecute `pnpm auth:verify` para crear una base temporal, aplicar seis migraciones, iniciar la API y verificar sesiones, RBAC, invitaciones y recuperación. La suite usa correo simulado y elimina la base al finalizar.
 
 Controles seguros por defecto:
 

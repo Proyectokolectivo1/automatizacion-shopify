@@ -1,13 +1,13 @@
 # Checklist de release
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 Estado global: **NO LISTO PARA RELEASE**.
 
 - [ ] Alcance MVP y criterios de aceptación completos.
 - [x] Prompt maestro disponible y requisitos reconciliados.
 - [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes para todo el MVP.
-- [ ] Migraciones expand/contract revisadas y probadas.
+- [ ] Migraciones expand/contract revisadas y probadas; falta validar checks legacy `NOT VALID`.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
 - [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
@@ -34,7 +34,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
 - [x] Invitación y recuperación seguras con replay, expiración y controles fail-closed probados.
 - [ ] Administración de roles, bootstrap inicial y mecanismo UI cookie/CSRF completos.
-- [ ] Inspección/reproceso manual de DLQ autenticado y auditado.
+- [x] Inspección/reproceso manual de DLQ autenticado, aislado, idempotente y auditado.
 - [ ] OpenTelemetry y alertas conectadas a un backend verificable.
 - [ ] Acceso a `/metrics` restringido por red/proxy en producción.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

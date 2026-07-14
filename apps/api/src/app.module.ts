@@ -24,9 +24,11 @@ import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { OutboxQueueService } from './outbox/outbox-queue.service';
+import { DlqOperationsController } from './outbox/dlq-operations.controller';
+import { DlqOperationsService } from './outbox/dlq-operations.service';
 
 @Module({
-  controllers: [AuthController, HealthController, MetricsController],
+  controllers: [AuthController, DlqOperationsController, HealthController, MetricsController],
   providers: [
     EnvironmentService,
     PrismaService,
@@ -47,6 +49,7 @@ import { OutboxQueueService } from './outbox/outbox-queue.service';
     DependencyHealthService,
     OutboxQueueService,
     OutboxPublisherService,
+    DlqOperationsService,
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })

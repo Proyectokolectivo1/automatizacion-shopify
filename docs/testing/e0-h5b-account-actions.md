@@ -13,6 +13,6 @@ Actualizado: 2026-07-13
 - rotación Argon2id, revocación inmediata de sesiones y replay rechazado;
 - auditoría y métricas sin PII ni secretos.
 
-`pnpm database:verify` ejecuta cinco escenarios y valida la quinta migración, shape por propósito, formato SHA-256 y exclusión mutua de consumido/revocado. Las unitarias cubren fixtures de ambos correos y `blocked`/`simulated`/fail-closed.
+`pnpm database:verify` ejecuta cinco escenarios sobre las seis migraciones vigentes y conserva la validación de la quinta migración: shape por propósito, formato SHA-256 y exclusión mutua de consumido/revocado. Las unitarias cubren fixtures de ambos correos y `blocked`/`simulated`/fail-closed.
 
 No se contacta ningún proveedor externo. Las bases y fixtures son efímeros.

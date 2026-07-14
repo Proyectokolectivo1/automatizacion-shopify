@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 ## Estado general
 
@@ -8,22 +8,22 @@ Actualizado: 2026-07-13
 
 ## Fase actual
 
-Fase 1 — Fundaciones. E0-H1 a E0-H5B completadas. Siguiente vertical: E0-H4C.
+Fase 1 — Fundaciones. E0-H1 a E0-H5B y E0-H4C completadas. Siguiente vertical: E0-H5C.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                                           |
-| ------------------------ | -----: | ------------------------------------------------------------------- |
-| E0 Fundaciones           |   90 % | identidad completa; faltan operaciones DLQ, administración y E0-H3B |
-| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual                |
-| E2 Pagos y tarifas       |    0 % | pendiente                                                           |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                                          |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                                |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                                  |
-| E6 Operación y dashboard |    0 % | pendiente                                                           |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                                      |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución                   |
-| E9 Producción            |    0 % | no autorizada                                                       |
+| Épica                    | Avance | Evidencia                                            |
+| ------------------------ | -----: | ---------------------------------------------------- |
+| E0 Fundaciones           |   94 % | DLQ segura completa; faltan administración y E0-H3B  |
+| E1 Shopify               |    0 % | bloqueada por credenciales; aún sin mock contractual |
+| E2 Pagos y tarifas       |    0 % | pendiente                                            |
+| E3 WhatsApp              |    0 % | bloqueada por credenciales                           |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                 |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                   |
+| E6 Operación y dashboard |    0 % | pendiente                                            |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                       |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución    |
+| E9 Producción            |    0 % | no autorizada                                        |
 
 ## Diagnóstico inicial
 
@@ -48,15 +48,18 @@ Fase 1 — Fundaciones. E0-H1 a E0-H5B completadas. Siguiente vertical: E0-H4C.
 - Vinculación segura de cuentas, jerarquía de rol, reset Argon2id y revocación total de sesiones.
 - Migración probada desde vacío, reaplicación no-op, ausencia de drift y cliente Prisma real.
 - Resumen ejecutivo `PROJECT_OVERVIEW.md` creado y exigido como actualización de cada sesión.
+- E0-H4C: ownership por organización, backfill expand-only, entrega BullMQ versionada y DLQ operativa.
+- Consulta paginada/redactada y reproceso idempotente owner/admin con carreras y tenant probados.
+- Auditoría, métricas, flag y kill switch de operaciones cerrados por defecto.
 
 ## Siguiente vertical
 
-- E0-H4C: inspección y reproceso manual auditado de DLQ.
+- E0-H5C: bootstrap inicial y administración auditada de membresías/roles.
 
 ## Pendiente
 
 - OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
-- Administración de roles/bootstrap, reproceso de DLQ e integraciones externas.
+- Administración de roles/bootstrap e integraciones externas.
 - Backups, restore, carga, seguridad, piloto y producción.
 
 ## Bloqueos
@@ -74,19 +77,20 @@ Fase 1 — Fundaciones. E0-H1 a E0-H5B completadas. Siguiente vertical: E0-H4C.
 
 ## Pruebas
 
-- `pnpm test`: 17 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 19 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
 - `pnpm database:verify`: 5 pruebas sobre PostgreSQL real, Prisma, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
+- `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1 a E0-H5B.
+- No hay defectos abiertos en E0-H1 a E0-H5B ni E0-H4C.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Cinco migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
+- Seis migraciones expand-only están aplicadas localmente y `prisma migrate status` confirma esquema al día.
 
 ## Deuda técnica
 
@@ -95,5 +99,5 @@ OpenTelemetry, alertas conectadas ni integraciones.
 
 ## Siguiente paso
 
-Implementar E0-H4C: ownership organizacional explícito en eventos/jobs, consulta paginada de DLQ y
-reproceso idempotente autenticado/auditado. No habilitar proveedores ni despliegues reales.
+Implementar E0-H5C: bootstrap seguro del primer owner y administración de membresías/roles con
+idempotencia, tenant, auditoría y controles fail-closed. No habilitar proveedores ni despliegues reales.

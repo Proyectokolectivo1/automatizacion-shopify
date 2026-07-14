@@ -6,7 +6,7 @@ import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
 import { MetricsService } from '../observability/metrics.service';
 import { OutboxQueueService } from './outbox-queue.service';
-import type { ClaimedOutboxEvent } from './outbox.types';
+import { outboxDeliveryId, type ClaimedOutboxEvent } from './outbox.types';
 
 @Injectable()
 export class OutboxPublisherService implements OnModuleDestroy, OnModuleInit {
@@ -59,7 +59,7 @@ export class OutboxPublisherService implements OnModuleDestroy, OnModuleInit {
       WITH candidates AS (
         SELECT id
         FROM outbox_events
-        WHERE (
+        WHERE organization_id IS NOT NULL AND (
           status IN ('pending', 'failed') AND available_at <= NOW()
         ) OR (
           status = 'processing' AND locked_at < NOW() - (${config.leaseMs} * INTERVAL '1 millisecond')
@@ -74,7 +74,8 @@ export class OutboxPublisherService implements OnModuleDestroy, OnModuleInit {
       FROM candidates
       WHERE event.id = candidates.id
       RETURNING event.id, event.aggregate_id, event.event_type, event.payload_json,
-                event.correlation_id, event.attempt_count
+                event.correlation_id, event.attempt_count, event.delivery_version,
+                event.organization_id
     `;
     events.forEach(() => this.metrics.recordOutbox('claimed'));
     return events;
@@ -85,8 +86,11 @@ export class OutboxPublisherService implements OnModuleDestroy, OnModuleInit {
       await this.queue.enqueue({
         aggregateId: event.aggregate_id,
         correlationId: event.correlation_id,
+        deliveryId: outboxDeliveryId(event.id, event.delivery_version),
+        deliveryVersion: event.delivery_version,
         eventId: event.id,
         eventType: event.event_type,
+        organizationId: event.organization_id,
         payload: event.payload_json,
       });
       await this.prisma.outboxEvent.update({

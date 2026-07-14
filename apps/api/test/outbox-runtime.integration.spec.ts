@@ -15,6 +15,7 @@ import { MetricsService } from '../src/observability/metrics.service';
 import { OutboxPublisherService } from '../src/outbox/outbox-publisher.service';
 import { OutboxQueueService } from '../src/outbox/outbox-queue.service';
 import { OutboxWorkerService } from '../src/outbox/outbox-worker.service';
+import { outboxDeliveryId } from '../src/outbox/outbox.types';
 
 loadEnvironmentFiles();
 
@@ -138,6 +139,7 @@ describe('transactional outbox runtime', () => {
         availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.claim.test',
+        organizationId: aggregate.id,
         payloadJson: { schemaVersion: 1 },
       },
     });
@@ -160,7 +162,7 @@ describe('transactional outbox runtime', () => {
     const inspector = new Queue(queueName, {
       connection: { ...environment.redis },
     });
-    expect(await inspector.getJob(event.id)).not.toBeUndefined();
+    expect(await inspector.getJob(outboxDeliveryId(event.id, 1))).not.toBeUndefined();
     expect((await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } })).status).toBe(
       'PUBLISHED',
     );
@@ -178,6 +180,7 @@ describe('transactional outbox runtime', () => {
         availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.recovery.test',
+        organizationId: aggregate.id,
         payloadJson: { schemaVersion: 1 },
       },
     });
@@ -228,6 +231,7 @@ describe('transactional outbox runtime', () => {
         availableAt: new Date(0),
         correlationId: randomUUID(),
         eventType: 'foundation.failure.test',
+        organizationId: aggregate.id,
         payloadJson: { simulateFailure: true },
       },
     });
@@ -236,17 +240,38 @@ describe('transactional outbox runtime', () => {
     await publisher.publishBatch();
     const worker = new OutboxWorkerService(environment, prisma);
     worker.onModuleInit();
-    await waitUntil(async () => {
-      const execution = await prisma.jobExecution.findUnique({
-        where: { queueName_jobId: { jobId: event.id, queueName } },
+    try {
+      await waitUntil(async () => {
+        const execution = await prisma.jobExecution.findUnique({
+          where: { queueName_jobId: { jobId: outboxDeliveryId(event.id, 1), queueName } },
+        });
+        return execution?.status === 'DEAD_LETTER';
       });
-      return execution?.status === 'DEAD_LETTER';
-    });
+    } catch (error) {
+      const diagnosticQueue = new Queue(queueName, { connection: { ...environment.redis } });
+      const [execution, job, counts] = await Promise.all([
+        prisma.jobExecution.findMany({ where: { eventId: event.id } }),
+        diagnosticQueue.getJob(outboxDeliveryId(event.id, 1)),
+        diagnosticQueue.getJobCounts(),
+      ]);
+      await diagnosticQueue.close();
+      throw new Error(
+        `DLQ wait failed: ${String(error)}; executions=${JSON.stringify(execution)}; job=${JSON.stringify(job?.toJSON())}; counts=${JSON.stringify(counts)}`,
+      );
+    }
     const dlq = new Queue(dlqName, { connection: { ...environment.redis } });
-    expect(await dlq.getJob(event.id)).not.toBeUndefined();
+    expect(await dlq.getJob(outboxDeliveryId(event.id, 1))).not.toBeUndefined();
     expect(
-      (await prisma.jobExecution.findFirstOrThrow({ where: { jobId: event.id } })).attempt,
+      (
+        await prisma.jobExecution.findFirstOrThrow({
+          where: { jobId: outboxDeliveryId(event.id, 1) },
+        })
+      ).attempt,
     ).toBe(2);
+    expect(await prisma.outboxEvent.findUniqueOrThrow({ where: { id: event.id } })).toMatchObject({
+      organizationId: aggregate.id,
+      status: 'DEAD_LETTER',
+    });
     await worker.onModuleDestroy();
     await dlq.close();
     await queue.onModuleDestroy();

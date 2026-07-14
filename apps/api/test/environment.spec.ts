@@ -30,6 +30,8 @@ describe('parseEnvironment', () => {
       MINIO_API_PORT: 9100,
       MINIO_USE_SSL: false,
       NODE_ENV: 'development',
+      OUTBOX_OPERATIONS_ENABLED: false,
+      OUTBOX_OPERATIONS_KILL_SWITCH: true,
       POSTGRES_PORT: 5433,
       REDIS_PORT: 6380,
     });

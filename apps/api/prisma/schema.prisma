@@ -98,6 +98,8 @@ model Organization {
   sessions            AuthSession[]
   auditLogs           AuditLog[]
   accountActionTokens AccountActionToken[]
+  outboxEvents        OutboxEvent[]
+  jobExecutions       JobExecution[]
 
   @@map("organizations")
 }
@@ -253,47 +255,59 @@ model IdempotencyKey {
 }
 
 model OutboxEvent {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  aggregateType  String       @map("aggregate_type") @db.VarChar(120)
-  aggregateId    String       @map("aggregate_id") @db.Uuid
-  eventType      String       @map("event_type") @db.VarChar(160)
-  eventVersion   Int          @default(1) @map("event_version") @db.SmallInt
-  payloadJson    Json         @map("payload_json") @db.JsonB
-  correlationId  String       @map("correlation_id") @db.VarChar(128)
-  causationId    String?      @map("causation_id") @db.VarChar(128)
-  status         OutboxStatus @default(PENDING)
-  availableAt    DateTime     @default(now()) @map("available_at") @db.Timestamptz(3)
-  publishedAt    DateTime?    @map("published_at") @db.Timestamptz(3)
-  attemptCount   Int          @default(0) @map("attempt_count")
-  lockedAt       DateTime?    @map("locked_at") @db.Timestamptz(3)
-  lockedBy       String?      @map("locked_by") @db.VarChar(128)
-  lastErrorJson  Json?        @map("last_error_json") @db.JsonB
-  deadLetteredAt DateTime?    @map("dead_lettered_at") @db.Timestamptz(3)
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(3)
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?        @map("organization_id") @db.Uuid
+  aggregateType   String         @map("aggregate_type") @db.VarChar(120)
+  aggregateId     String         @map("aggregate_id") @db.Uuid
+  eventType       String         @map("event_type") @db.VarChar(160)
+  eventVersion    Int            @default(1) @map("event_version") @db.SmallInt
+  payloadJson     Json           @map("payload_json") @db.JsonB
+  correlationId   String         @map("correlation_id") @db.VarChar(128)
+  causationId     String?        @map("causation_id") @db.VarChar(128)
+  status          OutboxStatus   @default(PENDING)
+  availableAt     DateTime       @default(now()) @map("available_at") @db.Timestamptz(3)
+  publishedAt     DateTime?      @map("published_at") @db.Timestamptz(3)
+  attemptCount    Int            @default(0) @map("attempt_count")
+  deliveryVersion Int            @default(1) @map("delivery_version")
+  reprocessCount  Int            @default(0) @map("reprocess_count")
+  lockedAt        DateTime?      @map("locked_at") @db.Timestamptz(3)
+  lockedBy        String?        @map("locked_by") @db.VarChar(128)
+  lastErrorJson   Json?          @map("last_error_json") @db.JsonB
+  deadLetteredAt  DateTime?      @map("dead_lettered_at") @db.Timestamptz(3)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  jobExecutions   JobExecution[]
 
   @@index([status, availableAt, createdAt], map: "outbox_events_dispatch_idx")
+  @@index([organizationId, status, createdAt], map: "outbox_events_organization_status_created_idx")
   @@index([aggregateType, aggregateId, createdAt], map: "outbox_events_aggregate_idx")
   @@index([correlationId], map: "outbox_events_correlation_id_idx")
   @@map("outbox_events")
 }
 
 model JobExecution {
-  id            String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  queueName     String             @map("queue_name") @db.VarChar(80)
-  jobName       String             @map("job_name") @db.VarChar(160)
-  jobId         String             @map("job_id") @db.VarChar(128)
-  correlationId String             @map("correlation_id") @db.VarChar(128)
-  aggregateId   String?            @map("aggregate_id") @db.Uuid
-  status        JobExecutionStatus @default(WAITING)
-  attempt       Int                @default(0)
-  startedAt     DateTime?          @map("started_at") @db.Timestamptz(3)
-  completedAt   DateTime?          @map("completed_at") @db.Timestamptz(3)
-  errorJson     Json?              @map("error_json") @db.JsonB
-  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt     DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id             String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  queueName      String             @map("queue_name") @db.VarChar(80)
+  jobName        String             @map("job_name") @db.VarChar(160)
+  jobId          String             @map("job_id") @db.VarChar(128)
+  correlationId  String             @map("correlation_id") @db.VarChar(128)
+  aggregateId    String?            @map("aggregate_id") @db.Uuid
+  organizationId String?            @map("organization_id") @db.Uuid
+  eventId        String?            @map("event_id") @db.Uuid
+  status         JobExecutionStatus @default(WAITING)
+  attempt        Int                @default(0)
+  startedAt      DateTime?          @map("started_at") @db.Timestamptz(3)
+  completedAt    DateTime?          @map("completed_at") @db.Timestamptz(3)
+  errorJson      Json?              @map("error_json") @db.JsonB
+  createdAt      DateTime           @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime           @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization   Organization?      @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  event          OutboxEvent?       @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@unique([queueName, jobId], map: "job_executions_queue_job_key")
   @@index([status, createdAt], map: "job_executions_status_created_at_idx")
+  @@index([organizationId, status, createdAt], map: "job_executions_organization_status_created_idx")
+  @@index([eventId, createdAt], map: "job_executions_event_created_idx")
   @@index([correlationId], map: "job_executions_correlation_id_idx")
   @@map("job_executions")
 }

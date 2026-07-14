@@ -24,7 +24,9 @@ repetir una respuesta perdida sin crear otro agregado.
 `outbox_events` registra agregado UUID, evento/version, payload, correlación, disponibilidad e
 intentos. Los intentos no pueden ser negativos y un evento `published` requiere `published_at`. El
 E0-H4B añadió leases, error redactado y estado `dead_letter`. `job_executions` conserva el estado de
-cada intento del consumidor. Consulte `outbox-events.md` para el contrato runtime.
+cada intento del consumidor. E0-H4C añadió ownership organizacional, backfill y generaciones de
+entrega. Los checks de ownership se mantienen `NOT VALID` hasta verificar que no existan filas legacy
+sin propietario, pero ya impiden escrituras nuevas incompletas. Consulte `outbox-events.md`.
 
 No hay API pública ni datos de negocio en esta vertical. Los checks SQL se contrastan contra el
 esquema Prisma mediante `prisma migrate diff`.

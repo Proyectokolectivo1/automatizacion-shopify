@@ -1,6 +1,6 @@
 # Backlog priorizado
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 | ID         | Prioridad      | Trabajo                                                          | Estado                     |
 | ---------- | -------------- | ---------------------------------------------------------------- | -------------------------- |
@@ -12,9 +12,10 @@ Actualizado: 2026-07-13
 | E0-H3B     | P1             | OpenTelemetry, alertas conectadas y acceso productivo a métricas | PENDIENTE                  |
 | E0-H4A     | P0             | Prisma, migración inicial, constraints e índices                 | COMPLETADA                 |
 | E0-H4B     | P0             | Outbox publisher, BullMQ, reintentos y DLQ                       | COMPLETADA                 |
-| E0-H4C     | P1             | Inspección y reproceso manual auditado de DLQ                    | SIGUIENTE                  |
+| E0-H4C     | P1             | Inspección y reproceso manual auditado de DLQ                    | COMPLETADA                 |
 | E0-H5A     | P0             | Login, sesiones revocables, rate limit y RBAC                    | COMPLETADA                 |
 | E0-H5B     | P0             | Invitación y recuperación de contraseña                          | COMPLETADA                 |
+| E0-H5C     | P0             | Bootstrap y administración auditada de membresías/roles          | SIGUIENTE                  |
 | E1-H1..H5  | P0             | Tiendas, webhooks, sync, clasificación y conciliación Shopify    | BLOQUEADO_POR_CREDENCIALES |
 | E2-H1..H6  | P0             | Tarifas y ciclo Wompi                                            | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7  | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |

@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Actualizado: 2026-07-13
+Actualizado: 2026-07-14
 
 | Fase | Vertical demostrable               | Estado                     | Criterio de salida                                        |
 | ---- | ---------------------------------- | -------------------------- | --------------------------------------------------------- |
@@ -12,7 +12,8 @@ Actualizado: 2026-07-13
 | 1E   | E0-H4B outbox y colas              | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
 | 1F   | E0-H5A login, sesiones y RBAC      | COMPLETADA                 | sesión segura y permisos backend probados                 |
 | 1G   | E0-H5B invitación y recuperación   | COMPLETADA                 | tokens de un uso y correo simulado probados               |
-| 1H   | E0-H4C operaciones de DLQ          | SIGUIENTE                  | inspección/reproceso autenticados y auditados             |
+| 1H   | E0-H4C operaciones de DLQ          | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
+| 1I   | E0-H5C administración de identidad | SIGUIENTE                  | bootstrap y cambios de rol seguros/auditados              |
 | 2    | Shopify mínimo                     | BLOQUEADO_POR_CREDENCIALES | webhook idempotente, pedido, timeline y conciliación      |
 | 3    | COD + Wompi + WhatsApp             | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento simulables      |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
@@ -79,3 +80,14 @@ revocación de sesiones y correo simulado fail-closed.
 Agregar ownership organizacional explícito a eventos/jobs y una superficie operativa protegida para
 consultar DLQ y reprocesar exactamente un evento de forma idempotente, auditada y desactivable. Debe
 probar tenant isolation, paginación, carreras y respuesta perdida sobre PostgreSQL/Redis reales.
+
+Resultado: completada el 2026-07-14. La sexta migración incorpora ownership y generaciones de
+entrega; cinco pruebas HTTP/PostgreSQL/Redis confirman redacción, RBAC, tenant, replay idempotente,
+carreras y publicación con un `jobId` nuevo. Los controles operativos quedan cerrados por defecto.
+
+## Novena vertical: E0-H5C
+
+Implementar un bootstrap local, explícito y de un solo uso para el primer owner, más endpoints
+owner/admin para listar membresías, cambiar roles permitidos y revocar acceso. Toda mutación debe ser
+idempotente, tenant-safe, auditada y protegida con flags/kill switch. No incluir registro público,
+correo real, UI de sesión ni despliegue.

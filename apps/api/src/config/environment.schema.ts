@@ -35,6 +35,8 @@ export const environmentSchema = z.object({
   OUTBOX_KILL_SWITCH: booleanFlag('true'),
   OUTBOX_LEASE_MS: z.coerce.number().int().min(1_000).max(900_000).default(30_000),
   OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+  OUTBOX_OPERATIONS_ENABLED: booleanFlag('false'),
+  OUTBOX_OPERATIONS_KILL_SWITCH: booleanFlag('true'),
   OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(100).max(60_000).default(1_000),
   OUTBOX_PUBLISHER_ENABLED: booleanFlag('false'),
   OUTBOX_QUEUE_NAME: queueName.default('foundation-events'),

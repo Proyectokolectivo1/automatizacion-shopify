@@ -118,7 +118,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('5');
+    expect(migrations.rows[0]?.count).toBe('6');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -191,19 +191,22 @@ describe('initial database migration', () => {
   });
 
   it('enforces outbox retry counters and published-state consistency', async () => {
-    const aggregateId = randomUUID();
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Outbox Organization') RETURNING id`,
+    );
+    const aggregateId = organization.rows[0]?.id;
     await database.query(
       `INSERT INTO outbox_events
-       (aggregate_type, aggregate_id, event_type, payload_json, correlation_id)
-       VALUES ('store', $1, 'store.created', '{"version":1}', $2)`,
+       (organization_id, aggregate_type, aggregate_id, event_type, payload_json, correlation_id)
+       VALUES ($1, 'organization', $1, 'organization.created', '{"version":1}', $2)`,
       [aggregateId, randomUUID()],
     );
 
     await expect(
       database.query(
         `INSERT INTO outbox_events
-         (aggregate_type, aggregate_id, event_type, payload_json, correlation_id, attempt_count)
-         VALUES ('store', $1, 'store.created', '{}', $2, -1)`,
+         (organization_id, aggregate_type, aggregate_id, event_type, payload_json, correlation_id, attempt_count)
+         VALUES ($1, 'organization', $1, 'organization.created', '{}', $2, -1)`,
         [aggregateId, randomUUID()],
       ),
     ).rejects.toMatchObject({ code: '23514' });
@@ -211,8 +214,17 @@ describe('initial database migration', () => {
     await expect(
       database.query(
         `INSERT INTO outbox_events
-         (aggregate_type, aggregate_id, event_type, payload_json, correlation_id, status)
-         VALUES ('store', $1, 'store.created', '{}', $2, 'published')`,
+         (organization_id, aggregate_type, aggregate_id, event_type, payload_json, correlation_id, status)
+         VALUES ($1, 'organization', $1, 'organization.created', '{}', $2, 'published')`,
+        [aggregateId, randomUUID()],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    await expect(
+      database.query(
+        `INSERT INTO outbox_events
+         (aggregate_type, aggregate_id, event_type, payload_json, correlation_id)
+         VALUES ('organization', $1, 'organization.created', '{}', $2)`,
         [aggregateId, randomUUID()],
       ),
     ).rejects.toMatchObject({ code: '23514' });

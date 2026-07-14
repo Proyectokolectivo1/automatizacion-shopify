@@ -71,8 +71,10 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
         aggregateId: job.data.aggregateId,
         attempt: job.attemptsMade + 1,
         correlationId: job.data.correlationId,
-        jobId: job.data.eventId,
+        eventId: job.data.eventId,
+        jobId: job.data.deliveryId,
         jobName: job.name,
+        organizationId: job.data.organizationId,
         queueName: this.environment.outbox.queueName,
         startedAt: new Date(),
         status: 'ACTIVE',
@@ -85,7 +87,7 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
       },
       where: {
         queueName_jobId: {
-          jobId: job.data.eventId,
+          jobId: job.data.deliveryId,
           queueName: this.environment.outbox.queueName,
         },
       },
@@ -97,7 +99,7 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
       data: { completedAt: new Date(), status: 'COMPLETED' },
       where: {
         queueName_jobId: {
-          jobId: job.data.eventId,
+          jobId: job.data.deliveryId,
           queueName: this.environment.outbox.queueName,
         },
       },
@@ -105,22 +107,41 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
   }
 
   private async markFailed(job: Job<OutboxJobData>, finalAttempt: boolean): Promise<void> {
-    await this.prisma.jobExecution.update({
-      data: {
-        completedAt: finalAttempt ? new Date() : null,
-        errorJson: { category: 'consumer_failure', retryable: !finalAttempt },
-        status: finalAttempt ? 'DEAD_LETTER' : 'FAILED',
-      },
-      where: {
-        queueName_jobId: {
-          jobId: job.data.eventId,
-          queueName: this.environment.outbox.queueName,
+    await this.prisma.$transaction(async (transaction) => {
+      await transaction.jobExecution.update({
+        data: {
+          completedAt: finalAttempt ? new Date() : null,
+          errorJson: { category: 'consumer_failure', retryable: !finalAttempt },
+          status: finalAttempt ? 'DEAD_LETTER' : 'FAILED',
         },
-      },
+        where: {
+          queueName_jobId: {
+            jobId: job.data.deliveryId,
+            queueName: this.environment.outbox.queueName,
+          },
+        },
+      });
+      if (finalAttempt) {
+        await transaction.outboxEvent.updateMany({
+          data: {
+            deadLetteredAt: new Date(),
+            lastErrorJson: { category: 'consumer_failure', retryable: false },
+            lockedAt: null,
+            lockedBy: null,
+            publishedAt: null,
+            status: 'DEAD_LETTER',
+          },
+          where: {
+            deliveryVersion: job.data.deliveryVersion,
+            id: job.data.eventId,
+            organizationId: job.data.organizationId,
+          },
+        });
+      }
     });
     if (finalAttempt) {
       await this.deadLetterQueue?.add(job.name, job.data, {
-        jobId: job.data.eventId,
+        jobId: job.data.deliveryId,
         removeOnComplete: false,
         removeOnFail: false,
       });

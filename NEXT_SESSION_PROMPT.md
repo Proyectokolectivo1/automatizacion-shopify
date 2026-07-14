@@ -1,8 +1,10 @@
 # Prompt para la siguiente sesión
 
+Actualizado: 2026-07-14
+
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
-`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5B están completas. No
-reinicies ni reemplaces trabajo válido.
+`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5B y E0-H4C están completas.
+No reinicies ni reemplaces trabajo válido.
 
 ## Fuentes obligatorias
 
@@ -17,24 +19,25 @@ Actualiza el resumen vivo y todos los controles al cambiar estado, pruebas, ries
 ## Baseline obligatorio
 
 Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integration`,
-`pnpm database:verify`, `pnpm outbox:verify`, `pnpm auth:verify`, `pnpm database:status`,
-`pnpm observability:verify`, `pnpm audit --prod` y `pnpm infra:verify`. No borres volúmenes.
+`pnpm database:verify`, `pnpm outbox:verify`, `pnpm dlq:verify`, `pnpm auth:verify`,
+`pnpm database:status`, `pnpm observability:verify`, `pnpm audit --prod` y `pnpm infra:verify`. No
+borres volúmenes.
 
-## Siguiente vertical exacta: E0-H4C
+## Siguiente vertical exacta: E0-H5C
 
-Completa operaciones seguras de DLQ sin proveedor real:
+Completa bootstrap y administración de identidad sin proveedor real:
 
-- migración expand-only para ownership organizacional explícito y trazable de outbox/jobs;
-- backfill seguro de filas existentes de desarrollo y constraints/indexes compatibles con despliegue;
-- endpoints paginados para inspeccionar únicamente eventos DLQ del tenant autenticado;
-- endpoint owner/admin para reprocesar un evento DLQ, con idempotency key y resultado repetible;
-- transición atómica `dead_letter → pending`, limpieza controlada de lease/error y nuevo intento auditable;
-- protección contra tenant ajeno, rol insuficiente, evento no-DLQ y carreras concurrentes;
-- feature flag y kill switch operativos cerrados por defecto;
-- payload resumido/redactado: no devolver ni registrar secretos o PII completa;
-- auditoría y métricas acotadas para consulta, éxito, replay, denegación y fallo;
-- pruebas PostgreSQL/Redis/HTTP de paginación, tenant, RBAC, respuesta perdida, replay y concurrencia;
-- actualización de contrato, arquitectura, seguridad, runbook, pruebas y todos los controles.
+- comando local explícito, idempotente y fail-closed para crear el primer owner solo si no hay users;
+- secreto de bootstrap por entorno, nunca en argumentos, logs, respuesta persistida o Git;
+- feature flag y kill switch de administración cerrados por defecto;
+- listado paginado y mínimo de membresías del tenant autenticado;
+- endpoints owner/admin para cambiar roles permitidos y revocar membresías;
+- proteger al último owner, auto-revocación peligrosa, escalamiento admin→owner y tenant ajeno;
+- invalidar todas las sesiones afectadas al revocar o reducir privilegios;
+- idempotency key, resultado repetible y locks para carreras/respuesta perdida;
+- auditoría y métricas acotadas sin correo completo, password, token o secreto;
+- pruebas PostgreSQL/HTTP de bootstrap doble, carreras, tenant, RBAC y revocación de sesiones;
+- contrato, arquitectura, seguridad, runbook, pruebas y todos los controles actualizados.
 
 No habilites correo real: DP-001 sigue `BLOQUEADO_POR_DECISION`. Mantén E0-H3B pendiente. No
-despliegues ni uses credenciales reales.
+implementes registro público, MFA, UI de cookies/CSRF, despliegue ni credenciales reales.
