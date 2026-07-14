@@ -94,6 +94,7 @@ Fase 2 — Shopify simulado. E1-H1A completada; siguiente vertical E1-H2A webhoo
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
 - `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
 - `pnpm shopify:verify`: 4 pruebas PostgreSQL/HTTP de registro, cifrado, tenant y ciclo de vida.
+- GitHub Actions: E1-H1A verde en Ubuntu; acciones de CI actualizadas a runtime Node 24.
 - `pnpm validate`, `pnpm infra:verify` y `pnpm audit --prod`: verdes en la iteración.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 

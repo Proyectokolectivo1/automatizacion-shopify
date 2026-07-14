@@ -291,3 +291,7 @@ Fallos encontrados y corregidos:
 
 E1-H1A está completa solo en simulación. La conexión real permanece
 `BLOQUEADO_POR_CREDENCIALES`; la siguiente vertical es E1-H2A.
+
+CI remoto `29364969334`: todas las etapas verdes, incluida Shopify. La advertencia de runtime Node 20
+de las acciones se corrigió actualizando a `checkout@v6.0.2`, `setup-node@v6.0.0` y
+`pnpm/action-setup@v4.4.0`, versiones oficiales basadas en Node 24.
