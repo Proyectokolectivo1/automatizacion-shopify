@@ -616,3 +616,31 @@ ejecutó Prettier y la repetición completa quedó verde.
 
 No hubo llamadas, credenciales ni PII reales. La conciliación no cambia estado, monto, pedido ni
 evento; Wompi sandbox continúa `BLOQUEADO_POR_CREDENCIALES`. E3-H1A es la siguiente vertical.
+
+## Iteración E3-H1A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                     |
+| --------------------------- | ---------------------- | --------------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 17 archivos, 55 pruebas                   |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 4/4                                       |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 12/12, 19 migraciones y cero drift        |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 55 unitarias y ambos builds               |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm retirado responde 410 |
+
+Se validaron proveedor determinista, fixture sintético, cifrado AES-256-GCM, AAD tenant/tienda,
+rotación v1→v2, flags fail-closed, configuración/replay concurrentes, unicidad de `phoneNumberId`,
+RBAC, aislamiento de tenant, prueba saludable, estados, outbox, auditoría y métrica sin secretos.
+Activar/desactivar el canal no cambia el estado de la tienda Shopify.
+
+Un comando auxiliar intentó usar la opción inexistente `--runInBand` de Vitest; se descartó y la
+suite oficial `pnpm test` se repitió correctamente con 55/55. No fue un defecto de producto.
+
+El primer cierre integral encontró formato pendiente en cuatro tablas Markdown y una advertencia de
+consultas paralelas sobre un mismo cliente `pg` en la nueva prueba. Se aplicó Prettier, se serializaron
+esas consultas y se repitieron `pnpm validate` y `pnpm database:verify` en verde. La migración 19 se
+aplicó a la base local persistente y `pnpm database:status` confirmó esquema actualizado.
+
+No hubo llamadas, credenciales, números, mensajes ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H2A es la siguiente vertical.

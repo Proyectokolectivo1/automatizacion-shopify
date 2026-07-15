@@ -44,3 +44,5 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 - E1-H3A resolvió la ausencia de pedido durable sin acoplarlo al payload webhook y con protección de
   snapshots tardíos.
 - E1-H5A resolvió el reproceso ad hoc mediante incidencias durables y outbox sin mutación manual.
+- E3-H1A usa el registro genérico y un límite de proveedor explícito; el adaptador Meta, plantillas y
+  mensajes son trabajo funcional pendiente y no se presentan como deuda ni como integración real.

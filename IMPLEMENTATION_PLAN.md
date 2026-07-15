@@ -28,8 +28,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3D   | E2-H4A recordatorios simulados     | COMPLETADA                 | agenda 0/8/16/24 h, máximo dos y replay probado           |
 | 3E   | E2-H5A vencimiento simulado        | COMPLETADA                 | expirar, cancelar/marcar, historial y replay probados     |
 | 3F   | E2-H6A conciliación Wompi simulada | COMPLETADA                 | diferencias, reporte, alertas y replay probados           |
-| 3G   | E3-H1A WhatsApp simulado           | SIGUIENTE                  | configuración, contrato, fixture y controles probados     |
-| 3H   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3G   | E3-H1A WhatsApp simulado           | COMPLETADA                 | configuración, contrato, fixture y controles probados     |
+| 3H   | E3-H2A plantillas simuladas        | SIGUIENTE                  | catálogo, versiones, estados y variables probados         |
+| 3I   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -239,3 +240,15 @@ proveedor, compara intención/evento/authoritative, deduplica por huella y solo 
 Implementar configuración WhatsApp Cloud API exclusivamente simulada: contrato de proveedor, fixture
 versionado, credenciales sintéticas/cifradas, prueba de conexión, flags, modo simulación y kill switch.
 No enviar mensajes, registrar plantillas remotas ni llamar Meta sin credenciales.
+
+Resultado: completada el 2026-07-14. La migración diecinueve valida la configuración y hace único el
+`phoneNumberId` entre tenants. El límite `WhatsAppProvider`, fixture v1, cifrado AES-256-GCM con AAD,
+ciclo probar/activar/desactivar/rotar, idempotencia, outbox, auditoría y métrica permanecen solo en
+simulación. Las pruebas cubren contrato, keyring, RBAC, tenant, replay, carrera y fail-closed.
+
+## Vigesimosegunda vertical: E3-H2A
+
+Implementar un catálogo local tenant-safe de plantillas WhatsApp exclusivamente simulado: nombre
+interno/Meta, idioma, categoría, cuerpo, esquema de variables, evento, versión y estado. Debe incluir
+idempotencia, activación segura, auditoría, métricas, constraints, fixtures y pruebas; no registrar ni
+consultar plantillas reales y no asumir que Meta las aprobará.

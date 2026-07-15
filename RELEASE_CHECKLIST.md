@@ -54,6 +54,10 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Expiración y abandono simulados con política histórica, replay, tenant y carrera probados.
 - [x] Pago aprobado tardío no reescribe un terminal y abre revisión manual auditada.
 - [x] Conciliación Wompi simulada tiene checkpoint, reporte, dedupe, alertas y replay probados.
+- [x] Configuración WhatsApp simulada es tenant-safe, cifrada, idempotente, auditable y fail-closed.
+- [x] Identidad de número WhatsApp es única y el estado del canal no altera la tienda Shopify.
+- [ ] Plantillas, mensajes, estados, webhooks e inbox WhatsApp simulados completos.
+- [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.

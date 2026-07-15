@@ -53,6 +53,11 @@ import { ShopifyOrderSyncService } from './shopify/shopify-order-sync.service';
 import { SHOPIFY_PROVIDER } from './shopify/shopify-provider';
 import { ShopifyWebhookController } from './shopify/shopify-webhook.controller';
 import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
+import { WhatsAppCredentialCipher } from './whatsapp/whatsapp-credential-cipher';
+import { WhatsAppIntegrationController } from './whatsapp/whatsapp-integration.controller';
+import { WhatsAppIntegrationService } from './whatsapp/whatsapp-integration.service';
+import { WhatsAppMockProvider } from './whatsapp/whatsapp-mock.provider';
+import { WHATSAPP_PROVIDER } from './whatsapp/whatsapp-provider';
 
 @Module({
   controllers: [
@@ -67,6 +72,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     TransportRateController,
     PaymentIntentController,
     WompiWebhookController,
+    WhatsAppIntegrationController,
   ],
   providers: [
     EnvironmentService,
@@ -105,10 +111,14 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     PaymentReminderSchedulerService,
     WompiWebhookService,
     WompiReconciliationSchedulerService,
+    WhatsAppCredentialCipher,
+    WhatsAppIntegrationService,
+    WhatsAppMockProvider,
     WompiMockProvider,
     ShopifyMockProvider,
     { provide: WOMPI_PROVIDER, useExisting: WompiMockProvider },
     { provide: SHOPIFY_PROVIDER, useExisting: ShopifyMockProvider },
+    { provide: WHATSAPP_PROVIDER, useExisting: WhatsAppMockProvider },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })

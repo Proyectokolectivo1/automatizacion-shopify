@@ -1,0 +1,6 @@
+{
+  "version": "v1",
+  "invalidTokens": ["mock-whatsapp-invalid-token"],
+  "businessNamePrefix": "Synthetic WhatsApp Business",
+  "phoneLabelPrefix": "Synthetic phone"
+}

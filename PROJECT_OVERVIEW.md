@@ -33,10 +33,11 @@ El repositorio canónico público es
 publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR borrador #1 está
 abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
-Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 25 %. Ya existe un monorepo reproducible
+Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 80 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
-los pedidos se clasifican y concilian en simulación; todavía no existen conexiones reales.
+los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
+ciclo operativo seguro; todavía no existen conexiones reales.
 
 ## Implementado
 
@@ -89,6 +90,10 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 - Checkout contractual sobre `.invalid`, RBAC, tenant, replay, auditoría, métricas y outbox.
 - Webhook authoritative, dos recordatorios durables a +8/+16 y vencimiento/abandono a 24 horas.
 - Política histórica `MARK`/`CANCEL`, locks contra aprobación simultánea y revisión de pagos tardíos.
+- Conciliación diaria Wompi con checkpoint, reporte e incidencias deduplicadas, sin autocorrecciones.
+- `WhatsAppProvider` simulado con fixture v1 y configuración por tienda tenant-safe.
+- Token WhatsApp cifrado/versionado, prueba, activación, desactivación, rotación, outbox y auditoría.
+- `phoneNumberId` único entre tenants, flags cerrados, modo simulación y kill switch probados.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -108,9 +113,9 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 
 ### Pagos y WhatsApp
 
-- Conciliación diaria Wompi con checkpoint, diferencias deduplicadas, reporte y alertas simuladas.
-- WhatsApp Cloud API, plantillas, mensajes y bandeja operativa.
-- Simulación y pruebas contractuales mientras falten credenciales.
+- Registro local de plantillas WhatsApp y estados de aprobación simulados.
+- WhatsApp Cloud API real, mensajes, webhooks entrantes y bandeja operativa.
+- Mocks, fixtures y pruebas contractuales por vertical mientras falten credenciales.
 
 ### Logística e impresión
 
@@ -147,8 +152,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E3-H1A: configuración segura y proveedor WhatsApp exclusivamente simulados, con contrato, fixture,
-flags y kill switch. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
+E3-H2A: registro y gestión de plantillas WhatsApp exclusivamente simulados, versionados, tenant-safe
+y sin registrar plantillas en Meta. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 
@@ -158,3 +163,5 @@ flags y kill switch. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
 - `TEST_REPORT.md`: comandos, resultados e incidencias corregidas.
 - `RISKS.md` y `TECHNICAL_DEBT.md`: riesgos y deuda conocidos.
 - `RELEASE_CHECKLIST.md`: condiciones pendientes para liberar.
+- `SESSION_LOG.md`: registro append-only de cada sesión y punto exacto de relevo.
+- `docs/architecture/project-continuity.md`: protocolo obligatorio para conservar contexto.

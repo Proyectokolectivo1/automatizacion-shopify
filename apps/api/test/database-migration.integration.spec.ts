@@ -150,7 +150,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('18');
+    expect(migrations.rows[0]?.count).toBe('19');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -276,6 +276,59 @@ describe('initial database migration', () => {
          (organization_id, store_id, provider, display_name, encrypted_credentials)
          VALUES ($1, $2, 'wompi', 'Plain credential', $3::jsonb)`,
         [first.rows[0]?.id, store.rows[0]?.id, JSON.stringify({ accessToken: 'plaintext' })],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces WhatsApp configuration shape and globally unique phone identity', async () => {
+    const first = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('WhatsApp Config Owner') RETURNING id`,
+    );
+    const second = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Other WhatsApp Config Owner') RETURNING id`,
+    );
+    const createStore = async (organizationId: string, label: string) =>
+      database.query<{ id: string }>(
+        `INSERT INTO stores
+         (organization_id, name, shopify_shop_domain, timezone, currency)
+         VALUES ($1, $2, $3, 'America/Bogota', 'COP') RETURNING id`,
+        [organizationId, label, `${label.toLowerCase().replaceAll(' ', '-')}.myshopify.com`],
+      );
+    const firstStore = await createStore(first.rows[0]?.id ?? '', 'WhatsApp Config One');
+    const secondStore = await createStore(second.rows[0]?.id ?? '', 'WhatsApp Config Two');
+    const envelope = JSON.stringify({
+      authTag: 'encoded-auth-tag',
+      ciphertext: 'encoded-ciphertext',
+      iv: 'encoded-iv',
+      version: 'v1',
+    });
+    const config = JSON.stringify({
+      apiVersion: 'v99.0',
+      businessAccountId: 'mock_waba_database',
+      fixtureVersion: 'v1',
+      mode: 'simulation',
+      phoneNumberId: 'mock_phone_database',
+    });
+    await database.query(
+      `INSERT INTO integration_connections
+       (organization_id, store_id, provider, display_name, encrypted_credentials, config_json)
+       VALUES ($1, $2, 'whatsapp', 'WhatsApp one', $3::jsonb, $4::jsonb)`,
+      [first.rows[0]?.id, firstStore.rows[0]?.id, envelope, config],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO integration_connections
+         (organization_id, store_id, provider, display_name, encrypted_credentials, config_json)
+         VALUES ($1, $2, 'whatsapp', 'WhatsApp duplicate phone', $3::jsonb, $4::jsonb)`,
+        [second.rows[0]?.id, secondStore.rows[0]?.id, envelope, config],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `INSERT INTO integration_connections
+         (organization_id, store_id, provider, display_name, encrypted_credentials, config_json)
+         VALUES ($1, $2, 'whatsapp', 'WhatsApp invalid config', $3::jsonb, '{}'::jsonb)`,
+        [second.rows[0]?.id, secondStore.rows[0]?.id, envelope],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

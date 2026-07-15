@@ -11,23 +11,23 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 3 — pagos simulados completada hasta E2-H6A. La siguiente vertical es E3-H1A, configuración y
-proveedor WhatsApp exclusivamente simulados.
+Fase 4 — mensajería simulada iniciada. E3-H1A está completa; la siguiente vertical es E3-H2A,
+registro y gestión local de plantillas WhatsApp exclusivamente simulados.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                         |
-| ------------------------ | -----: | ------------------------------------------------- |
-| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
-| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria |
-| E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                |
-| E6 Operación y dashboard |    0 % | pendiente                                         |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                    |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución |
-| E9 Producción            |    0 % | no autorizada                                     |
+| Épica                    | Avance | Evidencia                                            |
+| ------------------------ | -----: | ---------------------------------------------------- |
+| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                |
+| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso        |
+| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria    |
+| E3 WhatsApp              |   14 % | configuración simulada completa; Meta real bloqueada |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                 |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                   |
+| E6 Operación y dashboard |    0 % | pendiente                                            |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                       |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución    |
+| E9 Producción            |    0 % | no autorizada                                        |
 
 ## Diagnóstico inicial
 
@@ -92,10 +92,14 @@ proveedor WhatsApp exclusivamente simulados.
   aceptado y proveedor simulado, dedupe, resolución, outbox, auditoría, métricas y fallo cerrado.
 - Una caída authoritative crea un reporte fallido y reintento sin avanzar la ventana; ninguna
   diferencia corrige automáticamente la intención, el importe o el pedido.
+- E3-H1A: `WhatsAppProvider` y fixture v1 deterministas; conexión por tienda, prueba, activación,
+  desactivación y rotación de credenciales exclusivamente simuladas.
+- Token AES-256-GCM con keyring propio y AAD tenant/tienda; forma de configuración y `phoneNumberId`
+  único reforzados en PostgreSQL; RBAC, replay, carrera, outbox, auditoría y métricas probados.
 
 ## Siguiente vertical
 
-- E3-H1A: configuración y proveedor WhatsApp exclusivamente simulados, sin envío de mensajes.
+- E3-H2A: registro y gestión local de plantillas WhatsApp exclusivamente simulados, sin llamadas Meta.
 
 ## Pendiente
 
@@ -119,10 +123,10 @@ proveedor WhatsApp exclusivamente simulados.
 
 ## Pruebas
 
-- `pnpm test`: 50 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 55 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 11 pruebas sobre PostgreSQL real, 18 migraciones, constraints y cero drift.
+- `pnpm database:verify`: 12 pruebas sobre PostgreSQL real, 19 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -134,9 +138,12 @@ proveedor WhatsApp exclusivamente simulados.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
-- GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
+- `pnpm whatsapp:verify`: 4 pruebas PostgreSQL/HTTP; 5 contractuales se ejecutan en `pnpm test`.
+- GitHub Actions incluye el gate dedicado de reconciliación; el PR #1 quedó verde y sin conflictos
+  antes de iniciar E3-H1A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
+- La migración 19 fue aplicada a la base local persistente; `database:status` confirma esquema al día.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
 ## Errores conocidos
@@ -145,7 +152,7 @@ proveedor WhatsApp exclusivamente simulados.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Diecisiete migraciones expand-only están verificadas desde vacío.
+- Diecinueve migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
@@ -154,5 +161,5 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E3-H1A: configuración segura y proveedor WhatsApp exclusivamente simulados, con fixture,
-contrato, cifrado, flags y kill switch. No enviar mensajes ni iniciar tráfico real.
+Implementar E3-H2A: catálogo local tenant-safe de plantillas WhatsApp con versiones, variables,
+idioma, categoría y estados simulados. No registrar plantillas ni iniciar tráfico Meta real.

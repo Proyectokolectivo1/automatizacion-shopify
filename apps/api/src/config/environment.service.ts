@@ -309,6 +309,22 @@ export class EnvironmentService {
     };
   }
 
+  public get whatsapp(): Readonly<{
+    credentialKeyVersion: string | undefined;
+    credentialKeysJson: string | undefined;
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      credentialKeyVersion: this.values.WHATSAPP_CREDENTIAL_KEY_VERSION,
+      credentialKeysJson: this.values.WHATSAPP_CREDENTIAL_KEYS_JSON,
+      enabled: this.values.WHATSAPP_INTEGRATIONS_ENABLED,
+      killSwitch: this.values.WHATSAPP_INTEGRATIONS_KILL_SWITCH,
+      simulationMode: this.values.WHATSAPP_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

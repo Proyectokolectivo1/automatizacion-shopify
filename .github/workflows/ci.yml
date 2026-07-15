@@ -75,6 +75,9 @@ jobs:
       - name: Verify simulated Wompi payment intents
         run: pnpm wompi:verify
 
+      - name: Verify simulated WhatsApp connection registry
+        run: pnpm whatsapp:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

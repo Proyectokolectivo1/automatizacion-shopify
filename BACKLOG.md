@@ -32,8 +32,9 @@ Actualizado: 2026-07-14
 | E2-H5A         | P0             | Vencimiento y abandono configurables en simulación               | COMPLETADA                 |
 | E2-H6A         | P0             | Conciliación diaria Wompi simulada, diferencias y alertas        | COMPLETADA                 |
 | E2-H2B/H3B..H6 | P0             | Sandbox y ciclo Wompi real                                       | BLOQUEADO_POR_CREDENCIALES |
-| E3-H1A         | P0             | Configuración y proveedor WhatsApp exclusivamente simulados      | SIGUIENTE                  |
-| E3-H1B/H2..H7  | P0             | WhatsApp Cloud API real, plantillas, mensajes y bandeja          | BLOQUEADO_POR_CREDENCIALES |
+| E3-H1A         | P0             | Configuración y proveedor WhatsApp exclusivamente simulados      | COMPLETADA                 |
+| E3-H2A         | P0             | Catálogo y estados de plantillas exclusivamente simulados        | SIGUIENTE                  |
+| E3-H1B/H2B..H7 | P0             | WhatsApp Cloud API real, plantillas, mensajes y bandeja          | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10     | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |
 | E5-H1..H8      | P1             | Agente e impresión Windows                                       | BLOQUEADO_POR_INVENTARIO   |
 | E6-H1..H7      | P1             | Operación, alertas, dashboard y exports                          | PENDIENTE                  |
