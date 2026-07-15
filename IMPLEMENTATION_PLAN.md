@@ -4,38 +4,39 @@ Actualizado: 2026-07-14
 
 Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
 
-| Fase | Vertical demostrable               | Estado                     | Criterio de salida                                        |
-| ---- | ---------------------------------- | -------------------------- | --------------------------------------------------------- |
-| 0    | Descubrimiento técnico y contratos | PARCIAL                    | inventario de accesos, proveedores e impresoras           |
-| 1A   | E0-H1 monorepo, estándares y CI    | COMPLETADA                 | install, quality gate, audit y smoke verdes               |
-| 1B   | E0-H2 entorno local                | COMPLETADA                 | protocolos, auth, salud y persistencia probados           |
-| 1C   | E0-H3 observabilidad base          | COMPLETADA                 | logs, correlación, errores, métricas y readiness probados |
-| 1D   | E0-H4A esquema y migración inicial | COMPLETADA                 | migración limpia/repetible y constraints probados         |
-| 1E   | E0-H4B outbox y colas              | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
-| 1F   | E0-H5A login, sesiones y RBAC      | COMPLETADA                 | sesión segura y permisos backend probados                 |
-| 1G   | E0-H5B invitación y recuperación   | COMPLETADA                 | tokens de un uso y correo simulado probados               |
-| 1H   | E0-H4C operaciones de DLQ          | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
-| 1I   | E0-H5C administración de identidad | COMPLETADA                 | bootstrap y cambios de rol seguros/auditados              |
-| 2A   | E1-H1A registro/tiendas Shopify    | COMPLETADA                 | mock contractual, token cifrado y ciclo de vida probado   |
-| 2B   | E1-H2A webhook Shopify simulado    | COMPLETADA                 | HMAC, idempotencia, persistencia y cola probados          |
-| 2C   | E1-H3A pedido Shopify simulado     | COMPLETADA                 | snapshot, cliente, items y dirección normalizados         |
-| 2D   | E1-H4A clasificación simulada      | COMPLETADA                 | reglas, estados, historial e idempotencia probados        |
-| 2E   | E1-H5A conciliación simulada       | COMPLETADA                 | faltantes, fallidos y reproceso acotado probados          |
-| 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
-| 3A   | E2-H1A tarifas/pago simulados      | COMPLETADA                 | reglas versionadas y decisión default-deny probadas       |
-| 3B   | E2-H2A Wompi simulado              | COMPLETADA                 | adaptador, checkout, firma y replay contractuales         |
-| 3C   | E2-H3A webhook Wompi simulado      | COMPLETADA                 | checksum, persistencia y consulta authoritative probados  |
-| 3D   | E2-H4A recordatorios simulados     | COMPLETADA                 | agenda 0/8/16/24 h, máximo dos y replay probado           |
-| 3E   | E2-H5A vencimiento simulado        | COMPLETADA                 | expirar, cancelar/marcar, historial y replay probados     |
-| 3F   | E2-H6A conciliación Wompi simulada | COMPLETADA                 | diferencias, reporte, alertas y replay probados           |
-| 3G   | E3-H1A WhatsApp simulado           | COMPLETADA                 | configuración, contrato, fixture y controles probados     |
-| 3H   | E3-H2A plantillas simuladas        | SIGUIENTE                  | catálogo, versiones, estados y variables probados         |
-| 3I   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
-| 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
-| 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
-| 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
-| 7    | Rentabilidad y publicidad          | BLOQUEADO_POR_DECISION     | snapshots, atribución con confianza y ROAS                |
-| 8    | Hardening y lanzamiento            | PENDIENTE                  | carga, seguridad, restore, piloto y aprobación humana     |
+| Fase | Vertical demostrable                | Estado                     | Criterio de salida                                        |
+| ---- | ----------------------------------- | -------------------------- | --------------------------------------------------------- |
+| 0    | Descubrimiento técnico y contratos  | PARCIAL                    | inventario de accesos, proveedores e impresoras           |
+| 1A   | E0-H1 monorepo, estándares y CI     | COMPLETADA                 | install, quality gate, audit y smoke verdes               |
+| 1B   | E0-H2 entorno local                 | COMPLETADA                 | protocolos, auth, salud y persistencia probados           |
+| 1C   | E0-H3 observabilidad base           | COMPLETADA                 | logs, correlación, errores, métricas y readiness probados |
+| 1D   | E0-H4A esquema y migración inicial  | COMPLETADA                 | migración limpia/repetible y constraints probados         |
+| 1E   | E0-H4B outbox y colas               | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados       |
+| 1F   | E0-H5A login, sesiones y RBAC       | COMPLETADA                 | sesión segura y permisos backend probados                 |
+| 1G   | E0-H5B invitación y recuperación    | COMPLETADA                 | tokens de un uso y correo simulado probados               |
+| 1H   | E0-H4C operaciones de DLQ           | COMPLETADA                 | inspección/reproceso autenticados y auditados             |
+| 1I   | E0-H5C administración de identidad  | COMPLETADA                 | bootstrap y cambios de rol seguros/auditados              |
+| 2A   | E1-H1A registro/tiendas Shopify     | COMPLETADA                 | mock contractual, token cifrado y ciclo de vida probado   |
+| 2B   | E1-H2A webhook Shopify simulado     | COMPLETADA                 | HMAC, idempotencia, persistencia y cola probados          |
+| 2C   | E1-H3A pedido Shopify simulado      | COMPLETADA                 | snapshot, cliente, items y dirección normalizados         |
+| 2D   | E1-H4A clasificación simulada       | COMPLETADA                 | reglas, estados, historial e idempotencia probados        |
+| 2E   | E1-H5A conciliación simulada        | COMPLETADA                 | faltantes, fallidos y reproceso acotado probados          |
+| 2F   | Shopify real                        | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
+| 3A   | E2-H1A tarifas/pago simulados       | COMPLETADA                 | reglas versionadas y decisión default-deny probadas       |
+| 3B   | E2-H2A Wompi simulado               | COMPLETADA                 | adaptador, checkout, firma y replay contractuales         |
+| 3C   | E2-H3A webhook Wompi simulado       | COMPLETADA                 | checksum, persistencia y consulta authoritative probados  |
+| 3D   | E2-H4A recordatorios simulados      | COMPLETADA                 | agenda 0/8/16/24 h, máximo dos y replay probado           |
+| 3E   | E2-H5A vencimiento simulado         | COMPLETADA                 | expirar, cancelar/marcar, historial y replay probados     |
+| 3F   | E2-H6A conciliación Wompi simulada  | COMPLETADA                 | diferencias, reporte, alertas y replay probados           |
+| 3G   | E3-H1A WhatsApp simulado            | COMPLETADA                 | configuración, contrato, fixture y controles probados     |
+| 3H   | E3-H2A plantillas simuladas         | COMPLETADA                 | catálogo, versiones, estados y variables probados         |
+| 3I   | E3-H3A envío transaccional simulado | SIGUIENTE                  | render, intento durable, replay y entrega local probados  |
+| 3J   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
+| 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
+| 6    | Operación y dashboard               | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
+| 7    | Rentabilidad y publicidad           | BLOQUEADO_POR_DECISION     | snapshots, atribución con confianza y ROAS                |
+| 8    | Hardening y lanzamiento             | PENDIENTE                  | carga, seguridad, restore, piloto y aprobación humana     |
 
 ## Verticales completadas
 
@@ -252,3 +253,15 @@ Implementar un catálogo local tenant-safe de plantillas WhatsApp exclusivamente
 interno/Meta, idioma, categoría, cuerpo, esquema de variables, evento, versión y estado. Debe incluir
 idempotencia, activación segura, auditoría, métricas, constraints, fixtures y pruebas; no registrar ni
 consultar plantillas reales y no asumir que Meta las aprobará.
+
+Resultado: completada el 2026-07-14. La migración veinte agrega versiones inmutables tenant-safe,
+forma JSON y unicidad de activación por tienda/evento/idioma. La API crea, versiona, revisa, activa,
+desactiva y lista con replay, advisory locks, RBAC, outbox, auditoría y métricas. Los estados siempre
+distinguen `simulated_approved` de una aprobación Meta real.
+
+## Vigesimotercera vertical: E3-H3A
+
+Implementar envío transaccional exclusivamente simulado: resolver la versión activa por evento e
+idioma, validar/renderizar variables sintéticas, persistir el mensaje/intento de forma tenant-safe e
+idempotente y emitir outbox para entrega local. Debe probar replay, carrera, plantilla ausente,
+variables inválidas, kill switch y trazabilidad; no llamar Meta ni marcar un mensaje como enviado real.

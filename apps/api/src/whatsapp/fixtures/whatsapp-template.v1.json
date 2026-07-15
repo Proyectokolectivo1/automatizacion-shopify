@@ -1,0 +1,19 @@
+{
+  "fixtureVersion": "v1",
+  "mode": "simulation",
+  "template": {
+    "bodyTemplate": "Hola {{customer_name}}, paga el transporte de tu pedido en {{checkout_url}}.",
+    "category": "UTILITY",
+    "eventType": "payment.transport.pending",
+    "languageCode": "es_CO",
+    "metaTemplateName": "transport_payment_pending",
+    "name": "transport_payment_pending",
+    "variablesSchema": {
+      "variables": [
+        { "maxLength": 120, "name": "customer_name", "required": true, "type": "TEXT" },
+        { "maxLength": 2048, "name": "checkout_url", "required": true, "type": "URL" }
+      ],
+      "version": "v1"
+    }
+  }
+}

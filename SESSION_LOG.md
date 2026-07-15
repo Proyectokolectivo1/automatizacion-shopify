@@ -43,3 +43,17 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - Bloqueo: Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo tráfico, mensajes ni PII real.
 - Commit lógico: `feat: add simulated WhatsApp connection registry`; PR borrador #1.
 - Siguiente vertical: E3-H2A, catálogo local de plantillas exclusivamente simulado.
+
+## 2026-07-14 — sesión actual: E3-H2A
+
+- Objetivo: catálogo local versionado de plantillas WhatsApp exclusivamente simulado.
+- Baseline inicial: fuentes maestras sin cambios, árbol limpio y `pnpm validate` verde con 55 pruebas.
+- Se agregó contrato/fixture v1, migración veinte, CRUD de lifecycle, listado y controles separados.
+- Versiones inmutables, revisión `simulated_*`, activación única, tenant, RBAC, replay y carrera probados.
+- Evidencia final: `pnpm validate`, 58 unitarias, 7 HTTP/PostgreSQL WhatsApp, 13 de migración sin
+  drift, 14 gates previos, observabilidad e infraestructura verdes.
+- Incidencias corregidas: regex PostgreSQL >255, `CHECK` JSON nullable y nombre de FK Prisma.
+- Bloqueo: Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo tráfico, mensajes ni PII real.
+- `pnpm audit --prod` sigue bloqueado por HTTP 410 del endpoint retirado; no se marcó verde.
+- Commit lógico: `feat: add simulated WhatsApp template catalog`; PR borrador #1.
+- Siguiente vertical: E3-H3A, envío transaccional exclusivamente simulado.

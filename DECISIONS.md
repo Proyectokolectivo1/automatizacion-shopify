@@ -65,6 +65,9 @@ Actualizado: 2026-07-14
 | D-059  | DECISIÓN           | WhatsApp reutiliza el registro por tienda; activar el canal no cambia el estado Shopify          | ACEPTADA E3-H1A    |
 | D-060  | DECISIÓN           | Token WhatsApp usa AES-GCM/AAD/keyring propio; solo mock está vinculado y Meta falla cerrado     | ACEPTADA E3-H1A    |
 | D-061  | DECISIÓN           | `phoneNumberId` no puede pertenecer a dos conexiones, incluso entre organizaciones               | ACEPTADA E3-H1A    |
+| D-062  | DECISIÓN           | Contenido de plantilla es inmutable; todo cambio crea una versión con el mismo `templateKey`     | ACEPTADA E3-H2A    |
+| D-063  | DECISIÓN           | `simulated_approved` nunca representa aprobación Meta y es el único estado local activable       | ACEPTADA E3-H2A    |
+| D-064  | DECISIÓN           | Solo una versión queda activa por tienda, evento e idioma mediante transacción e índice parcial  | ACEPTADA E3-H2A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

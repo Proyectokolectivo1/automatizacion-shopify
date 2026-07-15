@@ -114,6 +114,7 @@ describe('initial database migration', () => {
           'payment_intents',
           'payment_provider_events',
           'payment_reminders',
+          'whatsapp_templates',
         ],
       ],
     );
@@ -145,12 +146,13 @@ describe('initial database migration', () => {
       'transport_rate_rules',
       'users',
       'webhook_events',
+      'whatsapp_templates',
     ]);
 
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('19');
+    expect(migrations.rows[0]?.count).toBe('20');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -331,6 +333,94 @@ describe('initial database migration', () => {
         [second.rows[0]?.id, secondStore.rows[0]?.id, envelope],
       ),
     ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces immutable, tenant-safe and single-active WhatsApp template versions', async () => {
+    const first = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('WhatsApp Template Owner') RETURNING id`,
+    );
+    const second = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Foreign Template Owner') RETURNING id`,
+    );
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'WhatsApp Template Store', 'whatsapp-template-db.myshopify.com',
+        'America/Bogota', 'COP') RETURNING id`,
+      [first.rows[0]?.id],
+    );
+    const variables = JSON.stringify({
+      variables: [{ name: 'customer_name', required: true, type: 'TEXT' }],
+      version: 'v1',
+    });
+    const templateKey = randomUUID();
+    const inserted = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_templates
+       (organization_id, store_id, template_key, version, name, meta_template_name,
+        language_code, category, body_template, variables_schema_json, event_type)
+       VALUES ($1, $2, $3, 1, 'payment_pending', 'payment_pending', 'es_CO', 'utility',
+        'Hola {{customer_name}}', $4::jsonb, 'payment.transport.pending') RETURNING id`,
+      [first.rows[0]?.id, store.rows[0]?.id, templateKey, variables],
+    );
+    await expect(
+      database.query(`UPDATE whatsapp_templates SET body_template = 'changed' WHERE id = $1`, [
+        inserted.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_templates
+         (organization_id, store_id, template_key, version, name, meta_template_name,
+          language_code, category, body_template, variables_schema_json, event_type, active)
+         VALUES ($1, $2, $3, 2, 'payment_pending', 'payment_pending_v2', 'es_CO', 'utility',
+          'Hola {{customer_name}}', $4::jsonb, 'payment.transport.pending', true)`,
+        [first.rows[0]?.id, store.rows[0]?.id, templateKey, variables],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_templates
+         (organization_id, store_id, template_key, version, name, meta_template_name,
+          language_code, category, body_template, variables_schema_json, event_type)
+         VALUES ($1, $2, $3, 2, 'payment_pending', 'payment_pending_v2', 'es_CO', 'utility',
+          'Hola {{customer_name}}', '{}'::jsonb, 'payment.transport.pending')`,
+        [first.rows[0]?.id, store.rows[0]?.id, templateKey],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_templates
+         (organization_id, store_id, template_key, version, name, meta_template_name,
+          language_code, category, body_template, variables_schema_json, event_type)
+         VALUES ($1, $2, $3, 1, 'cross_tenant', 'cross_tenant', 'es_CO', 'utility',
+          'Hola {{customer_name}}', $4::jsonb, 'payment.transport.foreign')`,
+        [second.rows[0]?.id, store.rows[0]?.id, randomUUID(), variables],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+
+    const approvedValues = [first.rows[0]?.id, store.rows[0]?.id, variables];
+    await database.query(
+      `INSERT INTO whatsapp_templates
+       (organization_id, store_id, template_key, version, name, meta_template_name,
+        language_code, category, status, body_template, variables_schema_json, event_type,
+        active, reviewed_at)
+       VALUES ($1, $2, gen_random_uuid(), 1, 'active_one', 'active_one', 'en_US', 'utility',
+        'simulated_approved', 'Hi {{customer_name}}', $3::jsonb, 'payment.transport.active',
+        true, NOW())`,
+      approvedValues,
+    );
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_templates
+         (organization_id, store_id, template_key, version, name, meta_template_name,
+          language_code, category, status, body_template, variables_schema_json, event_type,
+          active, reviewed_at)
+         VALUES ($1, $2, gen_random_uuid(), 1, 'active_two', 'active_two', 'en_US', 'utility',
+          'simulated_approved', 'Hi {{customer_name}}', $3::jsonb, 'payment.transport.active',
+          true, NOW())`,
+        approvedValues,
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
   });
 
   it('enforces tenant-safe and idempotent Shopify webhook persistence', async () => {

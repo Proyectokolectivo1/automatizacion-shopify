@@ -50,3 +50,6 @@ Actualizado: 2026-07-14
 | R-044 | Un número WhatsApp enruta eventos a más de un tenant        | Baja  | Crítico | Índice parcial único, FK tenant, RBAC y lookup no revelador             | Mitigado |
 | R-045 | Versión/scopes/errores Meta cambian antes de conectar       | Alta  | Alto    | Versión configurable y revalidación oficial/sandbox antes del adaptador | Abierto  |
 | R-046 | Mock WhatsApp se confunde con canal real                    | Media | Crítico | `mode=simulation`, fixture v1, flags cerrados y kill switch             | Mitigado |
+| R-047 | Aprobación local se interpreta como aprobación de Meta      | Media | Crítico | Estado `simulated_approved`, contrato y UI/API sin alias `approved`     | Mitigado |
+| R-048 | Edición de plantilla cambia mensajes históricos             | Media | Alto    | Versiones inmutables, trigger SQL y `templateKey` lógico                | Mitigado |
+| R-049 | Dos versiones atienden el mismo evento e idioma             | Media | Alto    | Lock serializable, swap atómico e índice único parcial                  | Mitigado |

@@ -644,3 +644,33 @@ aplicó a la base local persistente y `pnpm database:status` confirmó esquema a
 
 No hubo llamadas, credenciales, números, mensajes ni PII reales. Meta continúa
 `BLOQUEADO_POR_CREDENCIALES`; E3-H2A es la siguiente vertical.
+
+## Iteración E3-H2A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 18 archivos, 58 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 7/7                                   |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 13/13, 20 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 58 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron fixture/contrato v1, correspondencia exacta de placeholders, catálogo tenant-safe,
+replay concurrente, RBAC, lookup no revelador, revisión simulada, versión inmutable, activación
+única, paginación, outbox y auditoría sin cuerpo, métrica y conservación del estado Shopify.
+
+La primera prueba PostgreSQL encontró que una expresión regular con máximo 511 excedía el límite de
+repetición del motor y que un `CHECK` JSON podía evaluar `NULL`. Se reemplazó la repetición por límite
+de columna/longitud y se hicieron booleanas las condiciones con `COALESCE`. Un diff detectó además el
+nombre esperado de la FK Prisma; se alineó antes de repetir 13/13 sin drift.
+
+No hubo llamadas Meta, envío de mensajes, credenciales ni PII real. La documentación oficial se usó
+solo para fijar el vocabulario estable del catálogo. Meta continúa `BLOQUEADO_POR_CREDENCIALES`;
+E3-H3A es la siguiente vertical.
+
+La migración veinte se aplicó después a la base persistente local sin borrar datos;
+`pnpm database:status` confirmó 20/20. Luego se repitieron migraciones y WhatsApp en verde.

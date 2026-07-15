@@ -58,6 +58,8 @@ import { WhatsAppIntegrationController } from './whatsapp/whatsapp-integration.c
 import { WhatsAppIntegrationService } from './whatsapp/whatsapp-integration.service';
 import { WhatsAppMockProvider } from './whatsapp/whatsapp-mock.provider';
 import { WHATSAPP_PROVIDER } from './whatsapp/whatsapp-provider';
+import { WhatsAppTemplateController } from './whatsapp/whatsapp-template.controller';
+import { WhatsAppTemplateService } from './whatsapp/whatsapp-template.service';
 
 @Module({
   controllers: [
@@ -73,6 +75,7 @@ import { WHATSAPP_PROVIDER } from './whatsapp/whatsapp-provider';
     PaymentIntentController,
     WompiWebhookController,
     WhatsAppIntegrationController,
+    WhatsAppTemplateController,
   ],
   providers: [
     EnvironmentService,
@@ -113,6 +116,7 @@ import { WHATSAPP_PROVIDER } from './whatsapp/whatsapp-provider';
     WompiReconciliationSchedulerService,
     WhatsAppCredentialCipher,
     WhatsAppIntegrationService,
+    WhatsAppTemplateService,
     WhatsAppMockProvider,
     WompiMockProvider,
     ShopifyMockProvider,

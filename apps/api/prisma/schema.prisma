@@ -49,6 +49,22 @@ enum IntegrationHealthStatus {
   @@map("integration_health_status")
 }
 
+enum WhatsAppTemplateCategory {
+  AUTHENTICATION @map("authentication")
+  MARKETING      @map("marketing")
+  UTILITY        @map("utility")
+
+  @@map("whatsapp_template_category")
+}
+
+enum WhatsAppTemplateStatus {
+  LOCAL_DRAFT        @map("local_draft")
+  SIMULATED_APPROVED @map("simulated_approved")
+  SIMULATED_REJECTED @map("simulated_rejected")
+
+  @@map("whatsapp_template_status")
+}
+
 enum IdempotencyStatus {
   PROCESSING @map("processing")
   COMPLETED  @map("completed")
@@ -244,6 +260,7 @@ model Organization {
   outboxEvents                     OutboxEvent[]
   jobExecutions                    JobExecution[]
   integrationConnections           IntegrationConnection[]
+  whatsappTemplates                WhatsAppTemplate[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
   customerAddresses                CustomerAddress[]
@@ -397,6 +414,7 @@ model Store {
   createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt                        DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   integrationConnections           IntegrationConnection[]
+  whatsappTemplates                WhatsAppTemplate[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
   customerAddresses                CustomerAddress[]
@@ -443,6 +461,36 @@ model IntegrationConnection {
   @@index([organizationId, provider, status], map: "integration_connections_organization_provider_status_idx")
   @@index([status, lastHealthCheckAt], map: "integration_connections_health_idx")
   @@map("integration_connections")
+}
+
+model WhatsAppTemplate {
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                   @map("organization_id") @db.Uuid
+  storeId             String                   @map("store_id") @db.Uuid
+  templateKey         String                   @map("template_key") @db.Uuid
+  version             Int
+  name                String                   @db.VarChar(120)
+  metaTemplateName    String                   @map("meta_template_name") @db.VarChar(512)
+  languageCode        String                   @map("language_code") @db.VarChar(16)
+  category            WhatsAppTemplateCategory
+  status              WhatsAppTemplateStatus   @default(LOCAL_DRAFT)
+  bodyTemplate        String                   @map("body_template") @db.VarChar(4096)
+  variablesSchemaJson Json                     @map("variables_schema_json") @db.JsonB
+  eventType           String                   @map("event_type") @db.VarChar(160)
+  active              Boolean                  @default(false)
+  statusReasonCode    String?                  @map("status_reason_code") @db.VarChar(80)
+  reviewedAt          DateTime?                @map("reviewed_at") @db.Timestamptz(3)
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store               Store                    @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_templates_store_tenant_fkey")
+
+  @@unique([templateKey, version], map: "whatsapp_templates_key_version_key")
+  @@unique([storeId, metaTemplateName, languageCode, version], map: "whatsapp_templates_store_meta_language_version_key")
+  @@unique([organizationId, storeId, id], map: "whatsapp_templates_organization_store_id_key")
+  @@index([organizationId, storeId, createdAt], map: "whatsapp_templates_tenant_created_idx")
+  @@index([storeId, eventType, languageCode, status], map: "whatsapp_templates_event_language_status_idx")
+  @@map("whatsapp_templates")
 }
 
 model WebhookEvent {

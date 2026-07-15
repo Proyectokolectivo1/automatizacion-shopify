@@ -7,12 +7,12 @@ Actualizado: 2026-07-14
 `EN_DESARROLLO` — fundaciones funcionales en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene E1-H2A a E1-H5A validadas y publicadas.
+`codex/foundations-e0-h2` contiene el avance validado hasta E3-H2A.
 
 ## Fase actual
 
-Fase 4 — mensajería simulada iniciada. E3-H1A está completa; la siguiente vertical es E3-H2A,
-registro y gestión local de plantillas WhatsApp exclusivamente simulados.
+Fase 4 — mensajería simulada en progreso. E3-H1A y E3-H2A están completas; la siguiente vertical es
+E3-H3A, envío transaccional WhatsApp exclusivamente simulado.
 
 ## Avance aproximado por épica
 
@@ -21,7 +21,7 @@ registro y gestión local de plantillas WhatsApp exclusivamente simulados.
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B                |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso        |
 | E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria    |
-| E3 WhatsApp              |   14 % | configuración simulada completa; Meta real bloqueada |
+| E3 WhatsApp              |   29 % | conexión y plantillas simuladas; Meta real bloqueada |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                 |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                   |
 | E6 Operación y dashboard |    0 % | pendiente                                            |
@@ -96,10 +96,14 @@ registro y gestión local de plantillas WhatsApp exclusivamente simulados.
   desactivación y rotación de credenciales exclusivamente simuladas.
 - Token AES-256-GCM con keyring propio y AAD tenant/tienda; forma de configuración y `phoneNumberId`
   único reforzados en PostgreSQL; RBAC, replay, carrera, outbox, auditoría y métricas probados.
+- E3-H2A: catálogo tenant-safe con contrato/fixture v1, versiones inmutables, variables validadas,
+  revisión local explícita y una activación por tienda/evento/idioma, sin tráfico Meta.
+- Crear/versionar/revisar/activar/desactivar son idempotentes y serializables; PostgreSQL refuerza
+  ownership, forma JSON, lifecycle e inmutabilidad; outbox/auditoría omiten cuerpo y variables.
 
 ## Siguiente vertical
 
-- E3-H2A: registro y gestión local de plantillas WhatsApp exclusivamente simulados, sin llamadas Meta.
+- E3-H3A: envío transaccional WhatsApp exclusivamente simulado, sin llamadas Meta.
 
 ## Pendiente
 
@@ -123,10 +127,10 @@ registro y gestión local de plantillas WhatsApp exclusivamente simulados.
 
 ## Pruebas
 
-- `pnpm test`: 55 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 58 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 12 pruebas sobre PostgreSQL real, 19 migraciones, constraints y cero drift.
+- `pnpm database:verify`: 13 pruebas sobre PostgreSQL real, 20 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -138,12 +142,11 @@ registro y gestión local de plantillas WhatsApp exclusivamente simulados.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
-- `pnpm whatsapp:verify`: 4 pruebas PostgreSQL/HTTP; 5 contractuales se ejecutan en `pnpm test`.
-- GitHub Actions incluye el gate dedicado de reconciliación; el PR #1 quedó verde y sin conflictos
-  antes de iniciar E3-H1A.
+- `pnpm whatsapp:verify`: 7 pruebas PostgreSQL/HTTP; 8 contractuales se ejecutan en `pnpm test`.
+- GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H2A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
-- La migración 19 fue aplicada a la base local persistente; `database:status` confirma esquema al día.
+- La migración 20 fue aplicada a la base local persistente; `database:status` confirma esquema al día.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
 ## Errores conocidos
@@ -152,7 +155,7 @@ registro y gestión local de plantillas WhatsApp exclusivamente simulados.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Diecinueve migraciones expand-only están verificadas desde vacío.
+- Veinte migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
@@ -161,5 +164,5 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E3-H2A: catálogo local tenant-safe de plantillas WhatsApp con versiones, variables,
-idioma, categoría y estados simulados. No registrar plantillas ni iniciar tráfico Meta real.
+Implementar E3-H3A: envío transaccional WhatsApp simulado, durable e idempotente que resuelva una
+plantilla activa y valide/renderice variables sintéticas. No enviar mensajes ni iniciar tráfico Meta.

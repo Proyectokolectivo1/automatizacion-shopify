@@ -37,7 +37,8 @@ Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas 
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
-ciclo operativo seguro; todavía no existen conexiones reales.
+ciclo operativo seguro y un catálogo local versionado; todavía no existen conexiones reales ni
+envío de mensajes.
 
 ## Implementado
 
@@ -94,6 +95,8 @@ ciclo operativo seguro; todavía no existen conexiones reales.
 - `WhatsAppProvider` simulado con fixture v1 y configuración por tienda tenant-safe.
 - Token WhatsApp cifrado/versionado, prueba, activación, desactivación, rotación, outbox y auditoría.
 - `phoneNumberId` único entre tenants, flags cerrados, modo simulación y kill switch probados.
+- Catálogo WhatsApp local con versiones inmutables, variables validadas y revisión simulada explícita.
+- Activación única por tienda/evento/idioma, RBAC, tenant, replay, carrera, outbox y métricas probados.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -113,8 +116,8 @@ ciclo operativo seguro; todavía no existen conexiones reales.
 
 ### Pagos y WhatsApp
 
-- Registro local de plantillas WhatsApp y estados de aprobación simulados.
-- WhatsApp Cloud API real, mensajes, webhooks entrantes y bandeja operativa.
+- Envío transaccional WhatsApp simulado, estados, webhooks entrantes y bandeja operativa.
+- WhatsApp Cloud API real y registro/revisión remota de plantillas.
 - Mocks, fixtures y pruebas contractuales por vertical mientras falten credenciales.
 
 ### Logística e impresión
@@ -152,8 +155,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E3-H2A: registro y gestión de plantillas WhatsApp exclusivamente simulados, versionados, tenant-safe
-y sin registrar plantillas en Meta. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
+E3-H3A: envío transaccional WhatsApp exclusivamente simulado, resolviendo la versión activa y
+persistiendo el intento idempotente sin tráfico Meta. Meta/WhatsApp real permanece
+`BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 
