@@ -125,6 +125,14 @@ enum PaymentProviderEventStatus {
   @@map("payment_provider_event_status")
 }
 
+enum PaymentReminderStatus {
+  SCHEDULED @map("scheduled")
+  REQUESTED @map("requested")
+  CANCELLED @map("cancelled")
+
+  @@map("payment_reminder_status")
+}
+
 enum ReconciliationIssueType {
   MISSING_ORDER  @map("missing_order")
   FAILED_WEBHOOK @map("failed_webhook")
@@ -215,6 +223,7 @@ model Organization {
   transportRateDecisions      TransportRateDecision[]
   paymentIntents              PaymentIntent[]
   paymentProviderEvents       PaymentProviderEvent[]
+  paymentReminders            PaymentReminder[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -363,6 +372,7 @@ model Store {
   transportRateDecisions      TransportRateDecision[]
   paymentIntents              PaymentIntent[]
   paymentProviderEvents       PaymentProviderEvent[]
+  paymentReminders            PaymentReminder[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -661,12 +671,36 @@ model PaymentIntent {
   store                  Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_store_tenant_fkey")
   order                  Order               @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_order_tenant_fkey")
   providerEvents         PaymentProviderEvent[]
+  reminders              PaymentReminder[]
 
   @@unique([provider, externalReference, attemptNumber], map: "payment_intents_provider_reference_attempt_key")
   @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
   @@index([organizationId, status, expiresAt], map: "payment_intents_tenant_status_expires_idx")
   @@index([orderId, createdAt], map: "payment_intents_order_created_idx")
   @@map("payment_intents")
+}
+
+model PaymentReminder {
+  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String                @map("organization_id") @db.Uuid
+  storeId         String                @map("store_id") @db.Uuid
+  paymentIntentId String                @map("payment_intent_id") @db.Uuid
+  sequence        Int
+  scheduledAt     DateTime              @map("scheduled_at") @db.Timestamptz(3)
+  status          PaymentReminderStatus @default(SCHEDULED)
+  requestedAt     DateTime?             @map("requested_at") @db.Timestamptz(3)
+  cancelledAt     DateTime?             @map("cancelled_at") @db.Timestamptz(3)
+  cancellationReason String?            @map("cancellation_reason") @db.VarChar(80)
+  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store           Store                 @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_store_tenant_fkey")
+  paymentIntent   PaymentIntent         @relation(fields: [organizationId, storeId, paymentIntentId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_intent_tenant_fkey")
+
+  @@unique([paymentIntentId, sequence], map: "payment_reminders_intent_sequence_key")
+  @@index([status, scheduledAt], map: "payment_reminders_status_scheduled_idx")
+  @@index([organizationId, status, scheduledAt], map: "payment_reminders_tenant_status_scheduled_idx")
+  @@map("payment_reminders")
 }
 
 model PaymentProviderEvent {

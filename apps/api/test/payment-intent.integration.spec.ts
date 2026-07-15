@@ -14,6 +14,7 @@ import { PASSWORD_PARAMETERS, PasswordService } from '../src/auth/password.servi
 import { loadEnvironmentFiles } from '../src/config/load-environment';
 import { PrismaClient } from '../src/generated/prisma/client';
 import fixture from '../src/payments/fixtures/wompi-event.v1.json';
+import { PaymentReminderSchedulerService } from '../src/payments/payment-reminder-scheduler.service';
 import { createWompiEventChecksum } from '../src/payments/wompi-event-signature';
 import { WompiMockProvider } from '../src/payments/wompi-mock.provider';
 
@@ -46,6 +47,10 @@ const environmentNames = [
   'WOMPI_WEBHOOKS_ENABLED',
   'WOMPI_WEBHOOKS_KILL_SWITCH',
   'WOMPI_WEBHOOKS_MAX_SKEW_SECONDS',
+  'PAYMENT_REMINDERS_ENABLED',
+  'PAYMENT_REMINDERS_KILL_SWITCH',
+  'PAYMENT_REMINDERS_SIMULATION_MODE',
+  'PAYMENT_REMINDERS_POLL_INTERVAL_MS',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -65,6 +70,7 @@ describe('Wompi payment intents in simulation mode', () => {
   let otherOrganizationId: string;
   let prisma: PrismaClient;
   let readOnlyToken: string;
+  let reminders: PaymentReminderSchedulerService;
   let wompi: WompiMockProvider;
   let eventSequence = 0;
 
@@ -91,6 +97,10 @@ describe('Wompi payment intents in simulation mode', () => {
       WOMPI_WEBHOOKS_ENABLED: 'true',
       WOMPI_WEBHOOKS_KILL_SWITCH: 'false',
       WOMPI_WEBHOOKS_MAX_SKEW_SECONDS: '300',
+      PAYMENT_REMINDERS_ENABLED: 'true',
+      PAYMENT_REMINDERS_KILL_SWITCH: 'false',
+      PAYMENT_REMINDERS_SIMULATION_MODE: 'true',
+      PAYMENT_REMINDERS_POLL_INTERVAL_MS: '60000',
     });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
     await prisma.$connect();
@@ -116,6 +126,7 @@ describe('Wompi payment intents in simulation mode', () => {
     orderId = await seedResolvedCodOrder();
     app = await createApplication();
     wompi = app.get(WompiMockProvider);
+    reminders = app.get(PaymentReminderSchedulerService);
     await app.listen(0, '127.0.0.1');
     baseUrl = await app.getUrl();
     operationsToken = await login('wompi-operations@example.test');
@@ -303,6 +314,19 @@ describe('Wompi payment intents in simulation mode', () => {
     expect(checkout.searchParams.get('amount-in-cents')).toBe('1200000');
     expect(checkout.searchParams.get('signature:integrity')).toMatch(/^[a-f0-9]{64}$/u);
     await expect(prisma.paymentIntent.count({ where: { orderId } })).resolves.toBe(1);
+    const intent = await prisma.paymentIntent.findFirstOrThrow({ where: { orderId } });
+    const schedule = await prisma.paymentReminder.findMany({
+      orderBy: { sequence: 'asc' },
+      where: { paymentIntentId: intent.id },
+    });
+    expect(schedule).toHaveLength(2);
+    expect(schedule.map(({ sequence }) => sequence)).toEqual([1, 2]);
+    expect(schedule[0]?.scheduledAt.getTime()).toBe(
+      intent.createdAt.getTime() + 8 * 60 * 60 * 1_000,
+    );
+    expect(schedule[1]?.scheduledAt.getTime()).toBe(
+      intent.createdAt.getTime() + 16 * 60 * 60 * 1_000,
+    );
     await expect(
       prisma.outboxEvent.count({
         where: { eventType: 'payment.intent.created.v1', organizationId },
@@ -319,6 +343,30 @@ describe('Wompi payment intents in simulation mode', () => {
         where: { eventType: 'payment.intent.created.v1', organizationId },
       }),
     ).resolves.toBe(1);
+  });
+
+  it('requests the first due reminder once under concurrent scheduler execution', async () => {
+    const intent = await prisma.paymentIntent.findFirstOrThrow({ where: { orderId } });
+    const first = await prisma.paymentReminder.findUniqueOrThrow({
+      where: { paymentIntentId_sequence: { paymentIntentId: intent.id, sequence: 1 } },
+    });
+    const now = new Date();
+    await prisma.paymentReminder.update({
+      data: { scheduledAt: new Date(now.getTime() - 1_000) },
+      where: { id: first.id },
+    });
+    const batches = await Promise.all([reminders.processDue(now), reminders.processDue(now)]);
+    expect(batches.reduce((total, batch) => total + batch.requested, 0)).toBe(1);
+    await expect(reminders.processDue(now)).resolves.toEqual({ cancelled: 0, requested: 0 });
+    await expect(
+      prisma.outboxEvent.count({ where: { eventType: 'payment.reminder.requested.v1' } }),
+    ).resolves.toBe(1);
+    await expect(prisma.paymentReminder.groupBy({ by: ['status'], _count: true })).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ _count: 1, status: 'REQUESTED' }),
+        expect.objectContaining({ _count: 1, status: 'SCHEDULED' }),
+      ]),
+    );
   });
 
   it('accepts one concurrent signed event only after authoritative verification', async () => {
@@ -343,6 +391,17 @@ describe('Wompi payment intents in simulation mode', () => {
     await expect(
       prisma.outboxEvent.count({ where: { eventType: 'payment.intent.status-updated.v1' } }),
     ).resolves.toBe(1);
+    await expect(
+      prisma.paymentReminder.count({
+        where: {
+          paymentIntentId: (responses[0]?.body as { intentId: string }).intentId,
+          status: 'CANCELLED',
+        },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({ where: { eventType: 'payment.reminder.requested.v1' } }),
+    ).resolves.toBe(1);
   });
 
   it('persists and rejects a signed amount that differs from authoritative data', async () => {
@@ -366,6 +425,39 @@ describe('Wompi payment intents in simulation mode', () => {
     ).resolves.toBe(1);
     await expect(
       prisma.outboxEvent.count({ where: { eventType: 'payment.intent.status-updated.v1' } }),
+    ).resolves.toBe(1);
+  });
+
+  it('cancels a due reminder instead of requesting delivery after intent expiration', async () => {
+    const intent = await prisma.paymentIntent.findFirstOrThrow({ where: { orderId } });
+    const second = await prisma.paymentReminder.findUniqueOrThrow({
+      where: { paymentIntentId_sequence: { paymentIntentId: intent.id, sequence: 2 } },
+    });
+    const now = new Date();
+    await prisma.$transaction([
+      prisma.paymentIntent.update({
+        data: { expiresAt: new Date(intent.createdAt.getTime() + 1), status: 'PENDING' },
+        where: { id: intent.id },
+      }),
+      prisma.paymentReminder.update({
+        data: {
+          cancellationReason: null,
+          cancelledAt: null,
+          scheduledAt: new Date(now.getTime() - 1_000),
+          status: 'SCHEDULED',
+        },
+        where: { id: second.id },
+      }),
+    ]);
+    await expect(reminders.processDue(now)).resolves.toEqual({ cancelled: 1, requested: 0 });
+    await expect(
+      prisma.paymentReminder.findUniqueOrThrow({ where: { id: second.id } }),
+    ).resolves.toMatchObject({
+      cancellationReason: 'intent_expired',
+      status: 'CANCELLED',
+    });
+    await expect(
+      prisma.outboxEvent.count({ where: { eventType: 'payment.reminder.requested.v1' } }),
     ).resolves.toBe(1);
   });
 });

@@ -56,6 +56,8 @@ Actualizado: 2026-07-14
 | D-050  | DECISIÓN           | Solo una intención pendiente por pedido; monto/referencia se derivan de datos durables           | ACEPTADA E2-H2A    |
 | D-051  | DECISIÓN           | Webhook Wompi nunca es authoritative; se consulta y compara antes de cambiar estado              | ACEPTADA E2-H3A    |
 | D-052  | DECISIÓN           | Eventos de pago guardan solo hash/resumen redactado y colisiones fallan cerradas                 | ACEPTADA E2-H3A    |
+| D-053  | DECISIÓN           | Hora 0 es enlace inicial, +8/+16 son los dos recordatorios y +24 pertenece al vencimiento        | ACEPTADA E2-H4A    |
+| D-054  | DECISIÓN           | Scheduler solo emite outbox; WhatsApp carga datos tenant-safe y aplica sus propios controles     | ACEPTADA E2-H4A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

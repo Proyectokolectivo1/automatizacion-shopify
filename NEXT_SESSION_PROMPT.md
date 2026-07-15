@@ -4,7 +4,7 @@ Actualizado: 2026-07-14
 
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
 `EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C, E0-H4C, E1-H1A a E1-H5A
-y E2-H1A/E2-H2A/E2-H3A están completas; E0-H3B permanece pendiente. No reinicies ni reemplaces trabajo válido.
+y E2-H1A/E2-H2A/E2-H3A/E2-H4A están completas; E0-H3B permanece pendiente. No reinicies ni reemplaces trabajo válido.
 
 Repositorio canónico: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama de
 trabajo publicada es `codex/foundations-e0-h2` y el PR borrador #1 está abierto. GitHub CLI 2.96.0
@@ -29,17 +29,17 @@ Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integratio
 `pnpm shopify:reconciliation:verify`, `pnpm database:status`, `pnpm observability:verify`,
 `pnpm audit --prod` y `pnpm infra:verify`. No borres volúmenes.
 
-## Siguiente vertical exacta: E2-H4A
+## Siguiente vertical exacta: E2-H5A
 
-Implementa recordatorios Wompi únicamente en simulación:
+Implementa vencimiento y abandono Wompi únicamente en simulación:
 
-- agenda durable a 0/8/16/24 horas, máximo dos recordatorios por intención;
-- outbox idempotente y cancelación cuando la intención deje `PENDING`;
-- política configurable y default-deny para ventanas/estados desconocidos;
-- worker/reproceso concurrente, métricas, auditoría, flag, modo simulación y kill switch;
-- fixtures y pruebas de carrera, replay, aprobación antes del vencimiento y migración desde vacío.
+- expirar intenciones `PENDING` al cumplir 24 horas y cancelar recordatorios restantes;
+- agregar estados/historial de pedido necesarios sin mutación destructiva;
+- política configurable `MARK` o `CANCEL`, con `MARK` por defecto mientras DP-002 siga abierta;
+- scheduler concurrente, outbox, métricas, auditoría, flag, modo simulación y kill switch;
+- pruebas de carrera, replay, aprobación simultánea, tenant y migración desde vacío.
 
-Usa los contratos Wompi y la sección E2-H4 de la especificación. Wompi real sigue
+Usa los contratos Wompi y la sección E2-H5 de la especificación. Wompi real sigue
 `BLOQUEADO_POR_CREDENCIALES`. No envíe WhatsApp ni llame Shopify, Mastershop o servicios
 reales. Mantén E0-H3B pendiente. `pnpm audit --prod` devolvió HTTP 410 por retiro del endpoint npm;
 no lo marque verde hasta migrar el gate de forma controlada.

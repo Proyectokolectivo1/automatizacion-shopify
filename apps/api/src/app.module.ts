@@ -26,6 +26,7 @@ import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
 import { PaymentIntentController } from './payments/payment-intent.controller';
 import { PaymentIntentService } from './payments/payment-intent.service';
+import { PaymentReminderSchedulerService } from './payments/payment-reminder-scheduler.service';
 import { WompiMockProvider } from './payments/wompi-mock.provider';
 import { WOMPI_PROVIDER } from './payments/wompi-provider';
 import { WompiWebhookController } from './payments/wompi-webhook.controller';
@@ -98,6 +99,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     TransportRateResolver,
     TransportRateService,
     PaymentIntentService,
+    PaymentReminderSchedulerService,
     WompiWebhookService,
     WompiMockProvider,
     ShopifyMockProvider,

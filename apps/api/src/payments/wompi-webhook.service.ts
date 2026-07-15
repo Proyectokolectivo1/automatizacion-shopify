@@ -194,10 +194,38 @@ export class WompiWebhookService {
           },
         });
         if (current.status !== nextStatus) {
+          const transitionedAt = new Date();
           await transaction.paymentIntent.update({
             data: { status: nextStatus },
             where: { id: intent.id },
           });
+          if (nextStatus !== PaymentIntentStatus.PENDING) {
+            const cancelled = await transaction.paymentReminder.updateMany({
+              data: {
+                cancellationReason: 'intent_not_pending',
+                cancelledAt: transitionedAt,
+                status: 'CANCELLED',
+              },
+              where: { paymentIntentId: intent.id, status: 'SCHEDULED' },
+            });
+            if (cancelled.count > 0) {
+              await transaction.auditLog.create({
+                data: {
+                  action: 'payment_reminders.cancelled',
+                  correlationId: this.requestContext.correlationId ?? randomUUID(),
+                  metadataJson: {
+                    count: cancelled.count,
+                    mode: 'simulation',
+                    reason: 'intent_not_pending',
+                  },
+                  organizationId: intent.organizationId,
+                  outcome: 'SUCCESS',
+                  resourceId: intent.id,
+                  resourceType: 'payment_intent',
+                },
+              });
+            }
+          }
           await transaction.outboxEvent.create({
             data: {
               aggregateId: intent.id,

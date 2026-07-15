@@ -11,8 +11,8 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 3 — pagos simulados. E2-H1A a E2-H3A están completas; la siguiente vertical es E2-H4A,
-programación idempotente de recordatorios exclusivamente en simulación.
+Fase 3 — pagos simulados. E2-H1A a E2-H4A están completas; la siguiente vertical es E2-H5A,
+vencimiento y abandono configurables exclusivamente en simulación.
 
 ## Avance aproximado por épica
 
@@ -20,7 +20,7 @@ programación idempotente de recordatorios exclusivamente en simulación.
 | ------------------------ | -----: | ------------------------------------------------- |
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   40 % | tarifa, intención y webhook Wompi simulados       |
+| E2 Pagos y tarifas       |   55 % | tarifa, intención, webhook y recordatorios        |
 | E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                |
@@ -82,10 +82,12 @@ programación idempotente de recordatorios exclusivamente en simulación.
   expiración, firma SHA-256, host `.invalid`, RBAC, tenant, replay, auditoría, métricas y outbox.
 - E2-H3A: webhook crudo, checksum/tiempo, eventos durables redactados, consulta authoritative,
   comparación financiera, estados, carrera/replay, métricas, outbox y kill switch probados.
+- E2-H4A: dos ventanas durables +8/+16, scheduler concurrente, outbox único, auditoría, métricas,
+  cancelación al aprobar/vencer, flags, simulación y kill switch probados.
 
 ## Siguiente vertical
 
-- E2-H4A: programar recordatorios sintéticos 0/8/16/24 h con máximo dos, cancelación e idempotencia.
+- E2-H5A: expirar a 24 h y aplicar política de abandono `MARK`/`CANCEL` solo en simulación.
 
 ## Pendiente
 
@@ -112,7 +114,7 @@ programación idempotente de recordatorios exclusivamente en simulación.
 - `pnpm test`: 49 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 15 migraciones, constraints y drift.
+- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 16 migraciones, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -123,7 +125,7 @@ programación idempotente de recordatorios exclusivamente en simulación.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
-- `pnpm wompi:verify`: 7 pruebas HTTP/PostgreSQL y 4 contractuales de intención/checkout/webhook.
+- `pnpm wompi:verify`: 9 pruebas HTTP/PostgreSQL y 4 contractuales de intención/checkout/webhook.
 - GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
@@ -135,7 +137,7 @@ programación idempotente de recordatorios exclusivamente en simulación.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Quince migraciones expand-only están verificadas desde vacío.
+- Dieciséis migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
@@ -144,5 +146,5 @@ scheduler de conciliación, estados operativos posteriores ni integraciones real
 
 ## Siguiente paso
 
-Implementar E2-H4A: agenda de recordatorios sintéticos 0/8/16/24 h, máximo dos, outbox idempotente y
-cancelación al abandonar `PENDING`. No enviar WhatsApp ni iniciar tráfico real.
+Implementar E2-H5A: vencimiento a 24 h, historial, recordatorios cancelados y política `MARK`/`CANCEL`
+en simulación. No cancelar pedidos Shopify ni iniciar tráfico real.

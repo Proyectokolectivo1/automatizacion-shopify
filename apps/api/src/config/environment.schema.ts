@@ -69,6 +69,16 @@ export const environmentSchema = z.object({
   WOMPI_WEBHOOKS_KILL_SWITCH: booleanFlag('true'),
   WOMPI_WEBHOOKS_MAX_BODY_BYTES: z.coerce.number().int().min(1_024).max(1_048_576).default(262_144),
   WOMPI_WEBHOOKS_MAX_SKEW_SECONDS: z.coerce.number().int().min(30).max(3_600).default(300),
+  PAYMENT_REMINDERS_ENABLED: booleanFlag('false'),
+  PAYMENT_REMINDERS_KILL_SWITCH: booleanFlag('true'),
+  PAYMENT_REMINDERS_SIMULATION_MODE: booleanFlag('true'),
+  PAYMENT_REMINDERS_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(900_000)
+    .default(60_000),
+  PAYMENT_REMINDERS_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
   POSTGRES_DB: nonEmpty,
   POSTGRES_HOST: nonEmpty,
   POSTGRES_PASSWORD: nonEmpty,

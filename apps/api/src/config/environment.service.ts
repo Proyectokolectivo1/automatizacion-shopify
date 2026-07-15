@@ -255,6 +255,22 @@ export class EnvironmentService {
     };
   }
 
+  public get paymentReminders(): Readonly<{
+    batchSize: number;
+    enabled: boolean;
+    killSwitch: boolean;
+    pollIntervalMs: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      batchSize: this.values.PAYMENT_REMINDERS_BATCH_SIZE,
+      enabled: this.values.PAYMENT_REMINDERS_ENABLED,
+      killSwitch: this.values.PAYMENT_REMINDERS_KILL_SWITCH,
+      pollIntervalMs: this.values.PAYMENT_REMINDERS_POLL_INTERVAL_MS,
+      simulationMode: this.values.PAYMENT_REMINDERS_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

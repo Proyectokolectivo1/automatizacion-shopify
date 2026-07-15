@@ -542,3 +542,20 @@ lectura `any` en una aserción Supertest; se tipó y la repetición completa que
 
 No hubo tráfico ni credenciales Wompi reales. Recordatorios, abandono, conciliación diaria y sandbox
 permanecen pendientes; E2-H4A es la siguiente vertical.
+
+## Iteración E2-H4A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Wompi + recordatorios   | `pnpm wompi:verify`    | OK: 4 contractuales + 9 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 16 migraciones y cero drift  |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/unitarias/build   |
+
+Las pruebas validan dos filas exactas a +8/+16, máximo dos por constraint, reclamo concurrente con
+`SKIP LOCKED`, outbox único, replay vacío, cancelación al aprobar y cancelación fail-closed cuando la
+intención venció. Hora 0 sigue representada por creación del enlace y hora 24 queda para E2-H5A.
+
+No se llamó a WhatsApp, Wompi, Shopify ni Mastershop. Solo se emitió el evento sintético
+`payment.reminder.requested.v1`; la entrega real permanece `BLOQUEADO_POR_CREDENCIALES`.

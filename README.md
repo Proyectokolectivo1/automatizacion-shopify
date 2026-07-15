@@ -95,6 +95,9 @@ Las intenciones Wompi simuladas se validan con `pnpm wompi:verify`; consulte
 `docs/runbooks/wompi-payment-intents.md`. Los links usan un dominio `.invalid`, no capturan tarjetas y
 todo tráfico/credencial real permanece bloqueado.
 
+El mismo gate valida recordatorios durables a +8/+16 horas; consulte
+`docs/runbooks/payment-reminders.md`. Solo se crea outbox sintético, sin envío WhatsApp real.
+
 ## Estado real
 
 Empiece por [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) para conocer el propósito, lo implementado y lo

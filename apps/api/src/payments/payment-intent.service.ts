@@ -118,6 +118,24 @@ export class PaymentIntentService {
             storeId: order.storeId,
           },
         });
+        await transaction.paymentReminder.createMany({
+          data: [
+            {
+              organizationId: command.organizationId,
+              paymentIntentId: intent.id,
+              scheduledAt: new Date(intent.createdAt.getTime() + 8 * 60 * 60 * 1_000),
+              sequence: 1,
+              storeId: order.storeId,
+            },
+            {
+              organizationId: command.organizationId,
+              paymentIntentId: intent.id,
+              scheduledAt: new Date(intent.createdAt.getTime() + 16 * 60 * 60 * 1_000),
+              sequence: 2,
+              storeId: order.storeId,
+            },
+          ],
+        });
         await transaction.outboxEvent.create({
           data: {
             aggregateId: intent.id,

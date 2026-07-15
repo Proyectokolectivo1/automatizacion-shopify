@@ -113,6 +113,7 @@ describe('initial database migration', () => {
           'transport_rate_rules',
           'payment_intents',
           'payment_provider_events',
+          'payment_reminders',
         ],
       ],
     );
@@ -136,6 +137,7 @@ describe('initial database migration', () => {
       'outbox_events',
       'payment_intents',
       'payment_provider_events',
+      'payment_reminders',
       'reconciliation_checkpoints',
       'stores',
       'transport_rate_decisions',
@@ -148,7 +150,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('15');
+    expect(migrations.rows[0]?.count).toBe('16');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -644,6 +646,30 @@ describe('initial database migration', () => {
          VALUES ($1, $2, $3, 'expired', 'https://example.invalid', 100, 'COP',
           NOW() - INTERVAL '1 hour', 1, $4)`,
         [organizationId, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    const intent = await database.query<{ id: string }>(
+      `INSERT INTO payment_intents
+       (organization_id, store_id, order_id, external_reference, checkout_url, amount, currency,
+        expires_at, attempt_number, idempotency_key)
+       VALUES ($1, $2, $3, 'valid-reminders', 'https://example.invalid', 100, 'COP',
+        NOW() + INTERVAL '24 hours', 1, $4) RETURNING id`,
+      [organizationId, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO payment_reminders
+         (organization_id, store_id, payment_intent_id, sequence, scheduled_at)
+         VALUES ($1, $2, $3, 3, NOW() + INTERVAL '8 hours')`,
+        [organizationId, store.rows[0]?.id, intent.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO payment_reminders
+         (organization_id, store_id, payment_intent_id, sequence, scheduled_at, status)
+         VALUES ($1, $2, $3, 1, NOW() + INTERVAL '8 hours', 'requested')`,
+        [organizationId, store.rows[0]?.id, intent.rows[0]?.id],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });
