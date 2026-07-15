@@ -30,10 +30,10 @@ Estado global: `EN_DESARROLLO`. No está listo para piloto ni producción.
 
 El repositorio canónico público es
 <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`. La base anterior está
-publicada; la rama `codex/foundations-e0-h2` contiene E1-H2A a E1-H5A validadas. GitHub CLI
-no está instalado, por lo que el PR aún debe abrirse desde la interfaz web.
+publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR borrador #1 está
+abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
-Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 15 %. Ya existe un monorepo reproducible
+Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 25 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación; todavía no existen conexiones reales.
@@ -85,6 +85,8 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 - Reproceso individual tenant-safe mediante outbox con RBAC, idempotencia, auditoría y métricas.
 - Políticas de tarifa COD globales/por tienda, versionadas, activables y resueltas de forma determinista.
 - Preview/resolución con RBAC, tenant, idempotencia, auditoría, métricas, decisión durable y outbox.
+- `WompiProvider` simulado y una intención COD durable con referencia, monto, expiración y firma SHA-256.
+- Checkout contractual sobre `.invalid`, RBAC, tenant, replay, auditoría, métricas y outbox.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -104,7 +106,8 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 
 ### Pagos y WhatsApp
 
-- Adaptador Wompi, checkout alojado, expiración y conciliación; las reglas de modalidad/tarifa ya existen.
+- Webhook Wompi, consulta authoritative, confirmación, recordatorios, vencimiento y conciliación; la
+  intención/checkout simulado y las reglas de modalidad/tarifa ya existen.
 - WhatsApp Cloud API, plantillas, mensajes y bandeja operativa.
 - Simulación y pruebas contractuales mientras falten credenciales.
 
@@ -136,7 +139,6 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox de Mastershop.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de las impresoras Windows.
 - `BLOQUEADO_POR_DECISION`: dominio/correo, políticas COD, retención legal, atribución y RPO/RTO.
-- `BLOQUEADO_POR_HERRAMIENTA`: falta GitHub CLI para crear el PR automáticamente; el push sí funciona.
 
 Mientras continúen estos bloqueos se deben implementar adaptadores, mocks, fixtures, pruebas de
 contrato, feature flags, modo simulación y kill switches; no se deben presentar como integraciones
@@ -144,8 +146,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E2-H2A: adaptador Wompi y checkout alojado únicamente en simulación, con firma contractual,
-idempotencia y expiración. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
+E2-H3A: webhook Wompi y consulta authoritative únicamente en simulación, con checksum, comparación de
+referencia/monto/moneda e idempotencia. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 

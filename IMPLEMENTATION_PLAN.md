@@ -23,8 +23,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 2E   | E1-H5A conciliación simulada       | COMPLETADA                 | faltantes, fallidos y reproceso acotado probados          |
 | 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
 | 3A   | E2-H1A tarifas/pago simulados      | COMPLETADA                 | reglas versionadas y decisión default-deny probadas       |
-| 3B   | E2-H2A Wompi simulado              | SIGUIENTE                  | adaptador, checkout, firma y replay contractuales         |
-| 3C   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3B   | E2-H2A Wompi simulado              | COMPLETADA                 | adaptador, checkout, firma y replay contractuales         |
+| 3C   | E2-H3A webhook Wompi simulado      | SIGUIENTE                  | checksum, persistencia y consulta authoritative probados  |
+| 3D   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -182,3 +183,14 @@ Implementar `WompiProvider` con simulador determinista, fixtures y pruebas de co
 documentación oficial. Generar únicamente la intención/checkout alojado en simulación, con referencia
 única, importe COP, firma de integridad, expiración, idempotencia, auditoría, métricas, flag y kill
 switch. No capturar datos de tarjeta, enviar WhatsApp ni usar llaves reales.
+
+Resultado: completada el 2026-07-14. La migración catorce agrega intenciones tenant-safe. El
+proveedor simulado firma referencia+monto+COP+expiración con SHA-256 y construye el contrato Web
+Checkout sobre `.invalid`. Seis pruebas cubren firma, campos controlados, RBAC, tenant, carrera,
+replay y outbox.
+
+## Decimoséptima vertical: E2-H3A
+
+Recibir un evento `transaction.updated` sintético, validar checksum sobre cuerpo recibido, persistirlo
+idempotentemente y consultar el estado authoritative mediante `WompiProvider` antes de comparar
+referencia, monto y moneda. No confirmar pagos ni mover pedidos usando solo el webhook.

@@ -24,6 +24,10 @@ import { MetricsController } from './observability/metrics.controller';
 import { MetricsService } from './observability/metrics.service';
 import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
+import { PaymentIntentController } from './payments/payment-intent.controller';
+import { PaymentIntentService } from './payments/payment-intent.service';
+import { WompiMockProvider } from './payments/wompi-mock.provider';
+import { WOMPI_PROVIDER } from './payments/wompi-provider';
 import { ShopifyReconciliationController } from './reconciliation/shopify-reconciliation.controller';
 import { ShopifyReconciliationService } from './reconciliation/shopify-reconciliation.service';
 import { TransportRateController } from './rates/transport-rate.controller';
@@ -56,6 +60,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     ShopifyWebhookController,
     ShopifyReconciliationController,
     TransportRateController,
+    PaymentIntentController,
   ],
   providers: [
     EnvironmentService,
@@ -89,7 +94,10 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     ShopifyReconciliationService,
     TransportRateResolver,
     TransportRateService,
+    PaymentIntentService,
+    WompiMockProvider,
     ShopifyMockProvider,
+    { provide: WOMPI_PROVIDER, useExisting: WompiMockProvider },
     { provide: SHOPIFY_PROVIDER, useExisting: ShopifyMockProvider },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],

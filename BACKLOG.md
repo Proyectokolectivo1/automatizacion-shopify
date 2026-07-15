@@ -26,8 +26,9 @@ Actualizado: 2026-07-14
 | E1-H1B/H2B/H3B | P0             | Conexión real, registro webhook y consulta de pedido             | BLOQUEADO_POR_CREDENCIALES |
 | E1-H4B/H5      | P0             | Estados operativos Shopify posteriores                           | PENDIENTE                  |
 | E2-H1A         | P0             | Reglas simuladas de tarifas y modalidades de pago                | COMPLETADA                 |
-| E2-H2A         | P0             | Adaptador Wompi y checkout alojado en simulación                 | SIGUIENTE                  |
-| E2-H2B..H6     | P0             | Sandbox y ciclo Wompi real                                       | BLOQUEADO_POR_CREDENCIALES |
+| E2-H2A         | P0             | Adaptador Wompi y checkout alojado en simulación                 | COMPLETADA                 |
+| E2-H3A         | P0             | Webhook Wompi firmado y consulta authoritative simulados         | SIGUIENTE                  |
+| E2-H2B/H3B..H6 | P0             | Sandbox y ciclo Wompi real                                       | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7      | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10     | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |
 | E5-H1..H8      | P1             | Agente e impresión Windows                                       | BLOQUEADO_POR_INVENTARIO   |

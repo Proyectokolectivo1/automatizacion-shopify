@@ -17,6 +17,7 @@ export class MetricsService {
   private readonly orderClassifications: Counter<'outcome'>;
   private readonly shopifyReconciliations: Counter<'action' | 'outcome'>;
   private readonly transportRateOperations: Counter<'action' | 'outcome'>;
+  private readonly paymentIntentOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -99,6 +100,12 @@ export class MetricsService {
       name: 'ecommerce_api_transport_rate_operations_total',
       registers: [this.registry],
     });
+    this.paymentIntentOperations = new Counter({
+      help: 'Operaciones de intenciones Wompi simuladas por resultado acotado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_payment_intent_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -154,6 +161,10 @@ export class MetricsService {
 
   public recordTransportRate(action: string, outcome: string): void {
     this.transportRateOperations.inc({ action, outcome });
+  }
+
+  public recordPaymentIntent(action: string, outcome: string): void {
+    this.paymentIntentOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

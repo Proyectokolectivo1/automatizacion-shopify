@@ -72,6 +72,9 @@ jobs:
       - name: Verify simulated transport rate policies
         run: pnpm transport-rates:verify
 
+      - name: Verify simulated Wompi payment intents
+        run: pnpm wompi:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

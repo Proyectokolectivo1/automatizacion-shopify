@@ -111,6 +111,7 @@ describe('initial database migration', () => {
           'transport_rate_decisions',
           'transport_rate_policies',
           'transport_rate_rules',
+          'payment_intents',
         ],
       ],
     );
@@ -132,6 +133,7 @@ describe('initial database migration', () => {
       'organization_memberships',
       'organizations',
       'outbox_events',
+      'payment_intents',
       'reconciliation_checkpoints',
       'stores',
       'transport_rate_decisions',
@@ -144,7 +146,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('13');
+    expect(migrations.rows[0]?.count).toBe('14');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -579,6 +581,67 @@ describe('initial database migration', () => {
          (organization_id, version, currency)
          VALUES ($1, 3, 'USD')`,
         [organizationId],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces Wompi payment intent ownership, amount, currency and expiration', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Payment Constraint Organization') RETURNING id`,
+    );
+    const organizationId = organization.rows[0]?.id;
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'Payment Store', 'payment-constraints.myshopify.com', 'America/Bogota', 'COP')
+       RETURNING id`,
+      [organizationId],
+    );
+    const webhook = await database.query<{ id: string }>(
+      `INSERT INTO webhook_events
+       (organization_id, store_id, provider, external_event_id, event_type, api_version,
+        headers_redacted_json, payload_redacted_json, payload_hash, triggered_at)
+       VALUES ($1, $2, 'shopify', $3, 'orders/create', '2026-07', '{}', '{}', repeat('e', 64), NOW())
+       RETURNING id`,
+      [organizationId, store.rows[0]?.id, randomUUID()],
+    );
+    const order = await database.query<{ id: string }>(
+      `INSERT INTO orders
+       (organization_id, store_id, source_webhook_event_id, shopify_order_id, shopify_order_name,
+        payment_mode, current_state, currency, subtotal_amount, discount_amount, tax_amount,
+        total_amount, transport_charge_amount, raw_snapshot_json, source_created_at, source_updated_at)
+       VALUES ($1, $2, $3, $4, '#PAY-1', 'cod', 'pending_transport_payment', 'COP',
+        1000, 0, 0, 1000, 100, '{}', NOW(), NOW()) RETURNING id`,
+      [organizationId, store.rows[0]?.id, webhook.rows[0]?.id, randomUUID()],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO payment_intents
+         (organization_id, store_id, order_id, external_reference, checkout_url, amount, currency,
+          expires_at, attempt_number, idempotency_key)
+         VALUES ($1, $2, $3, 'invalid-amount', 'https://example.invalid', 0, 'COP',
+          NOW() + INTERVAL '1 hour', 1, $4)`,
+        [organizationId, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO payment_intents
+         (organization_id, store_id, order_id, external_reference, checkout_url, amount, currency,
+          expires_at, attempt_number, idempotency_key)
+         VALUES ($1, $2, $3, 'invalid-currency', 'https://example.invalid', 100, 'USD',
+          NOW() + INTERVAL '1 hour', 1, $4)`,
+        [organizationId, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO payment_intents
+         (organization_id, store_id, order_id, external_reference, checkout_url, amount, currency,
+          expires_at, attempt_number, idempotency_key)
+         VALUES ($1, $2, $3, 'expired', 'https://example.invalid', 100, 'COP',
+          NOW() - INTERVAL '1 hour', 1, $4)`,
+        [organizationId, store.rows[0]?.id, order.rows[0]?.id, randomUUID()],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

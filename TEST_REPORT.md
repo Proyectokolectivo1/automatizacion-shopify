@@ -499,3 +499,27 @@ Fallos encontrados y corregidos:
 
 No hubo tráfico a Shopify, Wompi, WhatsApp o Mastershop ni PII real. Wompi queda
 `BLOQUEADO_POR_CREDENCIALES`; Mastershop queda `BLOQUEADO_POR_PROVEEDOR`.
+
+## Iteración E2-H2A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Contrato e integración  | `pnpm wompi:verify`    | OK: 2 contractuales + 4 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 14 migraciones y cero drift  |
+| Typecheck inicial       | gate API               | OK                                      |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/47 unit/build     |
+
+Las pruebas confirman concatenación de firma referencia+monto+COP+expiración, parámetros Web
+Checkout, host `.invalid`, RBAC, tenant, una sola intención pendiente, replay concurrente y outbox
+único. La API deriva monto/referencia de datos durables y rechaza pedidos sin tarifa COD resuelta.
+Durante el cierre se detectó que la validación estricta rechazaba también la ausencia legítima de
+cuerpo HTTP; se normalizó `undefined` a `{}` manteniendo el rechazo de cualquier campo adicional y
+se repitieron tanto `pnpm wompi:verify` como `pnpm validate` en verde.
+
+No hubo llamadas a Wompi ni credenciales reales. Webhook, consulta authoritative, confirmación,
+expiración operativa y conciliación permanecen pendientes; E2-H3A es la siguiente vertical.
+
+GitHub CLI 2.96.0 quedó disponible y autenticado por keyring. E2-H1A se publicó como commit
+`482fb71` y se abrió el PR borrador #1 sin usar el PAT expuesto.

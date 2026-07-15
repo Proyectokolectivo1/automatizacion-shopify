@@ -40,3 +40,4 @@ Actualizado: 2026-07-14
 | R-034 | Una tarifa comercial incorrecta cobra transporte indebido  | Media | Crítico | Versionado, preview, fail-closed, auditoría y aprobación humana    | Abierto  |
 | R-035 | Confundir llaves/firmas Wompi entre ambientes              | Media | Crítico | Secretos separados, prefijos, sandbox primero, flags y kill switch | Abierto  |
 | R-036 | El contrato oficial Wompi cambia antes de conectar         | Media | Alto    | Fijar fixtures, reconfirmar docs y ejecutar contrato en sandbox    | Abierto  |
+| R-037 | Un checkout simulado se confunde con un cobro real         | Media | Crítico | Dominio `.invalid`, modo explícito, kill switch y pruebas          | Mitigado |

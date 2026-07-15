@@ -107,6 +107,17 @@ enum OrderState {
   @@map("order_state")
 }
 
+enum PaymentIntentStatus {
+  PENDING  @map("pending")
+  APPROVED @map("approved")
+  DECLINED @map("declined")
+  EXPIRED  @map("expired")
+  VOIDED   @map("voided")
+  ERROR    @map("error")
+
+  @@map("payment_intent_status")
+}
+
 enum ReconciliationIssueType {
   MISSING_ORDER  @map("missing_order")
   FAILED_WEBHOOK @map("failed_webhook")
@@ -195,6 +206,7 @@ model Organization {
   transportRatePolicies       TransportRatePolicy[]
   transportRateRules          TransportRateRule[]
   transportRateDecisions      TransportRateDecision[]
+  paymentIntents              PaymentIntent[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -341,6 +353,7 @@ model Store {
   orderStateHistory           OrderStateHistory[]
   transportRatePolicies       TransportRatePolicy[]
   transportRateDecisions      TransportRateDecision[]
+  paymentIntents              PaymentIntent[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -500,6 +513,7 @@ model Order {
   stateHistory          OrderStateHistory[]
   reconciliationIssues  OrderReconciliationIssue[]
   transportRateDecisions TransportRateDecision[]
+  paymentIntents          PaymentIntent[]
 
   @@unique([organizationId, storeId, id], map: "orders_organization_store_id_key")
   @@unique([organizationId, storeId, sourceWebhookEventId], map: "orders_source_webhook_tenant_key")
@@ -615,6 +629,34 @@ model TransportRateDecision {
   @@unique([orderId, policyId, ruleId], map: "transport_rate_decisions_order_policy_rule_key")
   @@index([organizationId, orderId, createdAt], map: "transport_rate_decisions_tenant_order_idx")
   @@map("transport_rate_decisions")
+}
+
+model PaymentIntent {
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String              @map("organization_id") @db.Uuid
+  storeId                String              @map("store_id") @db.Uuid
+  orderId                String              @map("order_id") @db.Uuid
+  provider               IntegrationProvider @default(WOMPI)
+  externalReference      String              @map("external_reference") @db.VarChar(255)
+  providerCheckoutId     String?             @map("provider_checkout_id") @db.VarChar(128)
+  checkoutUrl            String              @map("checkout_url") @db.VarChar(2048)
+  amount                 BigInt
+  currency               String              @db.Char(3)
+  status                 PaymentIntentStatus @default(PENDING)
+  expiresAt              DateTime            @map("expires_at") @db.Timestamptz(3)
+  attemptNumber          Int                 @map("attempt_number")
+  idempotencyKey         String              @unique(map: "payment_intents_idempotency_key") @map("idempotency_key") @db.VarChar(500)
+  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                  Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_store_tenant_fkey")
+  order                  Order               @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_order_tenant_fkey")
+
+  @@unique([provider, externalReference, attemptNumber], map: "payment_intents_provider_reference_attempt_key")
+  @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
+  @@index([organizationId, status, expiresAt], map: "payment_intents_tenant_status_expires_idx")
+  @@index([orderId, createdAt], map: "payment_intents_order_created_idx")
+  @@map("payment_intents")
 }
 
 model ReconciliationCheckpoint {

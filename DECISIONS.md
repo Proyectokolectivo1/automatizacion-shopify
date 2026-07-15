@@ -52,6 +52,8 @@ Actualizado: 2026-07-14
 | D-046  | DECISIÓN           | Tarifa ordena por prioridad, especificidad, tienda y desempate estable; conflicto falla cerrado  | ACEPTADA E2-H1A    |
 | D-047  | DECISIÓN           | Políticas de tarifa son versionadas; solo una activa por alcance y las decisiones son inmutables | ACEPTADA E2-H1A    |
 | D-048  | DECISIÓN           | Wompi usará checkout alojado y firma oficial; nunca capturará datos de tarjeta                   | ACEPTADA E2-H2A    |
+| D-049  | DECISIÓN           | El mock Wompi usa parámetros oficiales sobre `.invalid`; ningún link simulado es cobrable        | ACEPTADA E2-H2A    |
+| D-050  | DECISIÓN           | Solo una intención pendiente por pedido; monto/referencia se derivan de datos durables           | ACEPTADA E2-H2A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

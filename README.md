@@ -56,6 +56,7 @@ pnpm shopify:orders:verify
 pnpm orders:classification:verify
 pnpm shopify:reconciliation:verify
 pnpm transport-rates:verify
+pnpm wompi:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -89,6 +90,10 @@ y reprocesa exclusivamente mediante outbox con RBAC, idempotencia y kill switch.
 Las tarifas de transporte simuladas se validan con `pnpm transport-rates:verify`; consulte
 `docs/runbooks/transport-rates.md`. Las políticas son versionadas por alcance, la resolución falla
 cerrada y Wompi/WhatsApp permanecen desactivados.
+
+Las intenciones Wompi simuladas se validan con `pnpm wompi:verify`; consulte
+`docs/runbooks/wompi-payment-intents.md`. Los links usan un dominio `.invalid`, no capturan tarjetas y
+todo tráfico/credencial real permanece bloqueado.
 
 ## Estado real
 

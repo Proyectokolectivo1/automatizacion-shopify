@@ -11,8 +11,8 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 3 — pagos simulados. E2-H1A de modalidad y tarifas está completa; la siguiente vertical es
-E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
+Fase 3 — pagos simulados. E2-H1A y E2-H2A están completas; la siguiente vertical es E2-H3A,
+webhook Wompi y consulta authoritative exclusivamente en simulación.
 
 ## Avance aproximado por épica
 
@@ -20,7 +20,7 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 | ------------------------ | -----: | ------------------------------------------------- |
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   15 % | modalidad y tarifa simuladas completas            |
+| E2 Pagos y tarifas       |   25 % | tarifa e intención Wompi simuladas completas      |
 | E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                |
@@ -78,11 +78,13 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 - E2-H1A: políticas de tarifa globales/por tienda, versionadas y activables, con vigencia y moneda COP.
 - Resolución determinista/fail-closed, preview, RBAC, tenant, idempotencia, decisión durable, outbox,
   auditoría, métricas, modo simulación y kill switch probados.
+- E2-H2A: `WompiProvider`, intención durable y checkout contractual con referencia, monto COP,
+  expiración, firma SHA-256, host `.invalid`, RBAC, tenant, replay, auditoría, métricas y outbox.
 
 ## Siguiente vertical
 
-- E2-H2A: implementar adaptador Wompi y checkout alojado en simulación con contrato/firma oficiales,
-  sin usar credenciales, enviar WhatsApp ni capturar datos de tarjeta.
+- E2-H3A: recibir webhook Wompi sintético, validar checksum, persistir y consultar estado authoritative
+  simulado antes de comparar referencia, monto y moneda.
 
 ## Pendiente
 
@@ -96,8 +98,6 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 - `BLOQUEADO_POR_CREDENCIALES`: Shopify development, Wompi sandbox y Meta no suministrados.
 - `BLOQUEADO_POR_PROVEEDOR`: contrato, autenticación, payloads y sandbox Mastershop no suministrados.
 - `BLOQUEADO_POR_INVENTARIO`: modelos, drivers y papel de impresoras no suministrados.
-- `BLOQUEADO_POR_HERRAMIENTA`: GitHub CLI (`gh`) no está instalado; el push funciona mediante el
-  gestor seguro existente, pero no se automatizó la creación del PR.
 
 ## Riesgos destacados
 
@@ -108,10 +108,10 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 
 ## Pruebas
 
-- `pnpm test`: 45 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 47 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 9 pruebas sobre PostgreSQL real, 13 migraciones, constraints y drift.
+- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 14 migraciones, constraints y drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -122,6 +122,7 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
+- `pnpm wompi:verify`: 4 pruebas HTTP/PostgreSQL y 2 contractuales de intención/checkout.
 - GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
@@ -133,7 +134,7 @@ E2-H2A, adaptador Wompi y checkout alojado exclusivamente en simulación.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Trece migraciones expand-only están verificadas desde vacío.
+- Catorce migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
@@ -142,6 +143,6 @@ scheduler de conciliación, estados operativos posteriores ni integraciones real
 
 ## Siguiente paso
 
-Implementar E2-H2A: `WompiProvider`, intención/checkout alojado en simulación, firma de integridad,
-expiración e idempotencia con fixtures contractuales. No iniciar cobros, mensajes, logística ni
-tráfico real.
+Implementar E2-H3A: webhook `transaction.updated` simulado, checksum oficial, persistencia durable y
+consulta authoritative por proveedor antes de confirmar cualquier dato. No iniciar cobros, mensajes,
+logística ni tráfico real.

@@ -48,3 +48,10 @@ Un replay del mismo webhook o un snapshot tardío no emite un segundo evento de 
 
 La decisión, actualización monetaria y evento de resolución se escriben en una sola transacción. Un
 replay idempotente no emite un segundo evento.
+
+## Eventos de pago
+
+- `payment.intent.created.v1`: intención Wompi sintética persistida. Incluye IDs internos, importe,
+  COP, expiración, proveedor, modo y versión del fixture; nunca incluye URL, firma o secretos.
+
+Una intención y su evento se crean en la misma transacción. Replays no emiten eventos adicionales.
