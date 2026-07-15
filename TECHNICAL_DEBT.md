@@ -24,6 +24,8 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-014 | Políticas de clasificación no tienen API/UI segura   | Medio   | Añadir gestión RBAC, preview y activación auditada     |
 | TD-015 | Conciliación solo se ejecuta manualmente             | Medio   | Añadir scheduler con solape, rate limit y alertas      |
 | TD-016 | Consulta de incidencias no tiene cursor              | Bajo    | Añadir paginación por cursor al construir la consola   |
+| TD-017 | Políticas de tarifa no tienen listado ni consola UI  | Medio   | Añadir consulta paginada y flujo de aprobación seguro  |
+| TD-018 | Prisma/pg avisa sobre query concurrente en tests     | Bajo    | Revalidar adaptador antes de actualizar a pg 9         |
 
 ## Deuda resuelta
 

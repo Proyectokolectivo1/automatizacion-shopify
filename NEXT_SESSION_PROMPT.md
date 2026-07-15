@@ -3,8 +3,8 @@
 Actualizado: 2026-07-14
 
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
-`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C, E0-H4C y E1-H1A a E1-H5A
-están completas; E0-H3B permanece pendiente. No reinicies ni reemplaces trabajo válido.
+`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C, E0-H4C, E1-H1A a E1-H5A
+y E2-H1A están completas; E0-H3B permanece pendiente. No reinicies ni reemplaces trabajo válido.
 
 Repositorio canónico: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama de
 trabajo publicada es `codex/foundations-e0-h2`. GitHub CLI no está instalado; el PR puede abrirse en
@@ -29,16 +29,18 @@ Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integratio
 `pnpm shopify:reconciliation:verify`, `pnpm database:status`, `pnpm observability:verify`,
 `pnpm audit --prod` y `pnpm infra:verify`. No borres volúmenes.
 
-## Siguiente vertical exacta: E2-H1A
+## Siguiente vertical exacta: E2-H2A
 
-Implementa reglas de tarifas y modalidades de pago únicamente en simulación:
+Implementa el adaptador Wompi y checkout alojado únicamente en simulación:
 
-- modelo versionado y tenant-safe por tienda, con vigencia y una política activa inequívoca;
-- reglas priorizadas y deterministas para modalidad, tarifa y evidencia requerida;
-- decisión default-deny ante ausencia, contradicción, moneda o regla desconocida;
-- API de preview/activación con RBAC, idempotencia, auditoría y límites si la especificación la exige;
-- fixtures y pruebas de contrato, replay, carrera, tenant, redacción y migración desde vacío;
-- flags, modo simulación y kill switch cerrados por defecto.
+- interfaz `WompiProvider`, mock determinista y fixtures versionados según el contrato oficial;
+- referencia única, importe COP en centavos, expiración y firma de integridad para checkout alojado;
+- intención durable tenant-safe enlazada a pedido COD/tarifa, con máquina de estados default-deny;
+- API con RBAC, idempotencia, auditoría, redacción, límites y respuesta perdida;
+- pruebas contractuales, replay, carrera, tenant, monto alterado y migración desde vacío;
+- flags, modo simulación y kill switch cerrados por defecto; jamás capturar datos de tarjeta.
 
-Wompi real sigue `BLOQUEADO_POR_CREDENCIALES`. No cree links de pago, no envíe WhatsApp y no llame
-Shopify, Mastershop ni servicios reales. Mantén E0-H3B pendiente.
+Usa `docs/contracts/wompi-provider.md` y reconfirma documentación oficial antes de codificar. Wompi
+real sigue `BLOQUEADO_POR_CREDENCIALES`. No envíe WhatsApp ni llame Shopify, Mastershop o servicios
+reales. Mantén E0-H3B pendiente. `pnpm audit --prod` devolvió HTTP 410 por retiro del endpoint npm;
+no lo marque verde hasta migrar el gate de forma controlada.

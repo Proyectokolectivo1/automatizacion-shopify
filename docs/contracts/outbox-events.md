@@ -38,3 +38,13 @@ modo simulación. No representa un contrato funcional de negocio.
   modo de pago, estado destino, versión e identificador de regla, siempre con `mode=simulation`.
 
 Un replay del mismo webhook o un snapshot tardío no emite un segundo evento de pedido.
+
+## Eventos de tarifas
+
+- `transport.rate_policy.activated.v1`: confirma activación de una versión y alcance de política, sin
+  incluir reglas completas ni datos personales.
+- `order.transport_rate.resolved.v1`: confirma una decisión durable e incluye IDs internos, importe
+  menor, moneda COP, versión/regla ganadora y `mode=simulation`.
+
+La decisión, actualización monetaria y evento de resolución se escriben en una sola transacción. Un
+replay idempotente no emite un segundo evento.

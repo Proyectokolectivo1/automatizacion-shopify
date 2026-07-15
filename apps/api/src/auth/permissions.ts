@@ -6,7 +6,9 @@ export type Permission =
   | 'organization.manage'
   | 'organization.read'
   | 'outbox.manage'
-  | 'reconciliation.manage';
+  | 'reconciliation.manage'
+  | 'transport-rates.manage'
+  | 'transport-rates.resolve';
 
 const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>>> = {
   ADMIN: new Set([
@@ -16,10 +18,12 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'organization.read',
     'outbox.manage',
     'reconciliation.manage',
+    'transport-rates.manage',
+    'transport-rates.resolve',
   ]),
   FINANCE: new Set(['organization.read']),
   LOGISTICS: new Set(['organization.read']),
-  OPERATIONS: new Set(['organization.read', 'reconciliation.manage']),
+  OPERATIONS: new Set(['organization.read', 'reconciliation.manage', 'transport-rates.resolve']),
   OWNER: new Set([
     'identity.manage',
     'integration.manage',
@@ -27,6 +31,8 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'organization.read',
     'outbox.manage',
     'reconciliation.manage',
+    'transport-rates.manage',
+    'transport-rates.resolve',
   ]),
   READ_ONLY: new Set(['organization.read']),
   SUPPORT: new Set(['organization.read']),

@@ -47,6 +47,7 @@
     "shopify:orders:verify": "pnpm --filter @ecommerce/api test:shopify-order",
     "orders:classification:verify": "pnpm --filter @ecommerce/api test:order-classification",
     "shopify:reconciliation:verify": "pnpm --filter @ecommerce/api test:shopify-reconciliation",
+    "transport-rates:verify": "pnpm --filter @ecommerce/api test:transport-rate",
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",

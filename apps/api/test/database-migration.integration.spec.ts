@@ -108,6 +108,9 @@ describe('initial database migration', () => {
           'order_state_history',
           'order_reconciliation_issues',
           'reconciliation_checkpoints',
+          'transport_rate_decisions',
+          'transport_rate_policies',
+          'transport_rate_rules',
         ],
       ],
     );
@@ -131,6 +134,9 @@ describe('initial database migration', () => {
       'outbox_events',
       'reconciliation_checkpoints',
       'stores',
+      'transport_rate_decisions',
+      'transport_rate_policies',
+      'transport_rate_rules',
       'users',
       'webhook_events',
     ]);
@@ -138,7 +144,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('12');
+    expect(migrations.rows[0]?.count).toBe('13');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -528,6 +534,51 @@ describe('initial database migration', () => {
         `UPDATE account_action_tokens
          SET consumed_at = NOW(), revoked_at = NOW()
          WHERE token_hash = repeat('a', 64)`,
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces versioned transport rate scopes, validity and positive COP amounts', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Rate Constraint Organization') RETURNING id`,
+    );
+    const organizationId = organization.rows[0]?.id;
+    const policy = await database.query<{ id: string }>(
+      `INSERT INTO transport_rate_policies
+       (organization_id, version, currency, active, activated_at)
+       VALUES ($1, 1, 'COP', true, NOW()) RETURNING id`,
+      [organizationId],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO transport_rate_policies
+         (organization_id, version, currency, active, activated_at)
+         VALUES ($1, 2, 'COP', true, NOW())`,
+        [organizationId],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `INSERT INTO transport_rate_rules
+         (organization_id, policy_id, rule_key, priority, amount)
+         VALUES ($1, $2, 'invalid-amount', 1, 0)`,
+        [organizationId, policy.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO transport_rate_rules
+         (organization_id, policy_id, rule_key, priority, amount, valid_from, valid_to)
+         VALUES ($1, $2, 'invalid-window', 1, 100, NOW(), NOW() - INTERVAL '1 hour')`,
+        [organizationId, policy.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO transport_rate_policies
+         (organization_id, version, currency)
+         VALUES ($1, 3, 'USD')`,
+        [organizationId],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

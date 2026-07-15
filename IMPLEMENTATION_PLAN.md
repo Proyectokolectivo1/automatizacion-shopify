@@ -22,8 +22,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 2D   | E1-H4A clasificación simulada      | COMPLETADA                 | reglas, estados, historial e idempotencia probados        |
 | 2E   | E1-H5A conciliación simulada       | COMPLETADA                 | faltantes, fallidos y reproceso acotado probados          |
 | 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
-| 3A   | E2-H1A tarifas/pago simulados      | SIGUIENTE                  | reglas versionadas y decisión default-deny probadas       |
-| 3B   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3A   | E2-H1A tarifas/pago simulados      | COMPLETADA                 | reglas versionadas y decisión default-deny probadas       |
+| 3B   | E2-H2A Wompi simulado              | SIGUIENTE                  | adaptador, checkout, firma y replay contractuales         |
+| 3C   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -169,3 +170,15 @@ cerrada y no se fingieron firmas HMAC.
 Modelar reglas versionadas de tarifas y modalidades de pago con prioridad determinista, vigencia,
 ownership por tienda y decisión fail-closed. Entregar fixtures y pruebas de contrato en simulación,
 con flags y kill switch. No crear links Wompi ni enviar WhatsApp.
+
+Resultado: completada el 2026-07-14. La migración trece crea políticas, reglas y decisiones
+tenant-safe. La modalidad prepago/COD ya se determina en E1-H4A y esta vertical resuelve la tarifa
+COD por prioridad, especificidad, alcance y vigencia. Cinco pruebas unitarias y tres pruebas
+HTTP/PostgreSQL cubren fail-closed, RBAC, tenant, activación, replay, carrera, decisión y outbox.
+
+## Decimosexta vertical: E2-H2A
+
+Implementar `WompiProvider` con simulador determinista, fixtures y pruebas de contrato basadas en la
+documentación oficial. Generar únicamente la intención/checkout alojado en simulación, con referencia
+única, importe COP, firma de integridad, expiración, idempotencia, auditoría, métricas, flag y kill
+switch. No capturar datos de tarjeta, enviar WhatsApp ni usar llaves reales.

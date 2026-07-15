@@ -462,3 +462,40 @@ Fallos encontrados y corregidos:
 
 No hubo tráfico externo ni PII real. E1-H5A está completa solo en simulación; el scheduler y Shopify
 real permanecen pendientes/bloqueados. E2-H1A es la siguiente vertical.
+
+## Iteración E2-H1A
+
+Fecha: 2026-07-14.
+
+| Validación                | Comando                                  | Resultado                                       |
+| ------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| Instalación reproducible  | `pnpm install --frozen-lockfile`         | OK                                              |
+| Quality gate completo     | `pnpm validate`                          | OK: format/lint/types/45 unit/build             |
+| Tarifas                   | `pnpm transport-rates:verify`            | OK: 5 unitarias + 3 HTTP/PostgreSQL             |
+| Migraciones/constraints   | `pnpm database:verify`                   | OK: 9/9, 13 migraciones, reaplicación y drift   |
+| Migración local/estado    | gates de base de datos                   | OK: migración 13 aplicada y esquema al día      |
+| Integración y regresiones | diez gates dedicados                     | OK: base, outbox, DLQ, auth, identidad, Shopify |
+| Observabilidad            | `pnpm observability:verify`              | OK: caída/recuperación Redis                    |
+| Infraestructura           | `pnpm infra:config`; `pnpm infra:verify` | OK: salud, recreación y persistencia            |
+| Auditoría de dependencias | `pnpm audit --prod`                      | BLOQUEADO_POR_PROVEEDOR: npm Audit HTTP 410     |
+
+La vertical prueba resolución por prioridad, especificidad y alcance, vigencia semiabierta,
+normalización `es-CO`, ausencia/contradicción fail-closed, activación única por alcance, RBAC,
+tenant isolation, replay, carrera y persistencia atómica de decisión, pedido y outbox.
+
+Fallos encontrados y corregidos:
+
+1. Prisma rechazó la creación anidada de reglas con el campo tenant explícito; política y reglas se
+   crean ahora separadamente dentro de la misma transacción.
+2. Dos llamadas con la misma clave retornaban cuerpos distintos por una etiqueta de replay; la
+   respuesta idempotente ahora es byte-estable, sin perder la métrica de replay.
+3. `migrate diff` detectó una FK compuesta SQL no representada en Prisma; el schema ahora expresa la
+   relación organización+política+regla y volvió a cero drift.
+4. El registro npm retiró el endpoint Audit consumido por pnpm 10.25.0. No se interpretó el HTTP 410
+   como suite verde ni como vulnerabilidad; el gate externo queda pendiente de restauración/migración
+   controlada de toolchain.
+5. La revisión detectó que dos claves distintas podían reactivar la misma política con una lectura
+   previa al lock; la política se relee dentro del lock y una prueba concurrente garantiza un evento.
+
+No hubo tráfico a Shopify, Wompi, WhatsApp o Mastershop ni PII real. Wompi queda
+`BLOQUEADO_POR_CREDENCIALES`; Mastershop queda `BLOQUEADO_POR_PROVEEDOR`.

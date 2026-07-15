@@ -32,3 +32,15 @@ solo IDs internos, tienda, proveedor, modo y versión del fixture.
 
 Errores de contrato, moneda, recurso inexistente o flags cerrados fallan el job, siguen el retry
 acotado existente y terminan en DLQ al agotar intentos.
+
+## Contrato oficial para el adaptador real pendiente
+
+Estado: `BLOQUEADO_POR_CREDENCIALES`. El Admin GraphQL API usa un endpoint versionado y la cabecera
+`X-Shopify-Access-Token`; el adaptador solicitará los scopes mínimos y tratará `errors` GraphQL como
+fallo aunque HTTP responda 200. También aplicará presupuesto por costo y backoff según el estado de
+throttling. La consulta histórica de pedidos normalmente queda limitada a 60 días salvo aprobación
+de `read_all_orders`.
+
+Fuentes: [Admin GraphQL API 2026-01](https://shopify.dev/docs/api/admin-graphql/2026-01) y
+[objeto Order](https://shopify.dev/docs/api/admin-graphql/latest/objects/order). La versión real debe
+fijarse y probarse antes de habilitar tráfico; `latest` no será una versión operativa implícita.

@@ -55,6 +55,7 @@ pnpm shopify:webhooks:verify
 pnpm shopify:orders:verify
 pnpm orders:classification:verify
 pnpm shopify:reconciliation:verify
+pnpm transport-rates:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -84,6 +85,10 @@ inmutable y todo tráfico real permanece desactivado.
 La reconciliación simulada se valida con `pnpm shopify:reconciliation:verify`; consulte
 `docs/runbooks/shopify-reconciliation.md`. Detecta faltantes, webhooks fallidos y pedidos atascados,
 y reprocesa exclusivamente mediante outbox con RBAC, idempotencia y kill switch.
+
+Las tarifas de transporte simuladas se validan con `pnpm transport-rates:verify`; consulte
+`docs/runbooks/transport-rates.md`. Las políticas son versionadas por alcance, la resolución falla
+cerrada y Wompi/WhatsApp permanecen desactivados.
 
 ## Estado real
 

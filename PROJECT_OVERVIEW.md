@@ -33,7 +33,7 @@ El repositorio canónico público es
 publicada; la rama `codex/foundations-e0-h2` contiene E1-H2A a E1-H5A validadas. GitHub CLI
 no está instalado, por lo que el PR aún debe abrirse desde la interfaz web.
 
-Las fundaciones están aproximadamente al 98 % y Shopify al 75 %. Ya existe un monorepo reproducible
+Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 15 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación; todavía no existen conexiones reales.
@@ -83,6 +83,8 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 - Pipeline webhook/outbox/Redis/sync/clasificación probado tras caída y recuperación de Redis.
 - Checkpoint de conciliación por tienda y detección deduplicada de faltantes, fallidos y atascados.
 - Reproceso individual tenant-safe mediante outbox con RBAC, idempotencia, auditoría y métricas.
+- Políticas de tarifa COD globales/por tienda, versionadas, activables y resueltas de forma determinista.
+- Preview/resolución con RBAC, tenant, idempotencia, auditoría, métricas, decisión durable y outbox.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -102,8 +104,7 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 
 ### Pagos y WhatsApp
 
-- Reglas de tarifas y modalidades de pago.
-- Adaptador Wompi, links, expiración y conciliación.
+- Adaptador Wompi, checkout alojado, expiración y conciliación; las reglas de modalidad/tarifa ya existen.
 - WhatsApp Cloud API, plantillas, mensajes y bandeja operativa.
 - Simulación y pruebas contractuales mientras falten credenciales.
 
@@ -143,8 +144,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E2-H1A: reglas versionadas de tarifas y modalidades de pago, configurables y default-deny en
-simulación. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
+E2-H2A: adaptador Wompi y checkout alojado únicamente en simulación, con firma contractual,
+idempotencia y expiración. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`; E0-H3B sigue pendiente.
 
 ## Dónde consultar más detalle
 

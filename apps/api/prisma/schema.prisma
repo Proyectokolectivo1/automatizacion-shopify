@@ -192,6 +192,9 @@ model Organization {
   orderItems                  OrderItem[]
   orderClassificationPolicies OrderClassificationPolicy[]
   orderStateHistory           OrderStateHistory[]
+  transportRatePolicies       TransportRatePolicy[]
+  transportRateRules          TransportRateRule[]
+  transportRateDecisions      TransportRateDecision[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -336,6 +339,8 @@ model Store {
   orderItems                  OrderItem[]
   orderClassificationPolicies OrderClassificationPolicy[]
   orderStateHistory           OrderStateHistory[]
+  transportRatePolicies       TransportRatePolicy[]
+  transportRateDecisions      TransportRateDecision[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -494,6 +499,7 @@ model Order {
   items                 OrderItem[]
   stateHistory          OrderStateHistory[]
   reconciliationIssues  OrderReconciliationIssue[]
+  transportRateDecisions TransportRateDecision[]
 
   @@unique([organizationId, storeId, id], map: "orders_organization_store_id_key")
   @@unique([organizationId, storeId, sourceWebhookEventId], map: "orders_source_webhook_tenant_key")
@@ -541,6 +547,74 @@ model OrderStateHistory {
   @@unique([orderId, triggerType, triggerId, toState], map: "order_state_history_trigger_transition_key")
   @@index([organizationId, orderId, createdAt], map: "order_state_history_tenant_order_created_idx")
   @@map("order_state_history")
+}
+
+model TransportRatePolicy {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  storeId        String?             @map("store_id") @db.Uuid
+  version        Int
+  currency       String              @default("COP") @db.Char(3)
+  active         Boolean             @default(false)
+  activatedAt    DateTime?           @map("activated_at") @db.Timestamptz(3)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store          Store?              @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_policies_store_tenant_fkey")
+  rules          TransportRateRule[]
+  decisions      TransportRateDecision[]
+
+  @@unique([organizationId, id], map: "transport_rate_policies_organization_id_id_key")
+  @@index([organizationId, storeId, active], map: "transport_rate_policies_tenant_active_idx")
+  @@map("transport_rate_policies")
+}
+
+model TransportRateRule {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String              @map("organization_id") @db.Uuid
+  policyId         String              @map("policy_id") @db.Uuid
+  ruleKey          String              @map("rule_key") @db.VarChar(80)
+  city             String?             @db.VarChar(120)
+  department       String?             @db.VarChar(120)
+  shopifyProductId String?             @map("shopify_product_id") @db.VarChar(128)
+  priority         Int
+  amount           BigInt
+  validFrom        DateTime?           @map("valid_from") @db.Timestamptz(3)
+  validTo          DateTime?           @map("valid_to") @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  policy           TransportRatePolicy @relation(fields: [organizationId, policyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_rules_policy_tenant_fkey")
+  decisions        TransportRateDecision[]
+
+  @@unique([policyId, ruleKey], map: "transport_rate_rules_policy_rule_key")
+  @@unique([organizationId, id], map: "transport_rate_rules_organization_id_id_key")
+  @@unique([organizationId, policyId, id], map: "transport_rate_rules_organization_policy_id_key")
+  @@index([organizationId, policyId, priority], map: "transport_rate_rules_tenant_priority_idx")
+  @@index([shopifyProductId], map: "transport_rate_rules_product_idx")
+  @@map("transport_rate_rules")
+}
+
+model TransportRateDecision {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  storeId        String              @map("store_id") @db.Uuid
+  orderId        String              @map("order_id") @db.Uuid
+  policyId       String              @map("policy_id") @db.Uuid
+  ruleId         String              @map("rule_id") @db.Uuid
+  amount         BigInt
+  currency       String              @db.Char(3)
+  evaluatedAt    DateTime            @map("evaluated_at") @db.Timestamptz(3)
+  idempotencyKey String              @unique(map: "transport_rate_decisions_idempotency_key") @map("idempotency_key") @db.VarChar(500)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store          Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_decisions_store_tenant_fkey")
+  order          Order               @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_decisions_order_tenant_fkey")
+  policy         TransportRatePolicy @relation(fields: [organizationId, policyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_decisions_policy_tenant_fkey")
+  rule           TransportRateRule   @relation(fields: [organizationId, policyId, ruleId], references: [organizationId, policyId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_decisions_rule_policy_fkey")
+
+  @@unique([orderId, policyId, ruleId], map: "transport_rate_decisions_order_policy_rule_key")
+  @@index([organizationId, orderId, createdAt], map: "transport_rate_decisions_tenant_order_idx")
+  @@map("transport_rate_decisions")
 }
 
 model ReconciliationCheckpoint {

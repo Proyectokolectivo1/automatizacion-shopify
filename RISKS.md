@@ -37,3 +37,6 @@ Actualizado: 2026-07-14
 | R-031 | Política comercial errónea clasifica pedidos indebidamente | Media | Crítico | Versionado, prioridad, fail-closed, simulación y aprobación previa | Abierto  |
 | R-032 | Ventana/cursor incorrectos generan falsos faltantes        | Media | Alto    | Ventana máxima, checkpoint durable, dedupe, simulación y auditoría | Mitigado |
 | R-033 | Reproceso concurrente duplica pedidos o entregas           | Alta  | Alto    | Locks, transacción serializable, idempotencia y outbox versionado  | Mitigado |
+| R-034 | Una tarifa comercial incorrecta cobra transporte indebido  | Media | Crítico | Versionado, preview, fail-closed, auditoría y aprobación humana    | Abierto  |
+| R-035 | Confundir llaves/firmas Wompi entre ambientes              | Media | Crítico | Secretos separados, prefijos, sandbox primero, flags y kill switch | Abierto  |
+| R-036 | El contrato oficial Wompi cambia antes de conectar         | Media | Alto    | Fijar fixtures, reconfirmar docs y ejecutar contrato en sandbox    | Abierto  |

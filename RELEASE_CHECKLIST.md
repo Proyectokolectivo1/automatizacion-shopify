@@ -45,6 +45,9 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Clasificación prepago/COD versionada, default-deny, idempotente y con historial inmutable.
 - [x] Conciliación simulada detecta faltantes/fallidos/atascados y reprocesa vía outbox sin duplicar.
 - [x] Reconciliación protegida por RBAC, tenant, ventana, idempotencia, auditoría, flag y kill switch.
+- [x] Tarifa COD versionada, tenant-safe, fail-closed, idempotente, auditable y en simulación.
+- [ ] Aprobación comercial y consola de políticas de tarifa disponibles antes del piloto.
+- [ ] Wompi sandbox validado con llaves separadas, firma, webhooks, replay y kill switch.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.

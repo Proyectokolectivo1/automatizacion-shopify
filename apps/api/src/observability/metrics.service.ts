@@ -16,6 +16,7 @@ export class MetricsService {
   private readonly shopifyOrderSyncs: Counter<'outcome'>;
   private readonly orderClassifications: Counter<'outcome'>;
   private readonly shopifyReconciliations: Counter<'action' | 'outcome'>;
+  private readonly transportRateOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -92,6 +93,12 @@ export class MetricsService {
       name: 'ecommerce_api_shopify_reconciliations_total',
       registers: [this.registry],
     });
+    this.transportRateOperations = new Counter({
+      help: 'Operaciones de tarifas de transporte simuladas por resultado acotado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_transport_rate_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -143,6 +150,10 @@ export class MetricsService {
 
   public recordShopifyReconciliation(action: string, outcome: string): void {
     this.shopifyReconciliations.inc({ action, outcome });
+  }
+
+  public recordTransportRate(action: string, outcome: string): void {
+    this.transportRateOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

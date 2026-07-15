@@ -215,6 +215,18 @@ export class EnvironmentService {
     };
   }
 
+  public get transportRates(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.TRANSPORT_RATES_ENABLED,
+      killSwitch: this.values.TRANSPORT_RATES_KILL_SWITCH,
+      simulationMode: this.values.TRANSPORT_RATES_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;
