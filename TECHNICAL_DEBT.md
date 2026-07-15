@@ -29,6 +29,7 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-019 | Schedulers de pago viven dentro del proceso API        | Medio   | Moverlos al worker-payments conservando locks y gates       |
 | TD-020 | Estado authoritative del mock Wompi vive en memoria    | Medio   | Usar sandbox o fixture durable antes de pruebas largas      |
 | TD-021 | Servicios de mutación repiten el protocolo idempotente | Medio   | Extraer una primitiva común sin alterar scopes ni snapshots |
+| TD-022 | El mock WhatsApp se invoca dentro de la transacción DB | Medio   | Mover el adaptador real a worker/outbox antes de Meta       |
 
 ## Deuda resuelta
 
@@ -47,3 +48,5 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 - E1-H5A resolvió el reproceso ad hoc mediante incidencias durables y outbox sin mutación manual.
 - E3-H1A usa el registro genérico y un límite de proveedor explícito; el adaptador Meta, plantillas y
   mensajes son trabajo funcional pendiente y no se presentan como deuda ni como integración real.
+- E3-H3A mantiene la llamada dentro de la transacción solo porque el proveedor vinculado es local,
+  determinista y sin red; conectar Meta exige resolver TD-022.

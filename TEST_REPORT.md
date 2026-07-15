@@ -674,3 +674,30 @@ E3-H3A es la siguiente vertical.
 
 La migración veinte se aplicó después a la base persistente local sin borrar datos;
 `pnpm database:status` confirmó 20/20. Luego se repitieron migraciones y WhatsApp en verde.
+
+## Iteración E3-H3A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 18 archivos, 63 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 10/10                                 |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 21 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 63 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron render tipado y completo, consentimiento, E.164, conexión saludable, plantilla activa,
+proveedor determinista sin red, conversación/mensaje tenant-safe, replay HTTP, dedupe de negocio,
+carrera, RBAC, aislamiento, kill switch, constraints, outbox, auditoría y métricas sin PII. El único
+estado es `simulated_accepted`; `sent`, `delivered`, `read` y `failed` permanecen nulos.
+
+La primera verificación PostgreSQL encontró que el test de duplicado enviaba un parámetro SQL no
+referenciado y el driver no podía inferir su tipo. Se corrigió el fixture para usar solo placeholders
+referenciados y se repitieron 14/14. No fue un defecto del esquema de producto.
+
+La migración veintiuno se aplicó a la base persistente local sin borrar datos; `database:status`
+confirmó 21/21. No hubo llamadas, credenciales, números ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H4A es la siguiente vertical.

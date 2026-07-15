@@ -21,6 +21,7 @@ export class MetricsService {
   private readonly wompiReconciliations: Counter<'action' | 'outcome'>;
   private readonly whatsappOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappTemplateOperations: Counter<'action' | 'outcome'>;
+  private readonly whatsappMessageOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -127,6 +128,12 @@ export class MetricsService {
       name: 'ecommerce_api_whatsapp_template_operations_total',
       registers: [this.registry],
     });
+    this.whatsappMessageOperations = new Counter({
+      help: 'Operaciones acotadas sobre mensajes WhatsApp transaccionales simulados.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_whatsapp_message_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -198,6 +205,10 @@ export class MetricsService {
 
   public recordWhatsAppTemplateOperation(action: string, outcome: string): void {
     this.whatsappTemplateOperations.inc({ action, outcome });
+  }
+
+  public recordWhatsAppMessageOperation(action: string, outcome: string): void {
+    this.whatsappMessageOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

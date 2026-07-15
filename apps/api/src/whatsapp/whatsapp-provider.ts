@@ -15,6 +15,29 @@ export interface WhatsAppConnectionProbeResult {
   readonly providerPhoneLabel: string;
 }
 
+export interface WhatsAppTemplateDispatch {
+  readonly accessToken: string;
+  readonly apiVersion: string;
+  readonly businessKeyHash: string;
+  readonly languageCode: string;
+  readonly parameters: readonly {
+    readonly name: string;
+    readonly renderedValue: string;
+    readonly type: 'CURRENCY' | 'DATE' | 'TEXT' | 'URL';
+  }[];
+  readonly phoneNumberId: string;
+  readonly recipientPhoneE164: string;
+  readonly templateName: string;
+}
+
+export interface WhatsAppTemplateDispatchResult {
+  readonly accepted: boolean;
+  readonly fixtureVersion: 'v1';
+  readonly mode: 'simulation';
+  readonly providerMessageId: string;
+}
+
 export interface WhatsAppProvider {
+  dispatchTemplate(dispatch: WhatsAppTemplateDispatch): Promise<WhatsAppTemplateDispatchResult>;
   testConnection(probe: WhatsAppConnectionProbe): Promise<WhatsAppConnectionProbeResult>;
 }

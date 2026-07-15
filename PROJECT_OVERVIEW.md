@@ -37,8 +37,8 @@ Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas 
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
-ciclo operativo seguro y un catálogo local versionado; todavía no existen conexiones reales ni
-envío de mensajes.
+ciclo operativo seguro, catálogo local versionado y envío transaccional durable; todavía no existen
+conexiones, entregas ni estados Meta reales.
 
 ## Implementado
 
@@ -97,6 +97,8 @@ envío de mensajes.
 - `phoneNumberId` único entre tenants, flags cerrados, modo simulación y kill switch probados.
 - Catálogo WhatsApp local con versiones inmutables, variables validadas y revisión simulada explícita.
 - Activación única por tienda/evento/idioma, RBAC, tenant, replay, carrera, outbox y métricas probados.
+- Mensaje transaccional WhatsApp simulado con render tipado, consentimiento, E.164 y dedupe de negocio.
+- Conversación durable, estado `simulated_accepted`, outbox/auditoría sin PII y kill switch probados.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -116,7 +118,7 @@ envío de mensajes.
 
 ### Pagos y WhatsApp
 
-- Envío transaccional WhatsApp simulado, estados, webhooks entrantes y bandeja operativa.
+- Estados simulados, webhooks entrantes autenticados y bandeja operativa WhatsApp.
 - WhatsApp Cloud API real y registro/revisión remota de plantillas.
 - Mocks, fixtures y pruebas contractuales por vertical mientras falten credenciales.
 
@@ -155,8 +157,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E3-H3A: envío transaccional WhatsApp exclusivamente simulado, resolviendo la versión activa y
-persistiendo el intento idempotente sin tráfico Meta. Meta/WhatsApp real permanece
+E3-H4A: ciclo de estados WhatsApp exclusivamente simulado mediante webhooks autenticados, orden
+monotónico e idempotencia, sin afirmar entregas Meta reales. Meta/WhatsApp real permanece
 `BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle

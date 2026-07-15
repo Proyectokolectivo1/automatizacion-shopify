@@ -46,6 +46,9 @@ const environmentNames = [
   'WHATSAPP_TEMPLATES_ENABLED',
   'WHATSAPP_TEMPLATES_KILL_SWITCH',
   'WHATSAPP_TEMPLATES_SIMULATION_MODE',
+  'WHATSAPP_MESSAGES_ENABLED',
+  'WHATSAPP_MESSAGES_KILL_SWITCH',
+  'WHATSAPP_MESSAGES_SIMULATION_MODE',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -78,6 +81,15 @@ interface TemplateListResponse {
   readonly nextCursor: string | null;
 }
 
+interface MessageResponse {
+  readonly messageId: string;
+  readonly mode: string;
+  readonly orderId: string;
+  readonly providerMessageId: string;
+  readonly status: string;
+  readonly templateVersion: number;
+}
+
 describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
@@ -87,6 +99,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let secondStoreId: string;
   let foreignStoreId: string;
   let connectionId: string;
+  let orderId: string;
   let prisma: PrismaClient;
 
   beforeAll(async () => {
@@ -111,6 +124,9 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     process.env.WHATSAPP_TEMPLATES_ENABLED = 'true';
     process.env.WHATSAPP_TEMPLATES_KILL_SWITCH = 'false';
     process.env.WHATSAPP_TEMPLATES_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_MESSAGES_ENABLED = 'true';
+    process.env.WHATSAPP_MESSAGES_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_MESSAGES_SIMULATION_MODE = 'true';
     process.env.WHATSAPP_CREDENTIAL_KEY_VERSION = 'v1';
     process.env.WHATSAPP_CREDENTIAL_KEYS_JSON = JSON.stringify({
       v1: randomBytes(32).toString('base64url'),
@@ -143,6 +159,50 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     storeId = store.id;
     secondStoreId = secondStore.id;
     foreignStoreId = foreignStore.id;
+
+    const customer = await prisma.customer.create({
+      data: {
+        dataProcessingConsent: true,
+        firstName: 'Synthetic',
+        organizationId,
+        phoneE164: '+573001112233',
+        shopifyCustomerId: 'whatsapp-customer-1',
+        storeId,
+      },
+    });
+    const webhook = await prisma.webhookEvent.create({
+      data: {
+        apiVersion: '2026-07',
+        eventType: 'orders/create',
+        externalEventId: randomUUID(),
+        headersRedactedJson: {},
+        organizationId,
+        payloadHash: 'a'.repeat(64),
+        payloadRedactedJson: { synthetic: true },
+        provider: 'SHOPIFY',
+        storeId,
+        triggeredAt: new Date(),
+      },
+    });
+    const order = await prisma.order.create({
+      data: {
+        currency: 'COP',
+        customerId: customer.id,
+        discountAmount: 0,
+        organizationId,
+        rawSnapshotJson: { synthetic: true },
+        shopifyOrderId: 'whatsapp-order-1',
+        shopifyOrderName: '#WA-1',
+        sourceCreatedAt: new Date(),
+        sourceUpdatedAt: new Date(),
+        sourceWebhookEventId: webhook.id,
+        storeId,
+        subtotalAmount: 10_000,
+        taxAmount: 0,
+        totalAmount: 10_000,
+      },
+    });
+    orderId = order.id;
 
     const passwordHash = await new PasswordService().hash(password);
     const createUser = (
@@ -214,6 +274,9 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   const templateEndpoint = (targetStoreId = storeId, targetOrganizationId = organizationId) =>
     `${endpoint(targetStoreId, targetOrganizationId)}/templates`;
 
+  const messageEndpoint = (targetStoreId = storeId, targetOrganizationId = organizationId) =>
+    `${endpoint(targetStoreId, targetOrganizationId)}/messages/transactional`;
+
   const templatePayload = () => ({
     bodyTemplate: 'Hola {{customer_name}}, paga el transporte en {{checkout_url}}.',
     category: 'UTILITY',
@@ -227,6 +290,16 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
         { maxLength: 2048, name: 'checkout_url', required: true, type: 'URL' },
       ],
       version: 'v1',
+    },
+  });
+
+  const messagePayload = () => ({
+    eventType: 'payment.transport.pending',
+    languageCode: 'es_CO',
+    orderId,
+    variables: {
+      checkout_url: { type: 'URL', value: 'https://checkout.invalid/synthetic-payment' },
+      customer_name: { type: 'TEXT', value: 'Synthetic Customer' },
     },
   });
 
@@ -590,5 +663,142 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
       expect(outbox).not.toContain(template.bodyTemplate);
       expect(audit).not.toContain(template.bodyTemplate);
     }
+  });
+
+  it('accepts one transactional message under concurrency and replays the business effect', async () => {
+    const owner = await login();
+    await request(baseUrl)
+      .patch(`${endpoint()}/credentials`)
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-token-${randomUUID()}`)
+      .send({ accessToken: initialToken })
+      .expect(200);
+    await request(baseUrl)
+      .post(`${endpoint()}/test`)
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-test-${randomUUID()}`)
+      .expect(200);
+    await request(baseUrl)
+      .post(`${endpoint()}/activate`)
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-channel-${randomUUID()}`)
+      .expect(200);
+
+    const key = `message-dispatch-${randomUUID()}`;
+    const responses = await Promise.all([
+      request(baseUrl)
+        .post(messageEndpoint())
+        .set('authorization', `Bearer ${owner.accessToken}`)
+        .set('idempotency-key', key)
+        .send(messagePayload()),
+      request(baseUrl)
+        .post(messageEndpoint())
+        .set('authorization', `Bearer ${owner.accessToken}`)
+        .set('idempotency-key', key)
+        .send(messagePayload()),
+    ]);
+    expect(responses.map(({ status }) => status)).toEqual([202, 202]);
+    expect(responses[0]?.body).toEqual(responses[1]?.body);
+    const message = responses[0]?.body as MessageResponse;
+    expect(message).toMatchObject({
+      mode: 'simulation',
+      orderId,
+      status: 'simulated_accepted',
+      templateVersion: 2,
+    });
+    expect(message.providerMessageId).toMatch(/^simulated:[0-9a-f]{64}$/u);
+    expect(await prisma.whatsAppMessage.count({ where: { orderId } })).toBe(1);
+    expect(await prisma.whatsAppConversation.count({ where: { organizationId, storeId } })).toBe(1);
+
+    const businessReplay = await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-business-replay-${randomUUID()}`)
+      .send(messagePayload())
+      .expect(202);
+    expect(businessReplay.body).toEqual(message);
+    expect(await prisma.whatsAppMessage.count({ where: { orderId } })).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: {
+          aggregateId: message.messageId,
+          eventType: 'whatsapp.message.simulated-accepted.v1',
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it('fails closed for variable changes, inactive events, RBAC and foreign stores', async () => {
+    const [owner, reader] = await Promise.all([login(), login('whatsapp-reader@example.test')]);
+    await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-different-${randomUUID()}`)
+      .send({
+        ...messagePayload(),
+        variables: {
+          ...messagePayload().variables,
+          checkout_url: { type: 'URL', value: 'https://checkout.invalid/changed' },
+        },
+      })
+      .expect(409);
+    await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-missing-${randomUUID()}`)
+      .send({ ...messagePayload(), variables: {} })
+      .expect(400);
+    await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-event-${randomUUID()}`)
+      .send({ ...messagePayload(), eventType: 'payment.transport.unknown' })
+      .expect(409);
+    await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${reader.accessToken}`)
+      .set('idempotency-key', `message-reader-${randomUUID()}`)
+      .send(messagePayload())
+      .expect(403);
+    await request(baseUrl)
+      .post(messageEndpoint(foreignStoreId))
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-foreign-${randomUUID()}`)
+      .send(messagePayload())
+      .expect(409);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: orderId } });
+    await prisma.customer.update({
+      data: { dataProcessingConsent: false },
+      where: { id: order.customerId ?? '' },
+    });
+    await request(baseUrl)
+      .post(messageEndpoint())
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `message-no-consent-${randomUUID()}`)
+      .send(messagePayload())
+      .expect(409);
+    await prisma.customer.update({
+      data: { dataProcessingConsent: true },
+      where: { id: order.customerId ?? '' },
+    });
+  });
+
+  it('keeps PII and rendered body out of audit/outbox while exposing bounded metrics', async () => {
+    const stored = await prisma.whatsAppMessage.findFirstOrThrow({ where: { orderId } });
+    expect(stored.body).toBe(
+      'Hola Synthetic Customer, usa el enlace seguro https://checkout.invalid/synthetic-payment.',
+    );
+    const evidence = JSON.stringify({
+      audit: await prisma.auditLog.findMany({ where: { resourceType: 'whatsapp_message' } }),
+      outbox: await prisma.outboxEvent.findMany({ where: { aggregateType: 'whatsapp_message' } }),
+    });
+    expect(evidence).not.toContain('+573001112233');
+    expect(evidence).not.toContain(stored.body);
+    expect(evidence).not.toContain('checkout.invalid');
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain('ecommerce_api_whatsapp_message_operations_total');
+    await expect(prisma.store.findUniqueOrThrow({ where: { id: storeId } })).resolves.toMatchObject(
+      { status: 'ACTIVE' },
+    );
   });
 });

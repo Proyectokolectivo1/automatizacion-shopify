@@ -10,6 +10,8 @@ import type { MetricsService } from '../src/observability/metrics.service';
 import type { RequestContextService } from '../src/observability/request-context.service';
 import { WhatsAppCredentialCipher } from '../src/whatsapp/whatsapp-credential-cipher';
 import { WhatsAppIntegrationService } from '../src/whatsapp/whatsapp-integration.service';
+import { renderWhatsAppTemplate } from '../src/whatsapp/whatsapp-message.contract';
+import { WhatsAppMessageService } from '../src/whatsapp/whatsapp-message.service';
 import { WhatsAppMockProvider } from '../src/whatsapp/whatsapp-mock.provider';
 
 const environmentBase = {
@@ -64,6 +66,98 @@ describe('WhatsApp simulated provider contract and security controls', () => {
       provider.testConnection({ ...probe, accessToken: 'mock-whatsapp-invalid-token' }),
     ).resolves.toMatchObject({ healthy: false, mode: 'simulation' });
   });
+
+  it('renders typed variables completely and rejects unsafe or inconsistent values', () => {
+    const schema = {
+      variables: [
+        { maxLength: 20, name: 'customer_name', required: true, type: 'TEXT' as const },
+        { maxLength: 100, name: 'checkout_url', required: true, type: 'URL' as const },
+      ],
+      version: 'v1' as const,
+    };
+    expect(
+      renderWhatsAppTemplate('Hola {{customer_name}}: {{checkout_url}}', schema, {
+        checkout_url: { type: 'URL', value: 'https://checkout.invalid/pay' },
+        customer_name: { type: 'TEXT', value: 'Synthetic Customer' },
+      }),
+    ).toMatchObject({
+      body: 'Hola Synthetic Customer: https://checkout.invalid/pay',
+      variableNames: ['customer_name', 'checkout_url'],
+    });
+    expect(() =>
+      renderWhatsAppTemplate('Hola {{customer_name}}: {{checkout_url}}', schema, {
+        customer_name: { type: 'TEXT', value: 'Synthetic Customer' },
+      }),
+    ).toThrow(/required/iu);
+    expect(() =>
+      renderWhatsAppTemplate('Hola {{customer_name}}: {{checkout_url}}', schema, {
+        checkout_url: { type: 'URL', value: 'http://unsafe.invalid/pay' },
+        customer_name: { type: 'TEXT', value: 'Synthetic Customer' },
+      }),
+    ).toThrow(/HTTPS/u);
+  });
+
+  it('produces deterministic simulated provider acceptance without exposing the token', async () => {
+    const provider = new WhatsAppMockProvider();
+    const dispatch = {
+      accessToken: 'mock-whatsapp-valid-token',
+      apiVersion: 'v99.0',
+      businessKeyHash: 'a'.repeat(64),
+      languageCode: 'es_CO',
+      parameters: [{ name: 'customer_name', renderedValue: 'Synthetic', type: 'TEXT' as const }],
+      phoneNumberId: 'mock_phone_contract',
+      recipientPhoneE164: '+573001112233',
+      templateName: 'payment_pending',
+    };
+    const result = await provider.dispatchTemplate(dispatch);
+    expect(await provider.dispatchTemplate(dispatch)).toEqual(result);
+    expect(result).toMatchObject({ accepted: true, mode: 'simulation' });
+    expect(result.providerMessageId).toMatch(/^simulated:[0-9a-f]{64}$/u);
+    expect(JSON.stringify(result)).not.toContain(dispatch.accessToken);
+    await expect(
+      provider.dispatchTemplate({ ...dispatch, accessToken: 'mock-whatsapp-invalid-token' }),
+    ).resolves.toMatchObject({ accepted: false });
+  });
+
+  it.each([
+    { enabled: 'false', killSwitch: 'false', simulation: 'true' },
+    { enabled: 'true', killSwitch: 'true', simulation: 'true' },
+    { enabled: 'true', killSwitch: 'false', simulation: 'false' },
+  ])(
+    'fails message dispatch closed with controls $enabled/$killSwitch/$simulation',
+    async (controls) => {
+      const restore = setEnvironment({
+        WHATSAPP_MESSAGES_ENABLED: controls.enabled,
+        WHATSAPP_MESSAGES_KILL_SWITCH: controls.killSwitch,
+        WHATSAPP_MESSAGES_SIMULATION_MODE: controls.simulation,
+      });
+      try {
+        const service = new WhatsAppMessageService(
+          {} as AuditService,
+          {} as WhatsAppCredentialCipher,
+          new EnvironmentService(),
+          {} as MetricsService,
+          {} as PrismaService,
+          {} as RequestContextService,
+          new WhatsAppMockProvider(),
+        );
+        await expect(
+          service.dispatch({
+            eventType: 'payment.transport.pending',
+            idempotencyKey: 'closed-whatsapp-message-key',
+            languageCode: 'es_CO',
+            orderId: randomUUID(),
+            organizationId: principal.organizationId,
+            principal,
+            storeId: randomUUID(),
+            variables: {},
+          }),
+        ).rejects.toMatchObject({ status: 503 });
+      } finally {
+        restore();
+      }
+    },
+  );
 
   it('encrypts with WhatsApp tenant/store AAD and decrypts old key versions', () => {
     const v1 = randomBytes(32).toString('base64url');

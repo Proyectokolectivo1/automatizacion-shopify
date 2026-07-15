@@ -57,6 +57,8 @@ import { WhatsAppCredentialCipher } from './whatsapp/whatsapp-credential-cipher'
 import { WhatsAppIntegrationController } from './whatsapp/whatsapp-integration.controller';
 import { WhatsAppIntegrationService } from './whatsapp/whatsapp-integration.service';
 import { WhatsAppMockProvider } from './whatsapp/whatsapp-mock.provider';
+import { WhatsAppMessageController } from './whatsapp/whatsapp-message.controller';
+import { WhatsAppMessageService } from './whatsapp/whatsapp-message.service';
 import { WHATSAPP_PROVIDER } from './whatsapp/whatsapp-provider';
 import { WhatsAppTemplateController } from './whatsapp/whatsapp-template.controller';
 import { WhatsAppTemplateService } from './whatsapp/whatsapp-template.service';
@@ -75,6 +77,7 @@ import { WhatsAppTemplateService } from './whatsapp/whatsapp-template.service';
     PaymentIntentController,
     WompiWebhookController,
     WhatsAppIntegrationController,
+    WhatsAppMessageController,
     WhatsAppTemplateController,
   ],
   providers: [
@@ -116,6 +119,7 @@ import { WhatsAppTemplateService } from './whatsapp/whatsapp-template.service';
     WompiReconciliationSchedulerService,
     WhatsAppCredentialCipher,
     WhatsAppIntegrationService,
+    WhatsAppMessageService,
     WhatsAppTemplateService,
     WhatsAppMockProvider,
     WompiMockProvider,

@@ -9,7 +9,8 @@ export type Permission =
   | 'reconciliation.manage'
   | 'transport-rates.manage'
   | 'transport-rates.resolve'
-  | 'payment-intents.create';
+  | 'payment-intents.create'
+  | 'whatsapp-messages.dispatch';
 
 const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>>> = {
   ADMIN: new Set([
@@ -22,6 +23,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'transport-rates.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-messages.dispatch',
   ]),
   FINANCE: new Set(['organization.read']),
   LOGISTICS: new Set(['organization.read']),
@@ -30,6 +32,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'reconciliation.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-messages.dispatch',
   ]),
   OWNER: new Set([
     'identity.manage',
@@ -41,6 +44,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'transport-rates.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-messages.dispatch',
   ]),
   READ_ONLY: new Set(['organization.read']),
   SUPPORT: new Set(['organization.read']),

@@ -115,6 +115,8 @@ describe('initial database migration', () => {
           'payment_provider_events',
           'payment_reminders',
           'whatsapp_templates',
+          'whatsapp_conversations',
+          'whatsapp_messages',
         ],
       ],
     );
@@ -146,13 +148,15 @@ describe('initial database migration', () => {
       'transport_rate_rules',
       'users',
       'webhook_events',
+      'whatsapp_conversations',
+      'whatsapp_messages',
       'whatsapp_templates',
     ]);
 
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('20');
+    expect(migrations.rows[0]?.count).toBe('21');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -421,6 +425,112 @@ describe('initial database migration', () => {
         approvedValues,
       ),
     ).rejects.toMatchObject({ code: '23505' });
+  });
+
+  it('enforces durable simulated WhatsApp conversations and immutable message content', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('WhatsApp Message Owner') RETURNING id`,
+    );
+    const organizationId = organization.rows[0]?.id;
+    const store = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'WhatsApp Message Store', 'whatsapp-message-db.myshopify.com',
+        'America/Bogota', 'COP') RETURNING id`,
+      [organizationId],
+    );
+    const storeId = store.rows[0]?.id;
+    const customer = await database.query<{ id: string }>(
+      `INSERT INTO customers
+       (organization_id, store_id, shopify_customer_id, phone_e164, data_processing_consent)
+       VALUES ($1, $2, 'whatsapp-message-customer', '+573001112233', true) RETURNING id`,
+      [organizationId, storeId],
+    );
+    const webhook = await database.query<{ id: string }>(
+      `INSERT INTO webhook_events
+       (organization_id, store_id, provider, external_event_id, event_type, api_version,
+        headers_redacted_json, payload_redacted_json, payload_hash, triggered_at)
+       VALUES ($1, $2, 'shopify', $3, 'orders/create', '2026-07', '{}', '{}', repeat('b', 64),
+        NOW()) RETURNING id`,
+      [organizationId, storeId, randomUUID()],
+    );
+    const order = await database.query<{ id: string }>(
+      `INSERT INTO orders
+       (organization_id, store_id, customer_id, source_webhook_event_id, shopify_order_id,
+        shopify_order_name, currency, subtotal_amount, discount_amount, tax_amount, total_amount,
+        source_created_at, source_updated_at, raw_snapshot_json)
+       VALUES ($1, $2, $3, $4, 'whatsapp-message-order', '#WA-MSG', 'COP', 10000, 0, 0,
+        10000, NOW(), NOW(), '{}') RETURNING id`,
+      [organizationId, storeId, customer.rows[0]?.id, webhook.rows[0]?.id],
+    );
+    const template = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_templates
+       (organization_id, store_id, template_key, version, name, meta_template_name, language_code,
+        category, status, body_template, variables_schema_json, event_type, active, reviewed_at)
+       VALUES ($1, $2, gen_random_uuid(), 1, 'message_dispatch', 'message_dispatch', 'es_CO',
+        'utility', 'simulated_approved', 'Hola {{customer_name}}',
+        '{"version":"v1","variables":[{"name":"customer_name","required":true,"type":"TEXT"}]}',
+        'message.dispatch', true, NOW()) RETURNING id`,
+      [organizationId, storeId],
+    );
+    const conversation = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_conversations
+       (organization_id, store_id, customer_id, phone_e164, last_message_at)
+       VALUES ($1, $2, $3, '+573001112233', NOW()) RETURNING id`,
+      [organizationId, storeId, customer.rows[0]?.id],
+    );
+    const messageValues = [
+      organizationId,
+      storeId,
+      conversation.rows[0]?.id,
+      order.rows[0]?.id,
+      template.rows[0]?.id,
+      `simulated:${'c'.repeat(64)}`,
+      'd'.repeat(64),
+      'e'.repeat(64),
+    ];
+    const message = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_messages
+       (organization_id, store_id, conversation_id, order_id, template_id, provider_message_id,
+        body, metadata_json, business_key_hash, request_fingerprint)
+       VALUES ($1, $2, $3, $4, $5, $6, 'Hola Synthetic',
+        '{"mode":"simulation","fixtureVersion":"v1"}', $7, $8) RETURNING id`,
+      messageValues,
+    );
+    await expect(
+      database.query(`UPDATE whatsapp_messages SET body = 'changed' WHERE id = $1`, [
+        message.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_messages
+         (organization_id, store_id, conversation_id, order_id, template_id, provider_message_id,
+          body, metadata_json, business_key_hash, request_fingerprint)
+         VALUES ($1, $2, $3, $4, $5, 'simulated:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+          'Duplicate', '{"mode":"simulation","fixtureVersion":"v1"}', $6, $7)`,
+        [...messageValues.slice(0, 5), ...messageValues.slice(6)],
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_messages
+         (organization_id, store_id, conversation_id, order_id, template_id, provider_message_id,
+          body, metadata_json, business_key_hash, request_fingerprint, sent_at)
+         VALUES ($1, $2, $3, $4, $5, 'simulated:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+          'Invalid sent', '{"mode":"simulation","fixtureVersion":"v1"}', repeat('1', 64),
+          repeat('2', 64), NOW())`,
+        messageValues.slice(0, 5),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_conversations
+         (organization_id, store_id, customer_id, phone_e164, last_message_at)
+         VALUES ($1, $2, $3, '3001112233', NOW())`,
+        [organizationId, storeId, customer.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
   });
 
   it('enforces tenant-safe and idempotent Shopify webhook persistence', async () => {

@@ -337,6 +337,18 @@ export class EnvironmentService {
     };
   }
 
+  public get whatsappMessages(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.WHATSAPP_MESSAGES_ENABLED,
+      killSwitch: this.values.WHATSAPP_MESSAGES_KILL_SWITCH,
+      simulationMode: this.values.WHATSAPP_MESSAGES_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

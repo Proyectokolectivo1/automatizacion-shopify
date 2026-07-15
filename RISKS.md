@@ -53,3 +53,6 @@ Actualizado: 2026-07-14
 | R-047 | Aprobación local se interpreta como aprobación de Meta      | Media | Crítico | Estado `simulated_approved`, contrato y UI/API sin alias `approved`     | Mitigado |
 | R-048 | Edición de plantilla cambia mensajes históricos             | Media | Alto    | Versiones inmutables, trigger SQL y `templateKey` lógico                | Mitigado |
 | R-049 | Dos versiones atienden el mismo evento e idioma             | Media | Alto    | Lock serializable, swap atómico e índice único parcial                  | Mitigado |
+| R-050 | Reintentos WhatsApp crean mensajes duplicados               | Alta  | Crítico | Idempotencia HTTP, clave de negocio, locks y unique constraint          | Mitigado |
+| R-051 | PII del mensaje se filtra en telemetría o eventos           | Media | Crítico | Payloads acotados, redacción y pruebas negativas                        | Mitigado |
+| R-052 | Aceptación simulada se confunde con entrega Meta            | Media | Crítico | Estado exclusivo, timestamps nulos, constraints, contrato y ADR-004     | Mitigado |

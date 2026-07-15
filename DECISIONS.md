@@ -68,6 +68,9 @@ Actualizado: 2026-07-14
 | D-062  | DECISIÓN           | Contenido de plantilla es inmutable; todo cambio crea una versión con el mismo `templateKey`     | ACEPTADA E3-H2A    |
 | D-063  | DECISIÓN           | `simulated_approved` nunca representa aprobación Meta y es el único estado local activable       | ACEPTADA E3-H2A    |
 | D-064  | DECISIÓN           | Solo una versión queda activa por tienda, evento e idioma mediante transacción e índice parcial  | ACEPTADA E3-H2A    |
+| D-065  | DECISIÓN           | E3-H3A solo persiste `simulated_accepted`; nunca infiere sent/delivered/read                     | ACEPTADA; ADR-004  |
+| D-066  | DECISIÓN           | El efecto WhatsApp se deduplica por tenant, evento, pedido y versión de plantilla                | ACEPTADA E3-H3A    |
+| D-067  | DECISIÓN           | Teléfono, cuerpo y variables se excluyen de respuesta, outbox, auditoría y métricas              | ACEPTADA E3-H3A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

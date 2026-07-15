@@ -57,3 +57,20 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - `pnpm audit --prod` sigue bloqueado por HTTP 410 del endpoint retirado; no se marcó verde.
 - Commit lógico: `feat: add simulated WhatsApp template catalog`; PR borrador #1.
 - Siguiente vertical: E3-H3A, envío transaccional exclusivamente simulado.
+
+## 2026-07-14 — sesión actual: E3-H3A
+
+- Objetivo: envío transaccional WhatsApp durable exclusivamente simulado, sin tráfico Meta.
+- Fuentes maestras verificadas sin cambios y baseline `pnpm validate` verde con 58 pruebas.
+- Se agregó migración veintiuno, render tipado, API 202, proveedor determinista, conversación/mensaje,
+  idempotencia HTTP y de negocio, RBAC, outbox, auditoría, métricas, flags y kill switch.
+- El estado exclusivo `simulated_accepted` y constraints impiden afirmar envío/entrega/lectura real;
+  respuesta, outbox, auditoría y métricas no contienen teléfono, cuerpo ni valores de variables.
+- Evidencia final: `pnpm validate`, 63 unitarias, 10 HTTP/PostgreSQL WhatsApp, 14 de migración sin
+  drift, 14 gates previos, observabilidad e infraestructura verdes.
+- Incidencia corregida: parámetro sin tipo en el fixture SQL del test de duplicado.
+- La migración 21 quedó aplicada a la base persistente local y `database:status` confirmó 21/21.
+- `pnpm audit --prod` sigue bloqueado por HTTP 410 del endpoint retirado; no se marcó verde.
+- Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo llamadas, mensajes ni PII real.
+- Commit lógico: `feat: add simulated WhatsApp transactional messaging`; PR borrador #1.
+- Siguiente vertical: E3-H4A, estados y webhook WhatsApp exclusivamente simulados.
