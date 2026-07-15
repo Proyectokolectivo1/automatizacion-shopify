@@ -43,3 +43,5 @@ Actualizado: 2026-07-14
 | R-037 | Un checkout simulado se confunde con un cobro real          | Media | Crítico | Dominio `.invalid`, modo explícito, kill switch y pruebas              | Mitigado |
 | R-038 | Webhook firmado comunica monto/estado distinto al proveedor | Alta  | Crítico | Consulta authoritative y comparación total antes de actualizar         | Mitigado |
 | R-039 | Carrera del scheduler duplica recordatorios                 | Alta  | Alto    | Unique intent/secuencia, SKIP LOCKED, transacción y prueba concurrente | Mitigado |
+| R-040 | Pago aprobado posterior al vencimiento                      | Media | Crítico | Lock común, terminal inmutable, outbox y revisión manual               | Mitigado |
+| R-041 | Confundir solicitud `CANCEL` con cancelación real           | Media | Alto    | Evento `requested`, modo simulado y no usar `CANCELLED`                | Mitigado |

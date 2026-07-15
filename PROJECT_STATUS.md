@@ -11,8 +11,8 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 3 — pagos simulados. E2-H1A a E2-H4A están completas; la siguiente vertical es E2-H5A,
-vencimiento y abandono configurables exclusivamente en simulación.
+Fase 3 — pagos simulados. E2-H1A a E2-H5A están completas; la siguiente vertical es E2-H6A,
+conciliación diaria Wompi exclusivamente en simulación.
 
 ## Avance aproximado por épica
 
@@ -20,7 +20,7 @@ vencimiento y abandono configurables exclusivamente en simulación.
 | ------------------------ | -----: | ------------------------------------------------- |
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   55 % | tarifa, intención, webhook y recordatorios        |
+| E2 Pagos y tarifas       |   70 % | ciclo simulado hasta vencimiento y abandono       |
 | E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                |
@@ -84,10 +84,14 @@ vencimiento y abandono configurables exclusivamente en simulación.
   comparación financiera, estados, carrera/replay, métricas, outbox y kill switch probados.
 - E2-H4A: dos ventanas durables +8/+16, scheduler concurrente, outbox único, auditoría, métricas,
   cancelación al aprobar/vencer, flags, simulación y kill switch probados.
+- E2-H5A: vencimiento durable a 24 horas, estados/historial, política histórica `MARK`/`CANCEL`,
+  scheduler concurrente, recordatorios cancelados, outbox, auditoría y métricas probados.
+- Los estados terminales Wompi ya no se sobrescriben por eventos tardíos; una aprobación posterior al
+  vencimiento abre `MANUAL_REVIEW` sin afirmar una cancelación Shopify inexistente.
 
 ## Siguiente vertical
 
-- E2-H5A: expirar a 24 h y aplicar política de abandono `MARK`/`CANCEL` solo en simulación.
+- E2-H6A: conciliación diaria Wompi simulada con checkpoint, diferencias, reporte y alertas.
 
 ## Pendiente
 
@@ -111,10 +115,10 @@ vencimiento y abandono configurables exclusivamente en simulación.
 
 ## Pruebas
 
-- `pnpm test`: 49 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 50 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 16 migraciones, constraints y drift.
+- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 17 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -125,7 +129,7 @@ vencimiento y abandono configurables exclusivamente en simulación.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
-- `pnpm wompi:verify`: 9 pruebas HTTP/PostgreSQL y 4 contractuales de intención/checkout/webhook.
+- `pnpm wompi:verify`: 13 pruebas HTTP/PostgreSQL y 4 contractuales de intención/checkout/webhook.
 - GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
@@ -137,7 +141,7 @@ vencimiento y abandono configurables exclusivamente en simulación.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Dieciséis migraciones expand-only están verificadas desde vacío.
+- Diecisiete migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
@@ -146,5 +150,5 @@ scheduler de conciliación, estados operativos posteriores ni integraciones real
 
 ## Siguiente paso
 
-Implementar E2-H5A: vencimiento a 24 h, historial, recordatorios cancelados y política `MARK`/`CANCEL`
-en simulación. No cancelar pedidos Shopify ni iniciar tráfico real.
+Implementar E2-H6A: conciliación diaria Wompi simulada, checkpoint durable, diferencias deduplicadas,
+reporte, outbox de alerta y replay. No corregir estados ni iniciar tráfico real.

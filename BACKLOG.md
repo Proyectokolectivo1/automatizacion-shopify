@@ -29,7 +29,8 @@ Actualizado: 2026-07-14
 | E2-H2A         | P0             | Adaptador Wompi y checkout alojado en simulación                 | COMPLETADA                 |
 | E2-H3A         | P0             | Webhook Wompi firmado y consulta authoritative simulados         | COMPLETADA                 |
 | E2-H4A         | P0             | Programación idempotente de recordatorios simulados 0/8/16/24 h  | COMPLETADA                 |
-| E2-H5A         | P0             | Vencimiento y abandono configurables en simulación               | SIGUIENTE                  |
+| E2-H5A         | P0             | Vencimiento y abandono configurables en simulación               | COMPLETADA                 |
+| E2-H6A         | P0             | Conciliación diaria Wompi simulada, diferencias y alertas        | SIGUIENTE                  |
 | E2-H2B/H3B..H6 | P0             | Sandbox y ciclo Wompi real                                       | BLOQUEADO_POR_CREDENCIALES |
 | E3-H1..H7      | P0             | WhatsApp Cloud API y bandeja                                     | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10     | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |

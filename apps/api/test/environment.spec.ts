@@ -36,6 +36,10 @@ describe('parseEnvironment', () => {
       NODE_ENV: 'development',
       OUTBOX_OPERATIONS_ENABLED: false,
       OUTBOX_OPERATIONS_KILL_SWITCH: true,
+      PAYMENT_EXPIRATION_DEFAULT_ACTION: 'MARK',
+      PAYMENT_EXPIRATION_ENABLED: false,
+      PAYMENT_EXPIRATION_KILL_SWITCH: true,
+      PAYMENT_EXPIRATION_SIMULATION_MODE: true,
       POSTGRES_PORT: 5433,
       REDIS_PORT: 6380,
       SHOPIFY_INTEGRATIONS_ENABLED: false,
@@ -84,5 +88,15 @@ describe('parseEnvironment', () => {
       IDENTITY_BOOTSTRAP_ORGANIZATION_NAME: 'Local tenant',
       IDENTITY_BOOTSTRAP_SECRET: 'a'.repeat(32),
     });
+  });
+
+  it('accepts only explicit payment abandonment actions', () => {
+    expect(
+      parseEnvironment({ ...validEnvironment, PAYMENT_EXPIRATION_DEFAULT_ACTION: 'CANCEL' })
+        .PAYMENT_EXPIRATION_DEFAULT_ACTION,
+    ).toBe('CANCEL');
+    expect(() =>
+      parseEnvironment({ ...validEnvironment, PAYMENT_EXPIRATION_DEFAULT_ACTION: 'DELETE' }),
+    ).toThrowError(/PAYMENT_EXPIRATION_DEFAULT_ACTION/u);
   });
 });

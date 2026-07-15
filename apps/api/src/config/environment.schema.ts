@@ -79,6 +79,17 @@ export const environmentSchema = z.object({
     .max(900_000)
     .default(60_000),
   PAYMENT_REMINDERS_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
+  PAYMENT_EXPIRATION_ENABLED: booleanFlag('false'),
+  PAYMENT_EXPIRATION_KILL_SWITCH: booleanFlag('true'),
+  PAYMENT_EXPIRATION_SIMULATION_MODE: booleanFlag('true'),
+  PAYMENT_EXPIRATION_DEFAULT_ACTION: z.enum(['MARK', 'CANCEL']).default('MARK'),
+  PAYMENT_EXPIRATION_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(900_000)
+    .default(60_000),
+  PAYMENT_EXPIRATION_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
   POSTGRES_DB: nonEmpty,
   POSTGRES_HOST: nonEmpty,
   POSTGRES_PASSWORD: nonEmpty,

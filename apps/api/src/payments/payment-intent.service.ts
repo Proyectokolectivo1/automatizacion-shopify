@@ -104,6 +104,7 @@ export class PaymentIntentService {
         const storedKey = `${command.organizationId}:${hashSensitive(command.idempotencyKey)}`;
         const intent = await transaction.paymentIntent.create({
           data: {
+            abandonmentAction: this.environment.paymentExpiration.defaultAction,
             amount: order.transportChargeAmount,
             attemptNumber,
             checkoutUrl: hostedCheckout.checkoutUrl,

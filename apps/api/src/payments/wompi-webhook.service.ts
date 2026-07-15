@@ -14,7 +14,7 @@ import { z } from 'zod';
 
 import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
-import { PaymentIntentStatus, Prisma } from '../generated/prisma/client';
+import { OrderState, PaymentIntentStatus, Prisma } from '../generated/prisma/client';
 import { MetricsService } from '../observability/metrics.service';
 import { RequestContextService } from '../observability/request-context.service';
 import fixture from './fixtures/wompi-event.v1.json';
@@ -170,6 +170,9 @@ export class WompiWebhookService {
     try {
       return await this.prisma.$transaction(async (transaction) => {
         await transaction.$executeRaw`
+          SELECT id FROM payment_intents WHERE id = ${intent.id}::uuid FOR UPDATE
+        `;
+        await transaction.$executeRaw`
           SELECT pg_advisory_xact_lock(hashtextextended(${'wompi.webhook:' + intent.id}, 0))
         `;
         const current = await transaction.paymentIntent.findUniqueOrThrow({
@@ -195,6 +198,16 @@ export class WompiWebhookService {
         });
         if (current.status !== nextStatus) {
           const transitionedAt = new Date();
+          if (current.status !== PaymentIntentStatus.PENDING) {
+            await this.recordLateTerminalStatus(
+              transaction,
+              current,
+              nextStatus,
+              externalEventKey,
+              transitionedAt,
+            );
+            return this.result(eventId, intent.id, event.data.transaction.status, false);
+          }
           await transaction.paymentIntent.update({
             data: { status: nextStatus },
             where: { id: intent.id },
@@ -254,6 +267,115 @@ export class WompiWebhookService {
       if (replay === null) throw error;
       return replay;
     }
+  }
+
+  private async recordLateTerminalStatus(
+    transaction: Prisma.TransactionClient,
+    intent: {
+      id: string;
+      orderId: string;
+      organizationId: string;
+      status: PaymentIntentStatus;
+      storeId: string;
+    },
+    observedStatus: PaymentIntentStatus,
+    externalEventKey: string,
+    observedAt: Date,
+  ): Promise<void> {
+    const correlationId = this.requestContext.correlationId ?? randomUUID();
+    let manualReview = false;
+    if (
+      intent.status === PaymentIntentStatus.EXPIRED &&
+      observedStatus === PaymentIntentStatus.APPROVED
+    ) {
+      const [order] = await transaction.$queryRaw<Array<{ current_state: string }>>`
+        SELECT current_state::text
+        FROM orders
+        WHERE id = ${intent.orderId}::uuid
+        FOR UPDATE
+      `;
+      if (
+        order !== undefined &&
+        [
+          'abandono_pago_transporte',
+          'pending_transport_payment',
+          'transport_payment_expired',
+        ].includes(order.current_state)
+      ) {
+        const fromState = this.toOrderState(order.current_state);
+        await transaction.order.update({
+          data: { currentState: 'MANUAL_REVIEW', version: { increment: 1 } },
+          where: { id: intent.orderId },
+        });
+        await transaction.orderStateHistory.create({
+          data: {
+            fromState,
+            metadataJson: {
+              actorType: 'system',
+              correlationId,
+              currentPaymentStatus: intent.status.toLowerCase(),
+              mode: 'simulation',
+              observedPaymentStatus: observedStatus.toLowerCase(),
+              paymentIntentId: intent.id,
+            },
+            orderId: intent.orderId,
+            organizationId: intent.organizationId,
+            reason: 'late_approved_payment_requires_manual_review',
+            storeId: intent.storeId,
+            toState: 'MANUAL_REVIEW',
+            triggerId: externalEventKey,
+            triggerType: 'wompi_provider_event',
+          },
+        });
+        manualReview = true;
+      }
+    }
+    await transaction.outboxEvent.create({
+      data: {
+        aggregateId: intent.id,
+        aggregateType: 'payment_intent',
+        causationId: externalEventKey,
+        correlationId,
+        eventType: 'payment.intent.late-status-observed.v1',
+        eventVersion: 1,
+        organizationId: intent.organizationId,
+        payloadJson: {
+          currentStatus: intent.status.toLowerCase(),
+          manualReview,
+          mode: 'simulation',
+          observedAt: observedAt.toISOString(),
+          observedStatus: observedStatus.toLowerCase(),
+          orderId: intent.orderId,
+          paymentIntentId: intent.id,
+          provider: 'wompi',
+          storeId: intent.storeId,
+        },
+      },
+    });
+    await transaction.auditLog.create({
+      data: {
+        action: 'payment_intent.late_status_observed',
+        correlationId,
+        metadataJson: {
+          currentStatus: intent.status.toLowerCase(),
+          manualReview,
+          mode: 'simulation',
+          observedStatus: observedStatus.toLowerCase(),
+          provider: 'wompi',
+        },
+        organizationId: intent.organizationId,
+        outcome: 'SUCCESS',
+        resourceId: intent.id,
+        resourceType: 'payment_intent',
+      },
+    });
+  }
+
+  private toOrderState(value: string): OrderState {
+    if (value === 'abandono_pago_transporte') return OrderState.ABANDONO_PAGO_TRANSPORTE;
+    if (value === 'pending_transport_payment') return OrderState.PENDING_TRANSPORT_PAYMENT;
+    if (value === 'transport_payment_expired') return OrderState.TRANSPORT_PAYMENT_EXPIRED;
+    throw new Error(`Unsupported order state: ${value}`);
   }
 
   private async persistRejected(

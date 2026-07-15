@@ -150,7 +150,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('16');
+    expect(migrations.rows[0]?.count).toBe('17');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -672,5 +672,27 @@ describe('initial database migration', () => {
         [organizationId, store.rows[0]?.id, intent.rows[0]?.id],
       ),
     ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(`UPDATE payment_intents SET status = 'expired' WHERE id = $1`, [
+        intent.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: '23514' });
+    await database.query(
+      `UPDATE payment_intents SET status = 'expired', expired_at = NOW() WHERE id = $1`,
+      [intent.rows[0]?.id],
+    );
+    await expect(
+      database.query(`UPDATE payment_intents SET expired_at = NULL WHERE id = $1`, [
+        intent.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: '23514' });
+    await database.query(
+      `UPDATE orders SET current_state = 'transport_payment_expired' WHERE id = $1`,
+      [order.rows[0]?.id],
+    );
+    await database.query(
+      `UPDATE orders SET current_state = 'abandono_pago_transporte' WHERE id = $1`,
+      [order.rows[0]?.id],
+    );
   });
 });

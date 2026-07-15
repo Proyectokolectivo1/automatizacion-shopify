@@ -5,4 +5,5 @@ outbox único, cancelación al aprobar y cancelación por vencimiento. `pnpm dat
 migraciones desde vacío y valida secuencias/estados. `pnpm validate` cubre formato, lint, tipos,
 unitarias y builds.
 
-No existe envío WhatsApp ni tráfico Wompi real; el outbox usa exclusivamente `mode=simulation`.
+No existe envío WhatsApp ni tráfico Wompi real; el outbox usa exclusivamente `mode=simulation`. La
+evidencia posterior de vencimiento se documenta en `e2-h5a-payment-expiration.md`.

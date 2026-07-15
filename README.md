@@ -98,6 +98,10 @@ todo tráfico/credencial real permanece bloqueado.
 El mismo gate valida recordatorios durables a +8/+16 horas; consulte
 `docs/runbooks/payment-reminders.md`. Solo se crea outbox sintético, sin envío WhatsApp real.
 
+También valida vencimiento a 24 horas, abandono y carreras contra webhooks; consulte
+`docs/runbooks/payment-expiration.md`. `MARK`/`CANCEL` solo generan solicitudes simuladas y nunca
+mutan Shopify en esta fase.
+
 ## Estado real
 
 Empiece por [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) para conocer el propósito, lo implementado y lo

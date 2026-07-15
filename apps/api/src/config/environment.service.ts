@@ -271,6 +271,24 @@ export class EnvironmentService {
     };
   }
 
+  public get paymentExpiration(): Readonly<{
+    batchSize: number;
+    defaultAction: 'CANCEL' | 'MARK';
+    enabled: boolean;
+    killSwitch: boolean;
+    pollIntervalMs: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      batchSize: this.values.PAYMENT_EXPIRATION_BATCH_SIZE,
+      defaultAction: this.values.PAYMENT_EXPIRATION_DEFAULT_ACTION,
+      enabled: this.values.PAYMENT_EXPIRATION_ENABLED,
+      killSwitch: this.values.PAYMENT_EXPIRATION_KILL_SWITCH,
+      pollIntervalMs: this.values.PAYMENT_EXPIRATION_POLL_INTERVAL_MS,
+      simulationMode: this.values.PAYMENT_EXPIRATION_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

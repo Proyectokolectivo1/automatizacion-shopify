@@ -87,7 +87,8 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 - Preview/resolución con RBAC, tenant, idempotencia, auditoría, métricas, decisión durable y outbox.
 - `WompiProvider` simulado y una intención COD durable con referencia, monto, expiración y firma SHA-256.
 - Checkout contractual sobre `.invalid`, RBAC, tenant, replay, auditoría, métricas y outbox.
-- Webhook authoritative y dos recordatorios durables a +8/+16 con scheduler, locks y cancelación.
+- Webhook authoritative, dos recordatorios durables a +8/+16 y vencimiento/abandono a 24 horas.
+- Política histórica `MARK`/`CANCEL`, locks contra aprobación simultánea y revisión de pagos tardíos.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -107,7 +108,7 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 
 ### Pagos y WhatsApp
 
-- Vencimiento/abandono y conciliación diaria Wompi; intención, webhook y recordatorios simulados ya existen.
+- Conciliación diaria Wompi con diferencias, reporte y alertas; el ciclo simulado hasta abandono existe.
 - WhatsApp Cloud API, plantillas, mensajes y bandeja operativa.
 - Simulación y pruebas contractuales mientras falten credenciales.
 
@@ -146,8 +147,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E2-H5A: vencimiento y abandono Wompi únicamente en simulación, con política configurable `MARK` o
-`CANCEL`, historial e idempotencia. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`.
+E2-H6A: conciliación diaria Wompi únicamente en simulación, con checkpoint, diferencias
+deduplicadas, reporte, alertas e idempotencia. Wompi real permanece
+`BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 

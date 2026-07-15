@@ -51,7 +51,9 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Intención Wompi simulada usa firma contractual, host `.invalid`, tenant e idempotencia.
 - [x] Webhook Wompi firmado, durable, idempotente y con consulta authoritative simulado completo.
 - [x] Dos recordatorios simulados +8/+16 son durables, idempotentes, auditados y cancelables.
-- [ ] Expiración y abandono operativo simulados completos.
+- [x] Expiración y abandono simulados con política histórica, replay, tenant y carrera probados.
+- [x] Pago aprobado tardío no reescribe un terminal y abre revisión manual auditada.
+- [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.

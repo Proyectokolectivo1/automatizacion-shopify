@@ -7,4 +7,5 @@ filas `payment_reminders` tenant-safe dentro de la misma transacción.
 El scheduler reclama vencidos con `FOR UPDATE SKIP LOCKED`. Si la intención sigue `PENDING` y vigente,
 marca `REQUESTED` y crea `payment.reminder.requested.v1` atómicamente. Si cambió de estado o venció,
 cancela fail-closed. El webhook cancela de inmediato recordatorios aún programados al salir de
-`PENDING`. No se envía WhatsApp en esta vertical.
+`PENDING`. E2-H5A cancela cualquier agenda restante en la misma transacción que vence la intención.
+No se envía WhatsApp en estas verticales.

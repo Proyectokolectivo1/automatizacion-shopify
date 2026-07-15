@@ -14,6 +14,7 @@ import { PASSWORD_PARAMETERS, PasswordService } from '../src/auth/password.servi
 import { loadEnvironmentFiles } from '../src/config/load-environment';
 import { PrismaClient } from '../src/generated/prisma/client';
 import fixture from '../src/payments/fixtures/wompi-event.v1.json';
+import { PaymentExpirationSchedulerService } from '../src/payments/payment-expiration-scheduler.service';
 import { PaymentReminderSchedulerService } from '../src/payments/payment-reminder-scheduler.service';
 import { createWompiEventChecksum } from '../src/payments/wompi-event-signature';
 import { WompiMockProvider } from '../src/payments/wompi-mock.provider';
@@ -51,6 +52,11 @@ const environmentNames = [
   'PAYMENT_REMINDERS_KILL_SWITCH',
   'PAYMENT_REMINDERS_SIMULATION_MODE',
   'PAYMENT_REMINDERS_POLL_INTERVAL_MS',
+  'PAYMENT_EXPIRATION_ENABLED',
+  'PAYMENT_EXPIRATION_KILL_SWITCH',
+  'PAYMENT_EXPIRATION_SIMULATION_MODE',
+  'PAYMENT_EXPIRATION_DEFAULT_ACTION',
+  'PAYMENT_EXPIRATION_POLL_INTERVAL_MS',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -64,6 +70,7 @@ interface Tokens {
 describe('Wompi payment intents in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
+  let expirations: PaymentExpirationSchedulerService;
   let operationsToken: string;
   let orderId: string;
   let organizationId: string;
@@ -73,6 +80,7 @@ describe('Wompi payment intents in simulation mode', () => {
   let reminders: PaymentReminderSchedulerService;
   let wompi: WompiMockProvider;
   let eventSequence = 0;
+  let orderSequence = 0;
 
   beforeAll(async () => {
     const admin = new Client(adminConfig);
@@ -101,6 +109,11 @@ describe('Wompi payment intents in simulation mode', () => {
       PAYMENT_REMINDERS_KILL_SWITCH: 'false',
       PAYMENT_REMINDERS_SIMULATION_MODE: 'true',
       PAYMENT_REMINDERS_POLL_INTERVAL_MS: '60000',
+      PAYMENT_EXPIRATION_ENABLED: 'true',
+      PAYMENT_EXPIRATION_KILL_SWITCH: 'false',
+      PAYMENT_EXPIRATION_SIMULATION_MODE: 'true',
+      PAYMENT_EXPIRATION_DEFAULT_ACTION: 'MARK',
+      PAYMENT_EXPIRATION_POLL_INTERVAL_MS: '60000',
     });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
     await prisma.$connect();
@@ -127,6 +140,7 @@ describe('Wompi payment intents in simulation mode', () => {
     app = await createApplication();
     wompi = app.get(WompiMockProvider);
     reminders = app.get(PaymentReminderSchedulerService);
+    expirations = app.get(PaymentExpirationSchedulerService);
     await app.listen(0, '127.0.0.1');
     baseUrl = await app.getUrl();
     operationsToken = await login('wompi-operations@example.test');
@@ -159,13 +173,14 @@ describe('Wompi payment intents in simulation mode', () => {
     return (response.body as Tokens).accessToken;
   };
 
-  const seedResolvedCodOrder = async (): Promise<string> => {
+  const seedResolvedCodOrder = async (tenantId = organizationId): Promise<string> => {
+    orderSequence += 1;
     const store = await prisma.store.create({
       data: {
         currency: 'COP',
-        name: 'Wompi Store',
-        organizationId,
-        shopifyShopDomain: 'wompi-intents.myshopify.com',
+        name: `Wompi Store ${orderSequence}`,
+        organizationId: tenantId,
+        shopifyShopDomain: `wompi-intents-${orderSequence}.myshopify.com`,
         status: 'ACTIVE',
         timezone: 'America/Bogota',
       },
@@ -176,7 +191,7 @@ describe('Wompi payment intents in simulation mode', () => {
         eventType: 'orders/create',
         externalEventId: randomUUID(),
         headersRedactedJson: {},
-        organizationId,
+        organizationId: tenantId,
         payloadHash: randomBytes(32).toString('hex'),
         payloadRedactedJson: { synthetic: true },
         provider: 'SHOPIFY',
@@ -190,11 +205,11 @@ describe('Wompi payment intents in simulation mode', () => {
         currency: 'COP',
         currentState: 'PENDING_TRANSPORT_PAYMENT',
         discountAmount: 0n,
-        organizationId,
+        organizationId: tenantId,
         paymentMode: 'COD',
         rawSnapshotJson: { synthetic: true },
         shopifyOrderId: randomUUID(),
-        shopifyOrderName: '#WOMPI-1',
+        shopifyOrderName: `#WOMPI-${orderSequence}`,
         sourceCreatedAt: new Date(),
         sourceUpdatedAt: new Date(),
         sourceWebhookEventId: webhook.id,
@@ -209,7 +224,7 @@ describe('Wompi payment intents in simulation mode', () => {
       data: {
         activatedAt: new Date(),
         active: true,
-        organizationId,
+        organizationId: tenantId,
         storeId: store.id,
         version: 1,
       },
@@ -217,7 +232,7 @@ describe('Wompi payment intents in simulation mode', () => {
     const rule = await prisma.transportRateRule.create({
       data: {
         amount: 1_200_000n,
-        organizationId,
+        organizationId: tenantId,
         policyId: policy.id,
         priority: 100,
         ruleKey: 'wompi-rate',
@@ -230,7 +245,7 @@ describe('Wompi payment intents in simulation mode', () => {
         evaluatedAt: new Date(),
         idempotencyKey: `synthetic:${randomUUID()}`,
         orderId: order.id,
-        organizationId,
+        organizationId: tenantId,
         policyId: policy.id,
         ruleId: rule.id,
         storeId: store.id,
@@ -239,9 +254,14 @@ describe('Wompi payment intents in simulation mode', () => {
     return order.id;
   };
 
-  const createIntent = (token: string, key = `intent-${randomUUID()}`, tenant = organizationId) =>
+  const createIntent = (
+    token: string,
+    key = `intent-${randomUUID()}`,
+    tenant = organizationId,
+    targetOrderId = orderId,
+  ) =>
     request(baseUrl)
-      .post(`/operations/organizations/${tenant}/payments/orders/${orderId}/intents`)
+      .post(`/operations/organizations/${tenant}/payments/orders/${targetOrderId}/intents`)
       .set('authorization', `Bearer ${token}`)
       .set('idempotency-key', key);
 
@@ -249,8 +269,11 @@ describe('Wompi payment intents in simulation mode', () => {
     status: 'APPROVED' | 'DECLINED' | 'ERROR' | 'PENDING' | 'VOIDED',
     amountDelta = 0,
     validSignature = true,
+    targetOrderId = orderId,
   ): Promise<string> => {
-    const intent = await prisma.paymentIntent.findFirstOrThrow({ where: { orderId } });
+    const intent = await prisma.paymentIntent.findFirstOrThrow({
+      where: { orderId: targetOrderId },
+    });
     if (intent.providerCheckoutId === null) throw new Error('Synthetic transaction id is missing');
     wompi.setSyntheticTransactionStatus(intent.providerCheckoutId, status);
     const timestamp = Date.now() + eventSequence++;
@@ -459,5 +482,210 @@ describe('Wompi payment intents in simulation mode', () => {
     await expect(
       prisma.outboxEvent.count({ where: { eventType: 'payment.reminder.requested.v1' } }),
     ).resolves.toBe(1);
+    await prisma.paymentIntent.update({ data: { status: 'APPROVED' }, where: { id: intent.id } });
+  });
+
+  it('expires once, records abandonment history and cancels remaining reminders', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `expiration-mark-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intentId = (response.body as { intentId: string }).intentId;
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    expect(intent.abandonmentAction).toBe('MARK');
+    const now = new Date(intent.expiresAt.getTime() + 1);
+    const batches = await Promise.all([expirations.processDue(now), expirations.processDue(now)]);
+    expect(batches.reduce((total, batch) => total + batch.expired, 0)).toBe(1);
+    expect(batches.reduce((total, batch) => total + batch.marked, 0)).toBe(1);
+    await expect(expirations.processDue(now)).resolves.toEqual({
+      cancellationRequested: 0,
+      expired: 0,
+      marked: 0,
+      skippedOrders: 0,
+    });
+    await expect(
+      prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } }),
+    ).resolves.toMatchObject({
+      expiredAt: now,
+      status: 'EXPIRED',
+    });
+    await expect(
+      prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } }),
+    ).resolves.toMatchObject({
+      currentState: 'ABANDONO_PAGO_TRANSPORTE',
+    });
+    await expect(
+      prisma.orderStateHistory.findMany({
+        orderBy: { createdAt: 'asc' },
+        where: { orderId: targetOrderId, triggerType: 'payment_expiration' },
+      }),
+    ).resolves.toEqual([
+      expect.objectContaining({
+        fromState: 'PENDING_TRANSPORT_PAYMENT',
+        toState: 'TRANSPORT_PAYMENT_EXPIRED',
+      }),
+      expect.objectContaining({
+        fromState: 'TRANSPORT_PAYMENT_EXPIRED',
+        toState: 'ABANDONO_PAGO_TRANSPORTE',
+      }),
+    ]);
+    await expect(
+      prisma.paymentReminder.count({ where: { paymentIntentId: intentId, status: 'CANCELLED' } }),
+    ).resolves.toBe(2);
+    await expect(
+      prisma.outboxEvent.count({
+        where: { aggregateId: intentId, eventType: 'payment.intent.expired.v1' },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({
+        where: {
+          aggregateId: targetOrderId,
+          eventType: 'shopify.order.abandonment-action.requested.v1',
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it('keeps CANCEL tenant-safe as a simulated request without claiming Shopify changed', async () => {
+    const targetOrderId = await seedResolvedCodOrder(otherOrganizationId);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } });
+    const createdAt = new Date();
+    const expiresAt = new Date(createdAt.getTime() + 24 * 60 * 60 * 1_000);
+    const intent = await prisma.paymentIntent.create({
+      data: {
+        abandonmentAction: 'CANCEL',
+        amount: order.transportChargeAmount,
+        attemptNumber: 1,
+        checkoutUrl: 'https://checkout.wompi.simulated.invalid/cancel-policy',
+        currency: 'COP',
+        expiresAt,
+        externalReference: `cancel-${randomUUID()}`,
+        idempotencyKey: `cancel-${randomUUID()}`,
+        orderId: targetOrderId,
+        organizationId: otherOrganizationId,
+        provider: 'WOMPI',
+        providerCheckoutId: `cancel-${randomUUID()}`,
+        storeId: order.storeId,
+      },
+    });
+    await prisma.paymentReminder.createMany({
+      data: [
+        {
+          organizationId: otherOrganizationId,
+          paymentIntentId: intent.id,
+          scheduledAt: new Date(createdAt.getTime() + 8 * 60 * 60 * 1_000),
+          sequence: 1,
+          storeId: order.storeId,
+        },
+        {
+          organizationId: otherOrganizationId,
+          paymentIntentId: intent.id,
+          scheduledAt: new Date(createdAt.getTime() + 16 * 60 * 60 * 1_000),
+          sequence: 2,
+          storeId: order.storeId,
+        },
+      ],
+    });
+    await expect(expirations.processDue(new Date(expiresAt.getTime() + 1))).resolves.toEqual({
+      cancellationRequested: 1,
+      expired: 1,
+      marked: 0,
+      skippedOrders: 0,
+    });
+    const action = await prisma.outboxEvent.findFirstOrThrow({
+      where: {
+        aggregateId: targetOrderId,
+        eventType: 'shopify.order.abandonment-action.requested.v1',
+      },
+    });
+    expect(action.organizationId).toBe(otherOrganizationId);
+    expect(action.payloadJson).toMatchObject({ action: 'cancel', mode: 'simulation' });
+    await expect(
+      prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } }),
+    ).resolves.toMatchObject({
+      currentState: 'ABANDONO_PAGO_TRANSPORTE',
+    });
+    await expect(
+      prisma.outboxEvent.count({
+        where: { aggregateId: intent.id, organizationId: organizationId },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it('routes an authoritative approval after expiration to manual review', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `late-approval-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intentId = (response.body as { intentId: string }).intentId;
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    await expect(
+      expirations.processDue(new Date(intent.expiresAt.getTime() + 1)),
+    ).resolves.toMatchObject({ expired: 1, marked: 1 });
+    const rawBody = await buildEvent('APPROVED', 0, true, targetOrderId);
+    await deliverEvent(rawBody).expect(200);
+    await expect(
+      prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } }),
+    ).resolves.toMatchObject({
+      status: 'EXPIRED',
+    });
+    await expect(
+      prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } }),
+    ).resolves.toMatchObject({
+      currentState: 'MANUAL_REVIEW',
+    });
+    await expect(
+      prisma.outboxEvent.count({
+        where: { aggregateId: intentId, eventType: 'payment.intent.late-status-observed.v1' },
+      }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.orderStateHistory.count({
+        where: {
+          orderId: targetOrderId,
+          reason: 'late_approved_payment_requires_manual_review',
+        },
+      }),
+    ).resolves.toBe(1);
+  });
+
+  it('serializes simultaneous approval and expiration without reverting a terminal status', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `expiration-race-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intentId = (response.body as { intentId: string }).intentId;
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    const rawBody = await buildEvent('APPROVED', 0, true, targetOrderId);
+    const [batch, webhook] = await Promise.all([
+      expirations.processDue(new Date(intent.expiresAt.getTime() + 1)),
+      deliverEvent(rawBody),
+    ]);
+    expect(webhook.status).toBe(200);
+    const finalIntent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    const finalOrder = await prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } });
+    if (finalIntent.status === 'APPROVED') {
+      expect(batch.expired).toBe(0);
+      expect(finalOrder.currentState).toBe('PENDING_TRANSPORT_PAYMENT');
+    } else {
+      expect(finalIntent.status).toBe('EXPIRED');
+      expect(batch.expired).toBe(1);
+      expect(finalOrder.currentState).toBe('MANUAL_REVIEW');
+      await expect(
+        prisma.outboxEvent.count({
+          where: { aggregateId: intentId, eventType: 'payment.intent.late-status-observed.v1' },
+        }),
+      ).resolves.toBe(1);
+    }
   });
 });

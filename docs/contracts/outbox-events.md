@@ -57,5 +57,11 @@ replay idempotente no emite un segundo evento.
   internos, proveedor, estado y modo; la causación es la clave hash del evento Wompi.
 - `payment.reminder.requested.v1`: solicitud sintética única para secuencia 1 u 2. Incluye IDs
   internos, ventana programada, proveedor y modo; nunca incluye destinatario, link o PII.
+- `payment.intent.expired.v1`: vencimiento durable con acción de abandono y cantidad de recordatorios
+  cancelados.
+- `shopify.order.abandonment-action.requested.v1`: solicitud `mark`/`cancel` exclusivamente simulada;
+  no afirma que Shopify haya cambiado.
+- `payment.intent.late-status-observed.v1`: evidencia de un estado authoritative posterior a un
+  estado terminal; puede abrir revisión manual, pero no sobrescribe la intención.
 
 Creación/cambio y sus eventos se escriben atómicamente. Replays no emiten eventos adicionales.

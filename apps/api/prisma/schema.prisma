@@ -101,7 +101,10 @@ enum OrderState {
   INVALID_DATA                     @map("invalid_data")
   READY_FOR_PAYMENT_CLASSIFICATION @map("ready_for_payment_classification")
   PENDING_TRANSPORT_PAYMENT        @map("pending_transport_payment")
+  TRANSPORT_PAYMENT_EXPIRED        @map("transport_payment_expired")
+  ABANDONO_PAGO_TRANSPORTE         @map("abandono_pago_transporte")
   READY_FOR_LOGISTICS              @map("ready_for_logistics")
+  CANCELLED                        @map("cancelled")
   MANUAL_REVIEW                    @map("manual_review")
 
   @@map("order_state")
@@ -116,6 +119,13 @@ enum PaymentIntentStatus {
   ERROR    @map("error")
 
   @@map("payment_intent_status")
+}
+
+enum PaymentAbandonmentAction {
+  MARK   @map("mark")
+  CANCEL @map("cancel")
+
+  @@map("payment_abandonment_action")
 }
 
 enum PaymentProviderEventStatus {
@@ -663,6 +673,8 @@ model PaymentIntent {
   currency               String              @db.Char(3)
   status                 PaymentIntentStatus @default(PENDING)
   expiresAt              DateTime            @map("expires_at") @db.Timestamptz(3)
+  expiredAt              DateTime?           @map("expired_at") @db.Timestamptz(3)
+  abandonmentAction      PaymentAbandonmentAction @default(MARK) @map("abandonment_action")
   attemptNumber          Int                 @map("attempt_number")
   idempotencyKey         String              @unique(map: "payment_intents_idempotency_key") @map("idempotency_key") @db.VarChar(500)
   createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
@@ -675,6 +687,7 @@ model PaymentIntent {
 
   @@unique([provider, externalReference, attemptNumber], map: "payment_intents_provider_reference_attempt_key")
   @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
+  @@index([status, expiresAt], map: "payment_intents_status_expires_idx")
   @@index([organizationId, status, expiresAt], map: "payment_intents_tenant_status_expires_idx")
   @@index([orderId, createdAt], map: "payment_intents_order_created_idx")
   @@map("payment_intents")

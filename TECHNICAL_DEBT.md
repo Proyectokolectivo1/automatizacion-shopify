@@ -26,6 +26,7 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-016 | Consulta de incidencias no tiene cursor              | Bajo    | Añadir paginación por cursor al construir la consola   |
 | TD-017 | Políticas de tarifa no tienen listado ni consola UI  | Medio   | Añadir consulta paginada y flujo de aprobación seguro  |
 | TD-018 | Prisma/pg avisa sobre query concurrente en tests     | Bajo    | Revalidar adaptador antes de actualizar a pg 9         |
+| TD-019 | Schedulers de pago viven dentro del proceso API      | Medio   | Moverlos al worker-payments conservando locks y gates  |
 
 ## Deuda resuelta
 

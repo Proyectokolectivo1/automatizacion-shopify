@@ -559,3 +559,31 @@ intención venció. Hora 0 sigue representada por creación del enlace y hora 24
 
 No se llamó a WhatsApp, Wompi, Shopify ni Mastershop. Solo se emitió el evento sintético
 `payment.reminder.requested.v1`; la entrega real permanece `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E2-H5A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                     | Resultado                                   |
+| ----------------------- | --------------------------- | ------------------------------------------- |
+| Wompi + vencimiento     | `pnpm wompi:verify`         | OK: 4 contractuales + 13 integración        |
+| Migraciones/constraints | `pnpm database:verify`      | OK: 10/10, 17 migraciones y cero drift      |
+| Typecheck intermedio    | paquete API                 | OK después de corregir fixture relacional   |
+| Quality gate integral   | `pnpm validate`             | OK: format/lint/types/50 unitarias/build    |
+| Regresión funcional     | gates dedicados             | OK: integración, auth, Shopify, outbox, DLQ |
+| Observabilidad runtime  | `pnpm observability:verify` | OK: fallo y recuperación Redis              |
+| Infraestructura runtime | `pnpm infra:verify`         | OK: salud y persistencia                    |
+| Dependencias            | `pnpm audit --prod`         | BLOQUEADO: endpoint npm responde HTTP 410   |
+
+Se validaron vencimiento a 24 horas, reclamo concurrente `SKIP LOCKED`, replay sin efectos,
+cancelación de recordatorios, dos transiciones históricas, outbox/auditoría atómicos, políticas
+`MARK`/`CANCEL`, aislamiento de tenant y aprobación simultánea. Un estado terminal no retrocede; una
+aprobación posterior al vencimiento lleva el pedido a `MANUAL_REVIEW`.
+
+El primer typecheck rechazó claves tenant redundantes en un create relacional Prisma; el fixture se
+corrigió con una creación explícita. La primera verificación de migración detectó un índice SQL no
+declarado en Prisma; se agregó al esquema y la repetición desde vacío quedó sin drift.
+
+No hubo llamadas a Wompi, Shopify, WhatsApp o Mastershop ni PII real. `CANCEL` produce únicamente
+`shopify.order.abandonment-action.requested.v1` con `mode=simulation`; no se presenta como una
+cancelación externa terminada. E2-H6A es la siguiente vertical.

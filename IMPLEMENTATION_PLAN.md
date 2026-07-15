@@ -26,8 +26,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3B   | E2-H2A Wompi simulado              | COMPLETADA                 | adaptador, checkout, firma y replay contractuales         |
 | 3C   | E2-H3A webhook Wompi simulado      | COMPLETADA                 | checksum, persistencia y consulta authoritative probados  |
 | 3D   | E2-H4A recordatorios simulados     | COMPLETADA                 | agenda 0/8/16/24 h, máximo dos y replay probado           |
-| 3E   | E2-H5A vencimiento simulado        | SIGUIENTE                  | expirar, cancelar/marcar, historial y replay probados     |
-| 3F   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3E   | E2-H5A vencimiento simulado        | COMPLETADA                 | expirar, cancelar/marcar, historial y replay probados     |
+| 3F   | E2-H6A conciliación Wompi simulada | SIGUIENTE                  | diferencias, reporte, alertas y replay probados           |
+| 3G   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -213,3 +214,16 @@ o vencimiento cancelan lo pendiente. Trece pruebas Wompi cubren agenda, carrera,
 Expirar intenciones pendientes al cumplir 24 horas, cancelar recordatorios, registrar historial y
 aplicar en simulación la política configurable `MARK` o `CANCEL`. Como DP-002 sigue abierta, el valor
 por defecto debe ser `MARK` y ninguna mutación Shopify real está permitida.
+
+Resultado: completada el 2026-07-14. La migración diecisiete agrega estados, acción histórica y
+`expired_at` con constraints. El scheduler vence y transiciona en una sola transacción, cancela
+recordatorios, emite outbox sin PII y serializa la carrera con webhooks. `CANCEL` solo solicita una
+acción simulada; una aprobación tardía no reescribe el estado y mueve el pedido a revisión manual.
+Diecisiete pruebas Wompi cubren expiración, replay, tenant, ambas políticas y concurrencia.
+
+## Vigésima vertical: E2-H6A
+
+Implementar conciliación diaria Wompi exclusivamente en simulación: ventana/checkpoint durable,
+comparación entre intenciones, eventos y estado authoritative del proveedor simulado, diferencias
+deduplicadas, reporte, outbox de alerta, métricas, scheduler, flag y kill switch. No corregir estados
+automáticamente ni llamar proveedores reales.
