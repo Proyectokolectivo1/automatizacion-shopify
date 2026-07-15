@@ -13,6 +13,9 @@ import { createApplication } from '../src/app.factory';
 import { PASSWORD_PARAMETERS, PasswordService } from '../src/auth/password.service';
 import { loadEnvironmentFiles } from '../src/config/load-environment';
 import { PrismaClient } from '../src/generated/prisma/client';
+import fixture from '../src/payments/fixtures/wompi-event.v1.json';
+import { createWompiEventChecksum } from '../src/payments/wompi-event-signature';
+import { WompiMockProvider } from '../src/payments/wompi-mock.provider';
 
 loadEnvironmentFiles();
 
@@ -40,6 +43,9 @@ const environmentNames = [
   'WOMPI_KILL_SWITCH',
   'WOMPI_SIMULATION_MODE',
   'WOMPI_PAYMENT_LINK_TTL_MINUTES',
+  'WOMPI_WEBHOOKS_ENABLED',
+  'WOMPI_WEBHOOKS_KILL_SWITCH',
+  'WOMPI_WEBHOOKS_MAX_SKEW_SECONDS',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -59,6 +65,8 @@ describe('Wompi payment intents in simulation mode', () => {
   let otherOrganizationId: string;
   let prisma: PrismaClient;
   let readOnlyToken: string;
+  let wompi: WompiMockProvider;
+  let eventSequence = 0;
 
   beforeAll(async () => {
     const admin = new Client(adminConfig);
@@ -80,6 +88,9 @@ describe('Wompi payment intents in simulation mode', () => {
       WOMPI_KILL_SWITCH: 'false',
       WOMPI_PAYMENT_LINK_TTL_MINUTES: '60',
       WOMPI_SIMULATION_MODE: 'true',
+      WOMPI_WEBHOOKS_ENABLED: 'true',
+      WOMPI_WEBHOOKS_KILL_SWITCH: 'false',
+      WOMPI_WEBHOOKS_MAX_SKEW_SECONDS: '300',
     });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
     await prisma.$connect();
@@ -104,6 +115,7 @@ describe('Wompi payment intents in simulation mode', () => {
     }
     orderId = await seedResolvedCodOrder();
     app = await createApplication();
+    wompi = app.get(WompiMockProvider);
     await app.listen(0, '127.0.0.1');
     baseUrl = await app.getUrl();
     operationsToken = await login('wompi-operations@example.test');
@@ -222,6 +234,42 @@ describe('Wompi payment intents in simulation mode', () => {
       .set('authorization', `Bearer ${token}`)
       .set('idempotency-key', key);
 
+  const buildEvent = async (
+    status: 'APPROVED' | 'DECLINED' | 'ERROR' | 'PENDING' | 'VOIDED',
+    amountDelta = 0,
+    validSignature = true,
+  ): Promise<string> => {
+    const intent = await prisma.paymentIntent.findFirstOrThrow({ where: { orderId } });
+    if (intent.providerCheckoutId === null) throw new Error('Synthetic transaction id is missing');
+    wompi.setSyntheticTransactionStatus(intent.providerCheckoutId, status);
+    const timestamp = Date.now() + eventSequence++;
+    const data = {
+      transaction: {
+        amount_in_cents: Number(intent.amount) + amountDelta,
+        currency: 'COP' as const,
+        id: intent.providerCheckoutId,
+        reference: intent.externalReference,
+        status,
+      },
+    };
+    const properties = ['transaction.id', 'transaction.status', 'transaction.amount_in_cents'];
+    const checksum = createWompiEventChecksum({ data, properties, timestamp }, fixture.eventSecret);
+    return JSON.stringify({
+      _fixture: { synthetic: true, version: 'v1' },
+      data,
+      event: 'transaction.updated',
+      sent_at: new Date(timestamp).toISOString(),
+      signature: { checksum: validSignature ? checksum : '0'.repeat(64), properties },
+      timestamp,
+    });
+  };
+
+  const deliverEvent = (rawBody: string) =>
+    request(baseUrl)
+      .post('/webhooks/wompi/transactions')
+      .set('content-type', 'application/json')
+      .send(rawBody);
+
   it('enforces RBAC and tenant isolation before creating a checkout', async () => {
     await createIntent(readOnlyToken).expect(403);
     await createIntent(operationsToken, `other-${randomUUID()}`, otherOrganizationId).expect(403);
@@ -270,6 +318,54 @@ describe('Wompi payment intents in simulation mode', () => {
       prisma.outboxEvent.count({
         where: { eventType: 'payment.intent.created.v1', organizationId },
       }),
+    ).resolves.toBe(1);
+  });
+
+  it('accepts one concurrent signed event only after authoritative verification', async () => {
+    const rawBody = await buildEvent('APPROVED');
+    const responses = await Promise.all([deliverEvent(rawBody), deliverEvent(rawBody)]);
+    expect(responses.map(({ status }) => status)).toEqual([200, 200]);
+    expect(responses.map(({ body }) => (body as { duplicate: boolean }).duplicate).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(responses[0]?.body).toMatchObject({
+      accepted: true,
+      mode: 'simulation',
+      status: 'approved',
+    });
+    await expect(
+      prisma.paymentIntent.findFirstOrThrow({ where: { orderId } }),
+    ).resolves.toMatchObject({
+      status: 'APPROVED',
+    });
+    await expect(prisma.paymentProviderEvent.count()).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({ where: { eventType: 'payment.intent.status-updated.v1' } }),
+    ).resolves.toBe(1);
+  });
+
+  it('persists and rejects a signed amount that differs from authoritative data', async () => {
+    const rawBody = await buildEvent('APPROVED', 1);
+    await deliverEvent(rawBody).expect(409);
+    await expect(
+      prisma.paymentProviderEvent.count({ where: { rejectionReason: 'provider_mismatch' } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.paymentIntent.findFirstOrThrow({ where: { orderId } }),
+    ).resolves.toMatchObject({
+      status: 'APPROVED',
+    });
+  });
+
+  it('persists and rejects an invalid event checksum without provider state changes', async () => {
+    const rawBody = await buildEvent('APPROVED', 0, false);
+    await deliverEvent(rawBody).expect(401);
+    await expect(
+      prisma.paymentProviderEvent.count({ where: { rejectionReason: 'invalid_signature' } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.outboxEvent.count({ where: { eventType: 'payment.intent.status-updated.v1' } }),
     ).resolves.toBe(1);
   });
 });

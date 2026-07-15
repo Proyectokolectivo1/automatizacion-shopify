@@ -112,6 +112,7 @@ describe('initial database migration', () => {
           'transport_rate_policies',
           'transport_rate_rules',
           'payment_intents',
+          'payment_provider_events',
         ],
       ],
     );
@@ -134,6 +135,7 @@ describe('initial database migration', () => {
       'organizations',
       'outbox_events',
       'payment_intents',
+      'payment_provider_events',
       'reconciliation_checkpoints',
       'stores',
       'transport_rate_decisions',
@@ -146,7 +148,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('14');
+    expect(migrations.rows[0]?.count).toBe('15');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(

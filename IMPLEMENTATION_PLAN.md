@@ -24,8 +24,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 2F   | Shopify real                       | BLOQUEADO_POR_CREDENCIALES | registro remoto, pedido, timeline y conciliación          |
 | 3A   | E2-H1A tarifas/pago simulados      | COMPLETADA                 | reglas versionadas y decisión default-deny probadas       |
 | 3B   | E2-H2A Wompi simulado              | COMPLETADA                 | adaptador, checkout, firma y replay contractuales         |
-| 3C   | E2-H3A webhook Wompi simulado      | SIGUIENTE                  | checksum, persistencia y consulta authoritative probados  |
-| 3D   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3C   | E2-H3A webhook Wompi simulado      | COMPLETADA                 | checksum, persistencia y consulta authoritative probados  |
+| 3D   | E2-H4A recordatorios simulados     | SIGUIENTE                  | agenda 0/8/16/24 h, máximo dos y replay probado           |
+| 3E   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -194,3 +195,9 @@ replay y outbox.
 Recibir un evento `transaction.updated` sintético, validar checksum sobre cuerpo recibido, persistirlo
 idempotentemente y consultar el estado authoritative mediante `WompiProvider` antes de comparar
 referencia, monto y moneda. No confirmar pagos ni mover pedidos usando solo el webhook.
+
+Resultado: completada el 2026-07-14. La migración quince crea eventos de proveedor tenant-safe. El ingreso valida cuerpo crudo, checksum, tiempo e idempotencia; consulta el simulador authoritative y compara id, referencia, monto, moneda y estado antes de actualizar intención y outbox atómicamente. Once pruebas Wompi cubren aprobación, carrera, replay, firma y divergencias.
+
+## Decimoctava vertical: E2-H4A
+
+Programar recordatorios sintéticos a 0/8/16/24 horas con máximo dos entregas, outbox idempotente, cancelación al dejar `PENDING` y controles fail-closed. No enviar WhatsApp real.

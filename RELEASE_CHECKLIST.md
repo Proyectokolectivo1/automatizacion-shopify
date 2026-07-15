@@ -49,7 +49,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Aprobación comercial y consola de políticas de tarifa disponibles antes del piloto.
 - [ ] Wompi sandbox validado con llaves separadas, firma, webhooks, replay y kill switch.
 - [x] Intención Wompi simulada usa firma contractual, host `.invalid`, tenant e idempotencia.
-- [ ] Webhook Wompi, consulta authoritative, expiración y confirmación simulados completos.
+- [x] Webhook Wompi firmado, durable, idempotente y con consulta authoritative simulado completo.
+- [ ] Expiración, recordatorios y confirmación operativa simulados completos.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.

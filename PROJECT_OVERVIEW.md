@@ -146,8 +146,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E2-H3A: webhook Wompi y consulta authoritative únicamente en simulación, con checksum, comparación de
-referencia/monto/moneda e idempotencia. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`.
+E2-H4A: recordatorios Wompi únicamente en simulación, con agenda durable 0/8/16/24 h, máximo dos,
+cancelación e idempotencia. Wompi real permanece `BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 

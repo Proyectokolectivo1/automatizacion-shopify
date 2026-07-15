@@ -22,6 +22,10 @@ export async function createApplication(): Promise<INestApplication> {
     '/webhooks/shopify',
     raw({ limit: environment.shopifyWebhooks.maxBodyBytes, type: 'application/json' }),
   );
+  app.use(
+    '/webhooks/wompi',
+    raw({ limit: environment.wompiWebhooks.maxBodyBytes, type: 'application/json' }),
+  );
   app.use(json({ limit: '1mb' }));
   app.use(urlencoded({ extended: true, limit: '1mb' }));
   app.useLogger(app.get(AppLoggerService));

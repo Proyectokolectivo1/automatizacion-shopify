@@ -523,3 +523,22 @@ expiración operativa y conciliación permanecen pendientes; E2-H3A es la siguie
 
 GitHub CLI 2.96.0 quedó disponible y autenticado por keyring. E2-H1A se publicó como commit
 `482fb71` y se abrió el PR borrador #1 sin usar el PAT expuesto.
+
+## Iteración E2-H3A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Wompi completo          | `pnpm wompi:verify`    | OK: 4 contractuales + 7 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 15 migraciones y cero drift  |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/unitarias/build   |
+
+Se validaron cuerpo crudo, checksum por propiedades, tiempo, persistencia redactada, consulta
+authoritative, comparación de id/referencia/monto/moneda/estado, aprobación, replay concurrente,
+colisión, firma inválida y outbox único. El primer typecheck detectó una relación Prisma sobrante
+hacia `Order`; se eliminó antes de aplicar la migración. El primer gate integral detectó además una
+lectura `any` en una aserción Supertest; se tipó y la repetición completa quedó verde.
+
+No hubo tráfico ni credenciales Wompi reales. Recordatorios, abandono, conciliación diaria y sandbox
+permanecen pendientes; E2-H4A es la siguiente vertical.

@@ -54,6 +54,8 @@ Actualizado: 2026-07-14
 | D-048  | DECISIÓN           | Wompi usará checkout alojado y firma oficial; nunca capturará datos de tarjeta                   | ACEPTADA E2-H2A    |
 | D-049  | DECISIÓN           | El mock Wompi usa parámetros oficiales sobre `.invalid`; ningún link simulado es cobrable        | ACEPTADA E2-H2A    |
 | D-050  | DECISIÓN           | Solo una intención pendiente por pedido; monto/referencia se derivan de datos durables           | ACEPTADA E2-H2A    |
+| D-051  | DECISIÓN           | Webhook Wompi nunca es authoritative; se consulta y compara antes de cambiar estado              | ACEPTADA E2-H3A    |
+| D-052  | DECISIÓN           | Eventos de pago guardan solo hash/resumen redactado y colisiones fallan cerradas                 | ACEPTADA E2-H3A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

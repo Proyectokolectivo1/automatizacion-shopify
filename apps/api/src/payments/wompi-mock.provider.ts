@@ -7,10 +7,14 @@ import type {
   WompiHostedCheckoutCommand,
   WompiHostedCheckoutResult,
   WompiProvider,
+  WompiTransactionSnapshot,
+  WompiTransactionStatus,
 } from './wompi-provider';
 
 @Injectable()
 export class WompiMockProvider implements WompiProvider {
+  private readonly transactions = new Map<string, WompiTransactionSnapshot>();
+
   public async createHostedCheckout(
     command: WompiHostedCheckoutCommand,
   ): Promise<WompiHostedCheckoutResult> {
@@ -28,12 +32,35 @@ export class WompiMockProvider implements WompiProvider {
     checkout.searchParams.set('reference', command.reference);
     checkout.searchParams.set('signature:integrity', signature);
     checkout.searchParams.set('expiration-time', expiration);
+    const providerCheckoutId = `sim_${createHash('sha256').update(command.reference).digest('hex').slice(0, 32)}`;
+    this.transactions.set(providerCheckoutId, {
+      amountMinor: command.amountMinor,
+      currency: command.currency,
+      id: providerCheckoutId,
+      reference: command.reference,
+      status: 'PENDING',
+    });
     return Promise.resolve({
       checkoutUrl: checkout.toString(),
       fixtureVersion: fixture.version,
       mode: 'simulation',
-      providerCheckoutId: null,
+      providerCheckoutId,
     });
+  }
+
+  public getTransaction(transactionId: string): Promise<WompiTransactionSnapshot> {
+    const transaction = this.transactions.get(transactionId);
+    if (transaction === undefined) throw new Error('Synthetic Wompi transaction not found');
+    return Promise.resolve({ ...transaction });
+  }
+
+  public setSyntheticTransactionStatus(
+    transactionId: string,
+    status: WompiTransactionStatus,
+  ): void {
+    const transaction = this.transactions.get(transactionId);
+    if (transaction === undefined) throw new Error('Synthetic Wompi transaction not found');
+    this.transactions.set(transactionId, { ...transaction, status });
   }
 
   private validate(command: WompiHostedCheckoutCommand): void {

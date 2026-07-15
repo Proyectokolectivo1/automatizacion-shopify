@@ -28,6 +28,8 @@ import { PaymentIntentController } from './payments/payment-intent.controller';
 import { PaymentIntentService } from './payments/payment-intent.service';
 import { WompiMockProvider } from './payments/wompi-mock.provider';
 import { WOMPI_PROVIDER } from './payments/wompi-provider';
+import { WompiWebhookController } from './payments/wompi-webhook.controller';
+import { WompiWebhookService } from './payments/wompi-webhook.service';
 import { ShopifyReconciliationController } from './reconciliation/shopify-reconciliation.controller';
 import { ShopifyReconciliationService } from './reconciliation/shopify-reconciliation.service';
 import { TransportRateController } from './rates/transport-rate.controller';
@@ -61,6 +63,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     ShopifyReconciliationController,
     TransportRateController,
     PaymentIntentController,
+    WompiWebhookController,
   ],
   providers: [
     EnvironmentService,
@@ -95,6 +98,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     TransportRateResolver,
     TransportRateService,
     PaymentIntentService,
+    WompiWebhookService,
     WompiMockProvider,
     ShopifyMockProvider,
     { provide: WOMPI_PROVIDER, useExisting: WompiMockProvider },

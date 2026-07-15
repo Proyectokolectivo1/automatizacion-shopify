@@ -35,6 +35,12 @@ describe('synthetic Wompi hosted checkout contract', () => {
         .digest('hex'),
     );
     expect(result).toMatchObject({ fixtureVersion: 'v1', mode: 'simulation' });
+    await expect(provider.getTransaction(result.providerCheckoutId)).resolves.toMatchObject({
+      amountMinor: 1_200_000,
+      currency: 'COP',
+      reference: 'cod-order-1',
+      status: 'PENDING',
+    });
   });
 
   it('fails closed for unsupported currency, amount or reference', async () => {

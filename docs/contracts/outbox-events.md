@@ -53,5 +53,7 @@ replay idempotente no emite un segundo evento.
 
 - `payment.intent.created.v1`: intención Wompi sintética persistida. Incluye IDs internos, importe,
   COP, expiración, proveedor, modo y versión del fixture; nunca incluye URL, firma o secretos.
+- `payment.intent.status-updated.v1`: cambio confirmado por consulta authoritative. Incluye IDs
+  internos, proveedor, estado y modo; la causación es la clave hash del evento Wompi.
 
-Una intención y su evento se crean en la misma transacción. Replays no emiten eventos adicionales.
+Creación/cambio y sus eventos se escriben atómicamente. Replays no emiten eventos adicionales.

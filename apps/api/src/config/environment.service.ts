@@ -241,6 +241,20 @@ export class EnvironmentService {
     };
   }
 
+  public get wompiWebhooks(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    maxBodyBytes: number;
+    maxSkewSeconds: number;
+  }> {
+    return {
+      enabled: this.values.WOMPI_WEBHOOKS_ENABLED,
+      killSwitch: this.values.WOMPI_WEBHOOKS_KILL_SWITCH,
+      maxBodyBytes: this.values.WOMPI_WEBHOOKS_MAX_BODY_BYTES,
+      maxSkewSeconds: this.values.WOMPI_WEBHOOKS_MAX_SKEW_SECONDS,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

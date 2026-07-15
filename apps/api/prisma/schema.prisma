@@ -118,6 +118,13 @@ enum PaymentIntentStatus {
   @@map("payment_intent_status")
 }
 
+enum PaymentProviderEventStatus {
+  ACCEPTED @map("accepted")
+  REJECTED @map("rejected")
+
+  @@map("payment_provider_event_status")
+}
+
 enum ReconciliationIssueType {
   MISSING_ORDER  @map("missing_order")
   FAILED_WEBHOOK @map("failed_webhook")
@@ -207,6 +214,7 @@ model Organization {
   transportRateRules          TransportRateRule[]
   transportRateDecisions      TransportRateDecision[]
   paymentIntents              PaymentIntent[]
+  paymentProviderEvents       PaymentProviderEvent[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -354,6 +362,7 @@ model Store {
   transportRatePolicies       TransportRatePolicy[]
   transportRateDecisions      TransportRateDecision[]
   paymentIntents              PaymentIntent[]
+  paymentProviderEvents       PaymentProviderEvent[]
   reconciliationCheckpoints   ReconciliationCheckpoint[]
   reconciliationIssues        OrderReconciliationIssue[]
 
@@ -651,12 +660,40 @@ model PaymentIntent {
   organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   store                  Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_store_tenant_fkey")
   order                  Order               @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_order_tenant_fkey")
+  providerEvents         PaymentProviderEvent[]
 
   @@unique([provider, externalReference, attemptNumber], map: "payment_intents_provider_reference_attempt_key")
   @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
   @@index([organizationId, status, expiresAt], map: "payment_intents_tenant_status_expires_idx")
   @@index([orderId, createdAt], map: "payment_intents_order_created_idx")
   @@map("payment_intents")
+}
+
+model PaymentProviderEvent {
+  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String                     @map("organization_id") @db.Uuid
+  storeId               String                     @map("store_id") @db.Uuid
+  paymentIntentId       String                     @map("payment_intent_id") @db.Uuid
+  provider              IntegrationProvider        @default(WOMPI)
+  eventType             String                     @map("event_type") @db.VarChar(80)
+  externalEventKey      String                     @map("external_event_key") @db.Char(64)
+  providerTransactionId String                     @map("provider_transaction_id") @db.VarChar(128)
+  payloadHash           String                     @map("payload_hash") @db.Char(64)
+  signatureValid        Boolean                    @map("signature_valid")
+  status                PaymentProviderEventStatus
+  providerStatus        PaymentIntentStatus        @map("provider_status")
+  rejectionReason       String?                    @map("rejection_reason") @db.VarChar(80)
+  payloadRedactedJson   Json                       @map("payload_redacted_json") @db.JsonB
+  receivedAt            DateTime                   @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt           DateTime                   @default(now()) @map("processed_at") @db.Timestamptz(3)
+  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                 Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_provider_events_store_tenant_fkey")
+  paymentIntent         PaymentIntent              @relation(fields: [organizationId, storeId, paymentIntentId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_provider_events_intent_tenant_fkey")
+
+  @@unique([provider, externalEventKey], map: "payment_provider_events_provider_external_key")
+  @@index([organizationId, status, receivedAt], map: "payment_provider_events_tenant_status_received_idx")
+  @@index([paymentIntentId, receivedAt], map: "payment_provider_events_intent_received_idx")
+  @@map("payment_provider_events")
 }
 
 model ReconciliationCheckpoint {
