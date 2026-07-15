@@ -22,6 +22,7 @@ const identifierSchema = z.string().uuid();
 const idempotencyKeySchema = z.string().trim().min(8).max(200);
 const providerIdentifierSchema = z.string().regex(/^[A-Za-z0-9_-]{3,128}$/u);
 const tokenSchema = z.object({ accessToken: z.string().min(16).max(512) });
+const webhookSecretSchema = z.object({ webhookSecret: z.string().min(32).max(512) }).strict();
 const registrationSchema = tokenSchema.extend({
   apiVersion: z.string().regex(/^v[1-9][0-9]{0,2}[.][0-9]+$/u),
   businessAccountId: providerIdentifierSchema,
@@ -107,6 +108,25 @@ export class WhatsAppIntegrationController {
     const token = tokenSchema.safeParse(body);
     if (!token.success) throw new BadRequestException('Invalid request');
     return this.whatsapp.rotateCredentials({ ...parsed, accessToken: token.data.accessToken });
+  }
+
+  @Patch(':storeId/webhook-secret')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  public rotateWebhookSecret(
+    @Body() body: unknown,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Param('organizationId') organizationId: string,
+    @Param('storeId') storeId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = this.parseStore(idempotencyKey, organizationId, storeId, request);
+    const secret = webhookSecretSchema.safeParse(body);
+    if (!secret.success) throw new BadRequestException('Invalid request');
+    return this.whatsapp.rotateWebhookSecret({
+      ...parsed,
+      webhookSecret: secret.data.webhookSecret,
+    });
   }
 
   private parseStore(

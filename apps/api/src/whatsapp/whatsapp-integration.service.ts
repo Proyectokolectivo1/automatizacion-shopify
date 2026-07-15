@@ -40,6 +40,10 @@ interface RotateCommand extends BaseCommand {
   readonly accessToken: string;
 }
 
+interface RotateWebhookSecretCommand extends BaseCommand {
+  readonly webhookSecret: string;
+}
+
 interface LockedIdempotencyRow {
   request_hash: string;
   response_snapshot_json: Prisma.JsonValue | null;
@@ -73,6 +77,7 @@ const TEST_SCOPE = 'whatsapp.connection.test';
 const ACTIVATE_SCOPE = 'whatsapp.connection.activate';
 const DEACTIVATE_SCOPE = 'whatsapp.connection.deactivate';
 const ROTATE_SCOPE = 'whatsapp.connection.credentials.rotate';
+const ROTATE_WEBHOOK_SECRET_SCOPE = 'whatsapp.connection.webhook-secret.rotate';
 
 @Injectable()
 export class WhatsAppIntegrationService {
@@ -280,9 +285,43 @@ export class WhatsAppIntegrationService {
     });
   }
 
+  public rotateWebhookSecret(
+    command: RotateWebhookSecretCommand,
+  ): Promise<WhatsAppConnectionResult> {
+    return this.mutateConnection({
+      action: 'whatsapp.connection.webhook_secret_rotated',
+      command,
+      eventType: 'whatsapp.connection.webhook-secret-rotated.v1',
+      request: {
+        operation: 'rotate-webhook-secret',
+        secretHash: hashSensitive(command.webhookSecret),
+      },
+      scope: ROTATE_WEBHOOK_SECRET_SCOPE,
+      execute: async (transaction, connection, config) => {
+        const encrypted = this.cipher.encryptWebhookSecret(
+          command.webhookSecret,
+          command.organizationId,
+          command.storeId,
+        );
+        await transaction.integrationConnection.update({
+          data: { encryptedWebhookSecretJson: { ...encrypted } },
+          where: { id: connection.id },
+        });
+        return this.result(
+          connection.id,
+          command.storeId,
+          connection.displayName,
+          config,
+          connection.status,
+          connection.lastHealthStatus,
+        );
+      },
+    });
+  }
+
   private mutateConnection(options: {
     readonly action: string;
-    readonly command: BaseCommand | RotateCommand;
+    readonly command: BaseCommand | RotateCommand | RotateWebhookSecretCommand;
     readonly eventType: string;
     readonly execute: (
       transaction: Prisma.TransactionClient,

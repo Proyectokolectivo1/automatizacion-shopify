@@ -28,11 +28,36 @@ export class WhatsAppCredentialCipher {
     organizationId: string,
     storeId: string,
   ): WhatsAppCredentialEnvelope {
+    return this.encryptForPurpose(accessToken, organizationId, storeId, 'access-token');
+  }
+
+  public encryptWebhookSecret(
+    webhookSecret: string,
+    organizationId: string,
+    storeId: string,
+  ): WhatsAppCredentialEnvelope {
+    return this.encryptForPurpose(webhookSecret, organizationId, storeId, 'webhook-secret');
+  }
+
+  public decrypt(value: unknown, organizationId: string, storeId: string): string {
+    return this.decryptForPurpose(value, organizationId, storeId, 'access-token');
+  }
+
+  public decryptWebhookSecret(value: unknown, organizationId: string, storeId: string): string {
+    return this.decryptForPurpose(value, organizationId, storeId, 'webhook-secret');
+  }
+
+  private encryptForPurpose(
+    value: string,
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): WhatsAppCredentialEnvelope {
     const { key, version } = this.currentKey();
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
-    cipher.setAAD(this.aad(organizationId, storeId));
-    const ciphertext = Buffer.concat([cipher.update(accessToken, 'utf8'), cipher.final()]);
+    cipher.setAAD(this.aad(organizationId, storeId, purpose));
+    const ciphertext = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
     return {
       authTag: cipher.getAuthTag().toString('base64url'),
       ciphertext: ciphertext.toString('base64url'),
@@ -41,7 +66,12 @@ export class WhatsAppCredentialCipher {
     };
   }
 
-  public decrypt(value: unknown, organizationId: string, storeId: string): string {
+  private decryptForPurpose(
+    value: unknown,
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): string {
     const envelope = envelopeSchema.safeParse(value);
     if (!envelope.success) throw new ServiceUnavailableException('Invalid credential envelope');
     const key = this.keyring().get(envelope.data.version);
@@ -54,7 +84,7 @@ export class WhatsAppCredentialCipher {
         key,
         Buffer.from(envelope.data.iv, 'base64url'),
       );
-      decipher.setAAD(this.aad(organizationId, storeId));
+      decipher.setAAD(this.aad(organizationId, storeId, purpose));
       decipher.setAuthTag(Buffer.from(envelope.data.authTag, 'base64url'));
       return Buffer.concat([
         decipher.update(Buffer.from(envelope.data.ciphertext, 'base64url')),
@@ -65,8 +95,12 @@ export class WhatsAppCredentialCipher {
     }
   }
 
-  private aad(organizationId: string, storeId: string): Buffer {
-    return Buffer.from(`whatsapp:${organizationId}:${storeId}:access-token`, 'utf8');
+  private aad(
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): Buffer {
+    return Buffer.from(`whatsapp:${organizationId}:${storeId}:${purpose}`, 'utf8');
   }
 
   private currentKey(): { key: Buffer; version: string } {

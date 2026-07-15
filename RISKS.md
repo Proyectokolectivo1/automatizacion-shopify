@@ -56,3 +56,5 @@ Actualizado: 2026-07-14
 | R-050 | Reintentos WhatsApp crean mensajes duplicados               | Alta  | Crítico | Idempotencia HTTP, clave de negocio, locks y unique constraint          | Mitigado |
 | R-051 | PII del mensaje se filtra en telemetría o eventos           | Media | Crítico | Payloads acotados, redacción y pruebas negativas                        | Mitigado |
 | R-052 | Aceptación simulada se confunde con entrega Meta            | Media | Crítico | Estado exclusivo, timestamps nulos, constraints, contrato y ADR-004     | Mitigado |
+| R-053 | Eventos tardíos o carreras regresan un estado WhatsApp      | Alta  | Crítico | Lock, máquina monotónica, terminales inmutables e historial             | Mitigado |
+| R-054 | Firma sintética se interpreta como autenticación oficial    | Media | Crítico | Nombre/versionado explícitos, flags, secreto separado y ADR-005         | Mitigado |

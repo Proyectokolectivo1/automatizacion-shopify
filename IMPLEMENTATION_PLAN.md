@@ -31,8 +31,11 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3G   | E3-H1A WhatsApp simulado            | COMPLETADA                 | configuración, contrato, fixture y controles probados       |
 | 3H   | E3-H2A plantillas simuladas         | COMPLETADA                 | catálogo, versiones, estados y variables probados           |
 | 3I   | E3-H3A envío transaccional simulado | COMPLETADA                 | render, mensaje durable, replay y aceptación local probados |
-| 3J   | E3-H4A estados webhook simulados    | SIGUIENTE                  | autenticidad, orden monotónico y replay probados            |
-| 3K   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales            |
+| 3J   | E3-H4A estados webhook simulados    | COMPLETADA                 | autenticidad, orden monotónico y replay probados            |
+| 3K   | E3-H5A mensajes entrantes simulados | SIGUIENTE                  | ingreso durable, dedupe, tenant y redacción probados        |
+| 3L   | E3-H6A bandeja simulada             | PENDIENTE                  | consulta, timeline y filtros tenant-safe probados           |
+| 3M   | E3-H7A asignación simulada          | PENDIENTE                  | ownership, carrera, RBAC y auditoría probados               |
+| 3N   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales            |
 | 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato             |
 | 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                   |
 | 6    | Operación y dashboard               | PENDIENTE                  | filtros, alertas, métricas y exportación                    |
@@ -277,3 +280,17 @@ auditoría y métricas sin PII. El mock determinista no usa red y ningún timest
 Implementar el ciclo de estados exclusivamente simulado mediante webhook autenticado: evento durable,
 idempotencia, orden monotónico y transiciones permitidas sin aceptar regresiones ni afirmar entregas
 Meta reales. Mantener el ingreso real bloqueado hasta validar firma y contrato oficiales.
+
+Resultado: completada el 2026-07-14. Las migraciones veintidós y veintitrés amplían los estados y
+agregan evento/historial inmutables tenant-safe. El webhook sintético v1 autentica bytes crudos con
+un secreto separado del token, deduplica, serializa carreras y aplica transiciones monotónicas. Firma,
+replay, colisión, desconocidos, eventos tardíos, terminales, RBAC, kill switch y redacción están
+probados sin tráfico Meta.
+
+## Vigesimoquinta vertical: E3-H5A
+
+Implementar mensajes entrantes exclusivamente simulados reutilizando el ingreso sintético
+autenticado con un tipo/fixture versionado propio. Persistir mensaje y conversación tenant-safe con
+deduplicación, consentimiento/identidad no reveladora, retención/redacción explícitas, outbox,
+auditoría y métricas acotados. Probar firma, replay, carrera, desconocidos, aislamiento y kill switch;
+no aceptar el payload Meta real ni construir todavía la bandeja E3-H6.

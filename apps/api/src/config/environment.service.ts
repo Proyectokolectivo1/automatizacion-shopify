@@ -349,6 +349,20 @@ export class EnvironmentService {
     };
   }
 
+  public get whatsappWebhooks(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    maxBodyBytes: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.WHATSAPP_WEBHOOKS_ENABLED,
+      killSwitch: this.values.WHATSAPP_WEBHOOKS_KILL_SWITCH,
+      maxBodyBytes: this.values.WHATSAPP_WEBHOOKS_MAX_BODY_BYTES,
+      simulationMode: this.values.WHATSAPP_WEBHOOKS_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

@@ -35,7 +35,10 @@ Actualizado: 2026-07-14
 | E3-H1A         | P0             | Configuración y proveedor WhatsApp exclusivamente simulados      | COMPLETADA                 |
 | E3-H2A         | P0             | Catálogo y estados de plantillas exclusivamente simulados        | COMPLETADA                 |
 | E3-H3A         | P0             | Envío transaccional WhatsApp exclusivamente simulado             | COMPLETADA                 |
-| E3-H4A         | P0             | Estados y webhook WhatsApp exclusivamente simulados              | SIGUIENTE                  |
+| E3-H4A         | P0             | Estados y webhook WhatsApp exclusivamente simulados              | COMPLETADA                 |
+| E3-H5A         | P0             | Mensajes entrantes WhatsApp exclusivamente simulados             | SIGUIENTE                  |
+| E3-H6A         | P0             | Bandeja de conversaciones WhatsApp simulada                      | PENDIENTE                  |
+| E3-H7A         | P0             | Asignación de conversaciones a agentes simulada                  | PENDIENTE                  |
 | E3-H1B/H2B..H7 | P0             | WhatsApp Cloud API real, plantillas, mensajes y bandeja          | BLOQUEADO_POR_CREDENCIALES |
 | E4-H1..H10     | P0             | Adaptador, mock, contrato y flujo Mastershop                     | BLOQUEADO_POR_PROVEEDOR    |
 | E5-H1..H8      | P1             | Agente e impresión Windows                                       | BLOQUEADO_POR_INVENTARIO   |

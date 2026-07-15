@@ -117,6 +117,8 @@ describe('initial database migration', () => {
           'whatsapp_templates',
           'whatsapp_conversations',
           'whatsapp_messages',
+          'whatsapp_message_status_history',
+          'whatsapp_status_webhook_events',
         ],
       ],
     );
@@ -149,14 +151,16 @@ describe('initial database migration', () => {
       'users',
       'webhook_events',
       'whatsapp_conversations',
+      'whatsapp_message_status_history',
       'whatsapp_messages',
+      'whatsapp_status_webhook_events',
       'whatsapp_templates',
     ]);
 
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('21');
+    expect(migrations.rows[0]?.count).toBe('23');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -521,6 +525,55 @@ describe('initial database migration', () => {
           'Invalid sent', '{"mode":"simulation","fixtureVersion":"v1"}', repeat('1', 64),
           repeat('2', 64), NOW())`,
         messageValues.slice(0, 5),
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await database.query(
+      `UPDATE whatsapp_messages
+       SET status = 'simulated_sent', sent_at = NOW()
+       WHERE id = $1`,
+      [message.rows[0]?.id],
+    );
+    const statusEvent = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_status_webhook_events
+       (organization_id, store_id, message_id, external_event_id, event_type, fixture_version,
+        observed_status, outcome, payload_hash, provider_message_id_hash, payload_redacted_json,
+        occurred_at, received_at, processed_at)
+       VALUES ($1, $2, $3, $4, 'message.status', 'v1', 'simulated_delivered', 'applied',
+        repeat('3', 64), repeat('4', 64),
+        '{"mode":"simulation","synthetic":true,"status":"delivered"}', NOW(), NOW(), NOW())
+       RETURNING id`,
+      [organizationId, storeId, message.rows[0]?.id, randomUUID()],
+    );
+    const statusHistory = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_message_status_history
+       (organization_id, store_id, message_id, webhook_event_id, from_status, observed_status,
+        resulting_status, applied, occurred_at)
+       VALUES ($1, $2, $3, $4, 'simulated_sent', 'simulated_delivered',
+        'simulated_delivered', true, NOW()) RETURNING id`,
+      [organizationId, storeId, message.rows[0]?.id, statusEvent.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `UPDATE whatsapp_status_webhook_events SET rejection_reason = 'changed' WHERE id = $1`,
+        [statusEvent.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(`UPDATE whatsapp_message_status_history SET applied = false WHERE id = $1`, [
+        statusHistory.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_status_webhook_events
+         (organization_id, store_id, external_event_id, event_type, fixture_version,
+          observed_status, outcome, rejection_reason, payload_hash, provider_message_id_hash,
+          payload_redacted_json, occurred_at, received_at, processed_at)
+         VALUES ($1, $2, $3, 'message.status', 'v1', 'simulated_read', 'ignored',
+          'unknown_message', repeat('5', 64), repeat('6', 64),
+          '{"mode":"simulation","synthetic":true,"providerMessageId":"leaked"}',
+          NOW(), NOW(), NOW())`,
+        [organizationId, storeId, randomUUID()],
       ),
     ).rejects.toMatchObject({ code: '23514' });
     await expect(

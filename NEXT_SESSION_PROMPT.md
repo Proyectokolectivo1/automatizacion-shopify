@@ -4,7 +4,7 @@ Actualizado: 2026-07-14
 
 Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
 `EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C, E0-H4C, E1-H1A a E1-H5A
-y E2-H1A a E2-H6A y E3-H1A/E3-H2A/E3-H3A están completas; E0-H3B permanece pendiente. No
+y E2-H1A a E2-H6A y E3-H1A/E3-H2A/E3-H3A/E3-H4A están completas; E0-H3B permanece pendiente. No
 reinicies ni reemplaces trabajo válido.
 
 Repositorio canónico: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama de
@@ -34,19 +34,24 @@ Ejecuta `pnpm install --frozen-lockfile`, `pnpm validate`, `pnpm test:integratio
 `pnpm database:status`, `pnpm observability:verify`,
 `pnpm audit --prod` y `pnpm infra:verify`. No borres volúmenes.
 
-## Siguiente vertical exacta: E3-H4A
+## Siguiente vertical exacta: E3-H5A
 
-Implementa estados de entrega WhatsApp únicamente en simulación:
+Implementa mensajes entrantes WhatsApp únicamente en simulación:
 
-- fijar un fixture versionado de webhook y autenticación sintética separada del token de envío;
-- persistir el evento crudo solo como hash/resumen redactado y deduplicarlo por identificador externo;
-- aplicar una máquina monotónica simulada sin permitir regresiones ni sobrescribir terminales;
-- emitir historial/outbox/auditoría/métricas acotados y conservar ownership tenant-safe;
-- cubrir firma inválida, replay, carrera, mensaje desconocido, orden tardío, RBAC y kill switch;
-- no llamar Meta ni presentar estados simulados como confirmación real del proveedor.
+- extender el ingreso autenticado con un tipo y fixture sintético v1 explícito para mensaje entrante;
+- persistir evento, conversación y mensaje inbound tenant-safe con dedupe por identificador externo;
+- definir retención/redacción del contenido y excluir teléfono/texto de outbox, auditoría y métricas;
+- resolver identidad/conversación sin lookup revelador ni cruces entre organizaciones o tiendas;
+- emitir outbox/auditoría/métricas acotados y mantener eventos/mensajes inmutables cuando corresponda;
+- cubrir firma inválida, replay, colisión, carrera, identidad desconocida, tenant y kill switch;
+- no aceptar payload Meta real, responder mensajes ni construir todavía la bandeja E3-H6.
 
 Usa la épica E3 y la documentación oficial de WhatsApp únicamente al fijar el contrato público. Meta
 real sigue `BLOQUEADO_POR_CREDENCIALES`. No envíes mensajes ni llames Wompi, Shopify, Mastershop o
-servicios reales. Conserva E3-H1A/E3-H2A/E3-H3A y la reconciliación E2-H6A sin regresiones.
+servicios reales. Conserva E3-H1A a E3-H4A y la reconciliación E2-H6A sin regresiones.
 Mantén E0-H3B pendiente. `pnpm audit --prod` devolvió HTTP 410 por retiro del endpoint npm; no lo
 marques verde hasta migrar el gate de forma controlada.
+
+Baseline confirmado al cierre anterior: `pnpm validate` verde con 19 archivos/66 pruebas unitarias,
+`pnpm whatsapp:verify` 14/14, `pnpm database:verify` 14/14 y 23 migraciones; todas las regresiones,
+observabilidad e infraestructura verdes. Las migraciones 22/23 ya están aplicadas localmente.

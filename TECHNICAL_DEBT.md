@@ -50,3 +50,5 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
   mensajes son trabajo funcional pendiente y no se presentan como deuda ni como integración real.
 - E3-H3A mantiene la llamada dentro de la transacción solo porque el proveedor vinculado es local,
   determinista y sin red; conectar Meta exige resolver TD-022.
+- E3-H4A resolvió la ausencia de evidencia durable de estados simulados con dedupe, historial
+  inmutable y transiciones monotónicas; el payload/firma Meta real sigue siendo trabajo funcional.

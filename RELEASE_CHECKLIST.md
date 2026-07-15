@@ -58,7 +58,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Identidad de número WhatsApp es única y el estado del canal no altera la tienda Shopify.
 - [x] Plantillas WhatsApp locales son versionadas, tenant-safe, idempotentes y explícitamente simuladas.
 - [x] Mensajes WhatsApp simulados son tipados, tenant-safe, idempotentes y no afirman entrega real.
-- [ ] Estados, webhooks e inbox WhatsApp simulados completos.
+- [x] Estados y webhook saliente WhatsApp simulados son autenticados, monotónicos e idempotentes.
+- [ ] Mensajes entrantes, bandeja y asignación WhatsApp simulados completos.
 - [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.

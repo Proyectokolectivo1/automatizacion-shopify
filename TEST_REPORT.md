@@ -701,3 +701,32 @@ referenciados y se repitieron 14/14. No fue un defecto del esquema de producto.
 La migración veintiuno se aplicó a la base persistente local sin borrar datos; `database:status`
 confirmó 21/21. No hubo llamadas, credenciales, números ni PII reales. Meta continúa
 `BLOQUEADO_POR_CREDENCIALES`; E3-H4A es la siguiente vertical.
+
+## Iteración E3-H4A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 19 archivos, 66 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 14/14                                 |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 23 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 66 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron fixture/contrato sintético v1, HMAC de cuerpo crudo, secreto cifrado separado, firma
+inválida, replay, colisión, mensaje desconocido, carrera `sent`/`delivered`, tardíos, terminales,
+RBAC, tenant, kill switch, constraints, historial inmutable, outbox, auditoría y métricas redactados.
+Los estados `simulated_*` nunca se presentan como evidencia Meta.
+
+La generación Prisma detectó primero que la relación compuesta requería unicidad explícita; se
+alinearon esquema y migración. El typecheck detectó después que el replay de E3-H3A debía conservar
+su respuesta histórica aunque el mensaje avanzara de estado; se desacopló la respuesta del estado
+actual. Finalmente lint señaló dos aserciones innecesarias/inseguras en pruebas; se corrigieron antes
+del cierre verde.
+
+Las migraciones veintidós y veintitrés se aplicaron a la base persistente sin borrar datos y
+`database:status` confirmó 23/23. No hubo llamadas, credenciales, números, cuerpos ni PII reales.
+Meta continúa `BLOQUEADO_POR_CREDENCIALES`; E3-H5A es la siguiente vertical.

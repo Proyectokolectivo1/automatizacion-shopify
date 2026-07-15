@@ -71,6 +71,8 @@ Actualizado: 2026-07-14
 | D-065  | DECISIÓN           | E3-H3A solo persiste `simulated_accepted`; nunca infiere sent/delivered/read                     | ACEPTADA; ADR-004  |
 | D-066  | DECISIÓN           | El efecto WhatsApp se deduplica por tenant, evento, pedido y versión de plantilla                | ACEPTADA E3-H3A    |
 | D-067  | DECISIÓN           | Teléfono, cuerpo y variables se excluyen de respuesta, outbox, auditoría y métricas              | ACEPTADA E3-H3A    |
+| D-068  | DECISIÓN           | Estados `simulated_*` avanzan monotónicamente; read/failed son terminales inmutables             | ACEPTADA; ADR-005  |
+| D-069  | DECISIÓN           | Webhook v1 usa HMAC sintético y secreto con AAD distinto; no representa autenticación Meta       | ACEPTADA E3-H4A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

@@ -74,3 +74,20 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo llamadas, mensajes ni PII real.
 - Commit lógico: `feat: add simulated WhatsApp transactional messaging`; PR borrador #1.
 - Siguiente vertical: E3-H4A, estados y webhook WhatsApp exclusivamente simulados.
+
+## 2026-07-14 — sesión actual: E3-H4A
+
+- Objetivo: estados WhatsApp durables por webhook exclusivamente simulado, sin tráfico Meta.
+- Fuentes maestras verificadas y baseline completo verde con 63 pruebas unitarias y 21 migraciones.
+- Se agregaron fixture/contrato v1, HMAC de cuerpo crudo, secreto cifrado separado, evento e historial
+  inmutables, máquina monotónica, outbox, auditoría, métricas, flags y kill switch.
+- Replay, colisión, desconocidos, carrera, tardíos, terminales, RBAC, tenant y redacción están probados;
+  ningún estado `simulated_*` representa confirmación Meta.
+- Evidencia final: `pnpm validate`, 66 unitarias, 14 HTTP/PostgreSQL WhatsApp, 14 de migración sin
+  drift, 14 gates previos, observabilidad e infraestructura verdes.
+- Incidencias corregidas: unicidad compuesta Prisma, respuesta histórica E3-H3A tras cambio de estado
+  y aserciones inseguras de lint en pruebas.
+- Las migraciones 22/23 quedaron aplicadas a la base persistente y `database:status` confirmó 23/23.
+- `pnpm audit --prod` sigue bloqueado por HTTP 410 del endpoint retirado; no se marcó verde.
+- Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo llamadas, credenciales ni PII real.
+- Siguiente vertical: E3-H5A, mensajes entrantes WhatsApp exclusivamente simulados.

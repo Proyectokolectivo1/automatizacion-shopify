@@ -363,7 +363,6 @@ export class WhatsAppMessageService {
       id: string;
       orderId: string;
       providerMessageId: string;
-      status: 'SIMULATED_ACCEPTED';
       storeId: string;
       templateId: string;
     },
@@ -379,7 +378,7 @@ export class WhatsAppMessageService {
       orderId: message.orderId,
       outcome: 'simulated_accepted',
       providerMessageId: message.providerMessageId,
-      status: message.status.toLowerCase() as 'simulated_accepted',
+      status: 'simulated_accepted',
       storeId: message.storeId,
       templateId: message.templateId,
       templateVersion: template.version,
