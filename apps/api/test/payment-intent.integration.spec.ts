@@ -18,6 +18,7 @@ import { PaymentExpirationSchedulerService } from '../src/payments/payment-expir
 import { PaymentReminderSchedulerService } from '../src/payments/payment-reminder-scheduler.service';
 import { createWompiEventChecksum } from '../src/payments/wompi-event-signature';
 import { WompiMockProvider } from '../src/payments/wompi-mock.provider';
+import { WompiReconciliationSchedulerService } from '../src/payments/wompi-reconciliation-scheduler.service';
 
 loadEnvironmentFiles();
 
@@ -57,6 +58,13 @@ const environmentNames = [
   'PAYMENT_EXPIRATION_SIMULATION_MODE',
   'PAYMENT_EXPIRATION_DEFAULT_ACTION',
   'PAYMENT_EXPIRATION_POLL_INTERVAL_MS',
+  'WOMPI_RECONCILIATION_ENABLED',
+  'WOMPI_RECONCILIATION_KILL_SWITCH',
+  'WOMPI_RECONCILIATION_SIMULATION_MODE',
+  'WOMPI_RECONCILIATION_POLL_INTERVAL_MS',
+  'WOMPI_RECONCILIATION_INTERVAL_HOURS',
+  'WOMPI_RECONCILIATION_LOOKBACK_HOURS',
+  'WOMPI_RECONCILIATION_BATCH_SIZE',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -78,6 +86,7 @@ describe('Wompi payment intents in simulation mode', () => {
   let prisma: PrismaClient;
   let readOnlyToken: string;
   let reminders: PaymentReminderSchedulerService;
+  let reconciliation: WompiReconciliationSchedulerService;
   let wompi: WompiMockProvider;
   let eventSequence = 0;
   let orderSequence = 0;
@@ -114,6 +123,13 @@ describe('Wompi payment intents in simulation mode', () => {
       PAYMENT_EXPIRATION_SIMULATION_MODE: 'true',
       PAYMENT_EXPIRATION_DEFAULT_ACTION: 'MARK',
       PAYMENT_EXPIRATION_POLL_INTERVAL_MS: '60000',
+      WOMPI_RECONCILIATION_ENABLED: 'true',
+      WOMPI_RECONCILIATION_KILL_SWITCH: 'false',
+      WOMPI_RECONCILIATION_SIMULATION_MODE: 'true',
+      WOMPI_RECONCILIATION_POLL_INTERVAL_MS: '60000',
+      WOMPI_RECONCILIATION_INTERVAL_HOURS: '24',
+      WOMPI_RECONCILIATION_LOOKBACK_HOURS: '24',
+      WOMPI_RECONCILIATION_BATCH_SIZE: '25',
     });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
     await prisma.$connect();
@@ -140,6 +156,7 @@ describe('Wompi payment intents in simulation mode', () => {
     app = await createApplication();
     wompi = app.get(WompiMockProvider);
     reminders = app.get(PaymentReminderSchedulerService);
+    reconciliation = app.get(WompiReconciliationSchedulerService);
     expirations = app.get(PaymentExpirationSchedulerService);
     await app.listen(0, '127.0.0.1');
     baseUrl = await app.getUrl();
@@ -687,5 +704,215 @@ describe('Wompi payment intents in simulation mode', () => {
         }),
       ).resolves.toBe(1);
     }
+  });
+
+  it('creates one durable consistent reconciliation report under concurrent replay', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `reconciliation-consistent-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intentId = (response.body as { intentId: string }).intentId;
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    const now = new Date();
+    const results = await Promise.all([
+      reconciliation.reconcileStore(organizationId, intent.storeId, now),
+      reconciliation.reconcileStore(organizationId, intent.storeId, now),
+    ]);
+    expect(results.filter(({ skipped }) => skipped)).toHaveLength(1);
+    expect(results.filter(({ scanned }) => scanned === 1)).toHaveLength(1);
+    expect(results.reduce((total, result) => total + result.differences, 0)).toBe(0);
+    await expect(
+      prisma.paymentReconciliationRun.count({ where: { storeId: intent.storeId } }),
+    ).resolves.toBe(1);
+    await expect(
+      prisma.paymentReconciliationCheckpoint.findUniqueOrThrow({
+        where: { storeId_provider: { provider: 'WOMPI', storeId: intent.storeId } },
+      }),
+    ).resolves.toMatchObject({
+      consecutiveFailures: 0,
+      lastFailureAt: null,
+      windowEndedAt: now,
+    });
+    await expect(
+      prisma.outboxEvent.count({
+        where: {
+          aggregateType: 'payment_reconciliation_run',
+          organizationId,
+        },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it('deduplicates divergent status issues, alerts per report and resolves after an event', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `reconciliation-divergent-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intentId = (response.body as { intentId: string }).intentId;
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } });
+    if (intent.providerCheckoutId === null) throw new Error('Synthetic transaction id is missing');
+    wompi.setSyntheticTransactionStatus(intent.providerCheckoutId, 'APPROVED');
+    const firstRunAt = new Date();
+    await expect(
+      reconciliation.reconcileStore(organizationId, intent.storeId, firstRunAt),
+    ).resolves.toMatchObject({ differences: 2, failed: false, opened: 2, scanned: 1 });
+    const issues = await prisma.paymentReconciliationIssue.findMany({
+      orderBy: { issueType: 'asc' },
+      where: { paymentIntentId: intentId },
+    });
+    expect(issues.map(({ issueType }) => issueType).sort()).toEqual([
+      'INTENT_STATUS_MISMATCH',
+      'MISSING_ACCEPTED_EVENT',
+    ]);
+    expect(
+      issues.every(({ detectionCount, status }) => detectionCount === 1 && status === 'OPEN'),
+    ).toBe(true);
+    await expect(
+      reconciliation.reconcileStore(organizationId, intent.storeId, firstRunAt),
+    ).resolves.toMatchObject({ skipped: true });
+    const secondRunAt = new Date(firstRunAt.getTime() + 24 * 60 * 60 * 1_000 + 1);
+    await expect(
+      reconciliation.reconcileStore(organizationId, intent.storeId, secondRunAt),
+    ).resolves.toMatchObject({ differences: 2, opened: 0, scanned: 1 });
+    await expect(
+      prisma.paymentReconciliationIssue.findMany({ where: { paymentIntentId: intentId } }),
+    ).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ detectionCount: 2, status: 'OPEN' })]),
+    );
+    await expect(
+      prisma.outboxEvent.count({
+        where: {
+          aggregateType: 'payment_reconciliation_run',
+          eventType: 'payment.reconciliation.differences-detected.v1',
+          organizationId,
+        },
+      }),
+    ).resolves.toBe(2);
+    const rawBody = await buildEvent('APPROVED', 0, true, targetOrderId);
+    await deliverEvent(rawBody).expect(200);
+    const thirdRunAt = new Date(secondRunAt.getTime() + 24 * 60 * 60 * 1_000 + 1);
+    await expect(
+      reconciliation.reconcileStore(organizationId, intent.storeId, thirdRunAt),
+    ).resolves.toMatchObject({ differences: 0, resolved: 2, scanned: 1 });
+    await expect(
+      prisma.paymentReconciliationIssue.count({
+        where: { paymentIntentId: intentId, status: 'RESOLVED' },
+      }),
+    ).resolves.toBe(2);
+    await expect(
+      prisma.paymentIntent.findUniqueOrThrow({ where: { id: intentId } }),
+    ).resolves.toMatchObject({ status: 'APPROVED' });
+  });
+
+  it('persists a failed report without advancing the successful window and retries safely', async () => {
+    const targetOrderId = await seedResolvedCodOrder();
+    const response = await createIntent(
+      operationsToken,
+      `reconciliation-provider-down-${randomUUID()}`,
+      organizationId,
+      targetOrderId,
+    ).expect(201);
+    const intent = await prisma.paymentIntent.findUniqueOrThrow({
+      where: { id: (response.body as { intentId: string }).intentId },
+    });
+    const failedAt = new Date();
+    const alertsBeforeFailure = await prisma.outboxEvent.count({
+      where: { aggregateType: 'payment_reconciliation_run', organizationId },
+    });
+    wompi.setSyntheticAvailability(false);
+    try {
+      await expect(
+        reconciliation.reconcileStore(organizationId, intent.storeId, failedAt),
+      ).resolves.toMatchObject({ failed: true, scanned: 1 });
+    } finally {
+      wompi.setSyntheticAvailability(true);
+    }
+    const checkpoint = await prisma.paymentReconciliationCheckpoint.findUniqueOrThrow({
+      where: { storeId_provider: { provider: 'WOMPI', storeId: intent.storeId } },
+    });
+    expect(checkpoint.windowEndedAt).toEqual(checkpoint.windowStartedAt);
+    expect(checkpoint.consecutiveFailures).toBe(1);
+    await expect(
+      prisma.paymentReconciliationRun.findFirstOrThrow({ where: { storeId: intent.storeId } }),
+    ).resolves.toMatchObject({
+      failureCode: 'provider_unavailable',
+      status: 'FAILED',
+    });
+    await expect(
+      prisma.outboxEvent.count({
+        where: { aggregateType: 'payment_reconciliation_run', organizationId },
+      }),
+    ).resolves.toBe(alertsBeforeFailure);
+    await expect(
+      reconciliation.reconcileStore(
+        organizationId,
+        intent.storeId,
+        new Date(checkpoint.nextRunAt.getTime() + 1),
+      ),
+    ).resolves.toMatchObject({ failed: false, scanned: 1 });
+    await expect(
+      prisma.paymentReconciliationCheckpoint.findUniqueOrThrow({
+        where: { storeId_provider: { provider: 'WOMPI', storeId: intent.storeId } },
+      }),
+    ).resolves.toMatchObject({ consecutiveFailures: 0, lastFailureAt: null });
+  });
+
+  it('keeps financial divergences tenant-safe and never corrects the payment intent', async () => {
+    const targetOrderId = await seedResolvedCodOrder(otherOrganizationId);
+    const order = await prisma.order.findUniqueOrThrow({ where: { id: targetOrderId } });
+    const externalReference = `tenant-reconciliation-${randomUUID()}`;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1_000);
+    const checkout = await wompi.createHostedCheckout({
+      amountMinor: Number(order.transportChargeAmount),
+      currency: 'COP',
+      expiresAt,
+      reference: externalReference,
+    });
+    const intent = await prisma.paymentIntent.create({
+      data: {
+        amount: order.transportChargeAmount,
+        attemptNumber: 1,
+        checkoutUrl: checkout.checkoutUrl,
+        currency: 'COP',
+        expiresAt,
+        externalReference,
+        idempotencyKey: `tenant-reconciliation-${randomUUID()}`,
+        orderId: order.id,
+        organizationId: otherOrganizationId,
+        provider: 'WOMPI',
+        providerCheckoutId: checkout.providerCheckoutId,
+        storeId: order.storeId,
+      },
+    });
+    wompi.setSyntheticTransactionSnapshot(checkout.providerCheckoutId, {
+      amountMinor: Number(intent.amount) + 1,
+    });
+    await expect(
+      reconciliation.reconcileStore(otherOrganizationId, order.storeId, new Date()),
+    ).resolves.toMatchObject({ differences: 1, opened: 1, scanned: 1 });
+    await expect(
+      prisma.paymentReconciliationIssue.findFirstOrThrow({
+        where: { paymentIntentId: intent.id },
+      }),
+    ).resolves.toMatchObject({
+      issueType: 'TRANSACTION_DATA_MISMATCH',
+      organizationId: otherOrganizationId,
+      status: 'OPEN',
+      storeId: order.storeId,
+    });
+    await expect(
+      prisma.paymentReconciliationIssue.count({
+        where: { organizationId, paymentIntentId: intent.id },
+      }),
+    ).resolves.toBe(0);
+    await expect(
+      prisma.paymentIntent.findUniqueOrThrow({ where: { id: intent.id } }),
+    ).resolves.toMatchObject({ amount: 1_200_000n, status: 'PENDING' });
   });
 });

@@ -587,3 +587,32 @@ declarado en Prisma; se agregó al esquema y la repetición desde vacío quedó 
 No hubo llamadas a Wompi, Shopify, WhatsApp o Mastershop ni PII real. `CANCEL` produce únicamente
 `shopify.order.abandonment-action.requested.v1` con `mode=simulation`; no se presenta como una
 cancelación externa terminada. E2-H6A es la siguiente vertical.
+
+## Iteración E2-H6A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                     | Resultado                                   |
+| ----------------------- | --------------------------- | ------------------------------------------- |
+| Wompi + conciliación    | `pnpm wompi:verify`         | OK: 4 contractuales + 17 integración, 21/21 |
+| Migraciones/constraints | `pnpm database:verify`      | OK: 11/11, 18 migraciones y cero drift      |
+| Typecheck intermedio    | paquete API                 | OK                                          |
+| Baseline integral       | gates dedicados             | OK antes de implementar                     |
+| Observabilidad runtime  | `pnpm observability:verify` | OK: fallo y recuperación Redis              |
+| Infraestructura runtime | `pnpm infra:verify`         | OK: salud y persistencia                    |
+| Dependencias            | `pnpm audit --prod`         | BLOQUEADO: endpoint npm responde HTTP 410   |
+
+Se validaron checkpoint diario, ventana de lookback, advisory lock concurrente, replay sin segunda
+ejecución, reporte consistente, divergencia de estado, ausencia de evento aceptado, huellas
+deduplicadas, resolución posterior, outbox de alerta, caída/recuperación del proveedor, diferencia
+financiera y aislamiento de tenant. La migración se aplicó dos veces desde una base vacía.
+
+El primer ciclo encontró una carrera de reloj entre `first_detected_at` generado por PostgreSQL y
+`last_detected_at` suministrado por el scheduler. Ambos timestamps ahora usan el mismo reloj de la
+ejecución y la invariantes temporal permanece estricta.
+
+El primer `pnpm validate` final señaló únicamente formato pendiente en cuatro tablas Markdown; se
+ejecutó Prettier y la repetición completa quedó verde.
+
+No hubo llamadas, credenciales ni PII reales. La conciliación no cambia estado, monto, pedido ni
+evento; Wompi sandbox continúa `BLOQUEADO_POR_CREDENCIALES`. E3-H1A es la siguiente vertical.

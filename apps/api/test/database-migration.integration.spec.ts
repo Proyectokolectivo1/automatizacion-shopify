@@ -150,7 +150,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('17');
+    expect(migrations.rows[0]?.count).toBe('18');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -694,5 +694,76 @@ describe('initial database migration', () => {
       `UPDATE orders SET current_state = 'abandono_pago_transporte' WHERE id = $1`,
       [order.rows[0]?.id],
     );
+  });
+
+  it('enforces durable and tenant-safe Wompi reconciliation records', async () => {
+    const intent = await database.query<{
+      id: string;
+      organization_id: string;
+      store_id: string;
+    }>(
+      `SELECT id, organization_id, store_id
+       FROM payment_intents
+       WHERE external_reference = 'valid-reminders'`,
+    );
+    const paymentIntent = intent.rows[0];
+    if (paymentIntent === undefined) throw new Error('Expected payment fixture is missing');
+    const checkpoint = await database.query<{ id: string }>(
+      `INSERT INTO payment_reconciliation_checkpoints
+       (organization_id, store_id, provider, window_started_at, window_ended_at, last_run_at,
+        next_run_at)
+       VALUES ($1, $2, 'wompi', NOW() - INTERVAL '24 hours', NOW(), NOW(),
+        NOW() + INTERVAL '24 hours') RETURNING id`,
+      [paymentIntent.organization_id, paymentIntent.store_id],
+    );
+    const run = await database.query<{ id: string }>(
+      `INSERT INTO payment_reconciliation_runs
+       (organization_id, store_id, checkpoint_id, provider, status, window_started_at,
+        window_ended_at, scanned_count, difference_count, new_issue_count, resolved_count,
+        report_json, started_at, completed_at)
+       VALUES ($1, $2, $3, 'wompi', 'completed', NOW() - INTERVAL '24 hours', NOW(),
+        1, 1, 1, 0, '{"mode":"simulation"}', NOW(), NOW()) RETURNING id`,
+      [paymentIntent.organization_id, paymentIntent.store_id, checkpoint.rows[0]?.id],
+    );
+    const issueValues = [
+      paymentIntent.organization_id,
+      paymentIntent.store_id,
+      paymentIntent.id,
+      run.rows[0]?.id,
+      'f'.repeat(64),
+    ];
+    await database.query(
+      `INSERT INTO payment_reconciliation_issues
+       (organization_id, store_id, payment_intent_id, last_detected_run_id, provider, issue_type,
+        fingerprint, local_status, authoritative_status, detail_json)
+       VALUES ($1, $2, $3, $4, 'wompi', 'intent_status_mismatch', $5, 'expired', 'pending',
+        '{"mode":"simulation"}')`,
+      issueValues,
+    );
+    await expect(
+      database.query(
+        `INSERT INTO payment_reconciliation_issues
+         (organization_id, store_id, payment_intent_id, last_detected_run_id, provider, issue_type,
+          fingerprint, detail_json)
+         VALUES ($1, $2, $3, $4, 'wompi', 'intent_status_mismatch', $5, '{}')`,
+        issueValues,
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `UPDATE payment_reconciliation_issues
+         SET status = 'resolved', resolved_at = NULL WHERE fingerprint = $1`,
+        ['f'.repeat(64)],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO payment_reconciliation_checkpoints
+         (organization_id, store_id, provider, window_started_at, window_ended_at, last_run_at,
+          next_run_at)
+         VALUES ($1, $2, 'wompi', NOW(), NOW(), NOW(), NOW())`,
+        [paymentIntent.organization_id, paymentIntent.store_id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
   });
 });

@@ -108,7 +108,7 @@ los pedidos se clasifican y concilian en simulación; todavía no existen conexi
 
 ### Pagos y WhatsApp
 
-- Conciliación diaria Wompi con diferencias, reporte y alertas; el ciclo simulado hasta abandono existe.
+- Conciliación diaria Wompi con checkpoint, diferencias deduplicadas, reporte y alertas simuladas.
 - WhatsApp Cloud API, plantillas, mensajes y bandeja operativa.
 - Simulación y pruebas contractuales mientras falten credenciales.
 
@@ -147,9 +147,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E2-H6A: conciliación diaria Wompi únicamente en simulación, con checkpoint, diferencias
-deduplicadas, reporte, alertas e idempotencia. Wompi real permanece
-`BLOQUEADO_POR_CREDENCIALES`.
+E3-H1A: configuración segura y proveedor WhatsApp exclusivamente simulados, con contrato, fixture,
+flags y kill switch. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
 
 ## Dónde consultar más detalle
 

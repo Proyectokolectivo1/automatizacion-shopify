@@ -90,6 +90,18 @@ export const environmentSchema = z.object({
     .max(900_000)
     .default(60_000),
   PAYMENT_EXPIRATION_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(50),
+  WOMPI_RECONCILIATION_ENABLED: booleanFlag('false'),
+  WOMPI_RECONCILIATION_KILL_SWITCH: booleanFlag('true'),
+  WOMPI_RECONCILIATION_SIMULATION_MODE: booleanFlag('true'),
+  WOMPI_RECONCILIATION_POLL_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .min(1_000)
+    .max(86_400_000)
+    .default(300_000),
+  WOMPI_RECONCILIATION_INTERVAL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+  WOMPI_RECONCILIATION_LOOKBACK_HOURS: z.coerce.number().int().min(1).max(720).default(24),
+  WOMPI_RECONCILIATION_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(25),
   POSTGRES_DB: nonEmpty,
   POSTGRES_HOST: nonEmpty,
   POSTGRES_PASSWORD: nonEmpty,

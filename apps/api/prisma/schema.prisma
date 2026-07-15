@@ -143,6 +143,29 @@ enum PaymentReminderStatus {
   @@map("payment_reminder_status")
 }
 
+enum PaymentReconciliationRunStatus {
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+
+  @@map("payment_reconciliation_run_status")
+}
+
+enum PaymentReconciliationIssueType {
+  INTENT_STATUS_MISMATCH    @map("intent_status_mismatch")
+  EVENT_STATUS_MISMATCH     @map("event_status_mismatch")
+  MISSING_ACCEPTED_EVENT    @map("missing_accepted_event")
+  TRANSACTION_DATA_MISMATCH @map("transaction_data_mismatch")
+
+  @@map("payment_reconciliation_issue_type")
+}
+
+enum PaymentReconciliationIssueStatus {
+  OPEN     @map("open")
+  RESOLVED @map("resolved")
+
+  @@map("payment_reconciliation_issue_status")
+}
+
 enum ReconciliationIssueType {
   MISSING_ORDER  @map("missing_order")
   FAILED_WEBHOOK @map("failed_webhook")
@@ -207,35 +230,38 @@ enum AccountActionPurpose {
 }
 
 model Organization {
-  id                          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                        String                      @db.VarChar(160)
-  timezone                    String                      @default("America/Bogota") @db.VarChar(64)
-  defaultCurrency             String                      @default("COP") @map("default_currency") @db.Char(3)
-  createdAt                   DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                   DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  stores                      Store[]
-  memberships                 OrganizationMembership[]
-  sessions                    AuthSession[]
-  auditLogs                   AuditLog[]
-  accountActionTokens         AccountActionToken[]
-  outboxEvents                OutboxEvent[]
-  jobExecutions               JobExecution[]
-  integrationConnections      IntegrationConnection[]
-  webhookEvents               WebhookEvent[]
-  customers                   Customer[]
-  customerAddresses           CustomerAddress[]
-  orders                      Order[]
-  orderItems                  OrderItem[]
-  orderClassificationPolicies OrderClassificationPolicy[]
-  orderStateHistory           OrderStateHistory[]
-  transportRatePolicies       TransportRatePolicy[]
-  transportRateRules          TransportRateRule[]
-  transportRateDecisions      TransportRateDecision[]
-  paymentIntents              PaymentIntent[]
-  paymentProviderEvents       PaymentProviderEvent[]
-  paymentReminders            PaymentReminder[]
-  reconciliationCheckpoints   ReconciliationCheckpoint[]
-  reconciliationIssues        OrderReconciliationIssue[]
+  id                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                             String                            @db.VarChar(160)
+  timezone                         String                            @default("America/Bogota") @db.VarChar(64)
+  defaultCurrency                  String                            @default("COP") @map("default_currency") @db.Char(3)
+  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                        DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  stores                           Store[]
+  memberships                      OrganizationMembership[]
+  sessions                         AuthSession[]
+  auditLogs                        AuditLog[]
+  accountActionTokens              AccountActionToken[]
+  outboxEvents                     OutboxEvent[]
+  jobExecutions                    JobExecution[]
+  integrationConnections           IntegrationConnection[]
+  webhookEvents                    WebhookEvent[]
+  customers                        Customer[]
+  customerAddresses                CustomerAddress[]
+  orders                           Order[]
+  orderItems                       OrderItem[]
+  orderClassificationPolicies      OrderClassificationPolicy[]
+  orderStateHistory                OrderStateHistory[]
+  transportRatePolicies            TransportRatePolicy[]
+  transportRateRules               TransportRateRule[]
+  transportRateDecisions           TransportRateDecision[]
+  paymentIntents                   PaymentIntent[]
+  paymentProviderEvents            PaymentProviderEvent[]
+  paymentReminders                 PaymentReminder[]
+  paymentReconciliationCheckpoints PaymentReconciliationCheckpoint[]
+  paymentReconciliationRuns        PaymentReconciliationRun[]
+  paymentReconciliationIssues      PaymentReconciliationIssue[]
+  reconciliationCheckpoints        ReconciliationCheckpoint[]
+  reconciliationIssues             OrderReconciliationIssue[]
 
   @@map("organizations")
 }
@@ -359,32 +385,35 @@ model AccountActionToken {
 }
 
 model Store {
-  id                          String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId              String                      @map("organization_id") @db.Uuid
-  organization                Organization                @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  name                        String                      @db.VarChar(160)
-  shopifyShopDomain           String                      @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
-  status                      StoreStatus                 @default(PENDING)
-  timezone                    String                      @db.VarChar(64)
-  currency                    String                      @db.Char(3)
-  settingsJson                Json                        @default("{}") @map("settings_json") @db.JsonB
-  createdAt                   DateTime                    @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                   DateTime                    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  integrationConnections      IntegrationConnection[]
-  webhookEvents               WebhookEvent[]
-  customers                   Customer[]
-  customerAddresses           CustomerAddress[]
-  orders                      Order[]
-  orderItems                  OrderItem[]
-  orderClassificationPolicies OrderClassificationPolicy[]
-  orderStateHistory           OrderStateHistory[]
-  transportRatePolicies       TransportRatePolicy[]
-  transportRateDecisions      TransportRateDecision[]
-  paymentIntents              PaymentIntent[]
-  paymentProviderEvents       PaymentProviderEvent[]
-  paymentReminders            PaymentReminder[]
-  reconciliationCheckpoints   ReconciliationCheckpoint[]
-  reconciliationIssues        OrderReconciliationIssue[]
+  id                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                   String                            @map("organization_id") @db.Uuid
+  organization                     Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name                             String                            @db.VarChar(160)
+  shopifyShopDomain                String                            @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
+  status                           StoreStatus                       @default(PENDING)
+  timezone                         String                            @db.VarChar(64)
+  currency                         String                            @db.Char(3)
+  settingsJson                     Json                              @default("{}") @map("settings_json") @db.JsonB
+  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                        DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  integrationConnections           IntegrationConnection[]
+  webhookEvents                    WebhookEvent[]
+  customers                        Customer[]
+  customerAddresses                CustomerAddress[]
+  orders                           Order[]
+  orderItems                       OrderItem[]
+  orderClassificationPolicies      OrderClassificationPolicy[]
+  orderStateHistory                OrderStateHistory[]
+  transportRatePolicies            TransportRatePolicy[]
+  transportRateDecisions           TransportRateDecision[]
+  paymentIntents                   PaymentIntent[]
+  paymentProviderEvents            PaymentProviderEvent[]
+  paymentReminders                 PaymentReminder[]
+  paymentReconciliationCheckpoints PaymentReconciliationCheckpoint[]
+  paymentReconciliationRuns        PaymentReconciliationRun[]
+  paymentReconciliationIssues      PaymentReconciliationIssue[]
+  reconciliationCheckpoints        ReconciliationCheckpoint[]
+  reconciliationIssues             OrderReconciliationIssue[]
 
   @@unique([organizationId, id], map: "stores_organization_id_id_key")
   @@index([organizationId, status], map: "stores_organization_status_idx")
@@ -504,45 +533,45 @@ model CustomerAddress {
 }
 
 model Order {
-  id                    String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId        String                     @map("organization_id") @db.Uuid
-  storeId               String                     @map("store_id") @db.Uuid
-  customerId            String?                    @map("customer_id") @db.Uuid
-  shippingAddressId     String?                    @map("shipping_address_id") @db.Uuid
-  sourceWebhookEventId  String                     @unique(map: "orders_source_webhook_event_key") @map("source_webhook_event_id") @db.Uuid
-  shopifyOrderId        String                     @map("shopify_order_id") @db.VarChar(128)
-  shopifyOrderName      String                     @map("shopify_order_name") @db.VarChar(80)
-  shopifyCheckoutId     String?                    @map("shopify_checkout_id") @db.VarChar(128)
-  paymentMode           OrderPaymentMode           @default(UNCLASSIFIED) @map("payment_mode")
-  currentState          OrderState                 @default(RECEIVED) @map("current_state")
-  currency              String                     @db.Char(3)
-  subtotalAmount        BigInt                     @map("subtotal_amount")
-  discountAmount        BigInt                     @map("discount_amount")
-  taxAmount             BigInt                     @map("tax_amount")
-  totalAmount           BigInt                     @map("total_amount")
-  transportChargeAmount BigInt                     @default(0) @map("transport_charge_amount")
-  codCollectAmount      BigInt                     @default(0) @map("cod_collect_amount")
-  recognizedSaleAt      DateTime?                  @map("recognized_sale_at") @db.Timestamptz(3)
-  sentAt                DateTime?                  @map("sent_at") @db.Timestamptz(3)
-  deliveredAt           DateTime?                  @map("delivered_at") @db.Timestamptz(3)
-  returnedAt            DateTime?                  @map("returned_at") @db.Timestamptz(3)
-  cancelledAt           DateTime?                  @map("cancelled_at") @db.Timestamptz(3)
-  sourceCreatedAt       DateTime                   @map("source_created_at") @db.Timestamptz(3)
-  sourceUpdatedAt       DateTime                   @map("source_updated_at") @db.Timestamptz(3)
-  rawSnapshotJson       Json                       @map("raw_snapshot_json") @db.JsonB
-  version               Int                        @default(1)
-  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt             DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization          Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store                 Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_store_tenant_fkey")
-  customer              Customer?                  @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_customer_tenant_fkey")
-  shippingAddress       CustomerAddress?           @relation(fields: [organizationId, storeId, shippingAddressId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_shipping_address_tenant_fkey")
-  sourceWebhookEvent    WebhookEvent               @relation(fields: [organizationId, storeId, sourceWebhookEventId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_source_webhook_tenant_fkey")
-  items                 OrderItem[]
-  stateHistory          OrderStateHistory[]
-  reconciliationIssues  OrderReconciliationIssue[]
+  id                     String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String                     @map("organization_id") @db.Uuid
+  storeId                String                     @map("store_id") @db.Uuid
+  customerId             String?                    @map("customer_id") @db.Uuid
+  shippingAddressId      String?                    @map("shipping_address_id") @db.Uuid
+  sourceWebhookEventId   String                     @unique(map: "orders_source_webhook_event_key") @map("source_webhook_event_id") @db.Uuid
+  shopifyOrderId         String                     @map("shopify_order_id") @db.VarChar(128)
+  shopifyOrderName       String                     @map("shopify_order_name") @db.VarChar(80)
+  shopifyCheckoutId      String?                    @map("shopify_checkout_id") @db.VarChar(128)
+  paymentMode            OrderPaymentMode           @default(UNCLASSIFIED) @map("payment_mode")
+  currentState           OrderState                 @default(RECEIVED) @map("current_state")
+  currency               String                     @db.Char(3)
+  subtotalAmount         BigInt                     @map("subtotal_amount")
+  discountAmount         BigInt                     @map("discount_amount")
+  taxAmount              BigInt                     @map("tax_amount")
+  totalAmount            BigInt                     @map("total_amount")
+  transportChargeAmount  BigInt                     @default(0) @map("transport_charge_amount")
+  codCollectAmount       BigInt                     @default(0) @map("cod_collect_amount")
+  recognizedSaleAt       DateTime?                  @map("recognized_sale_at") @db.Timestamptz(3)
+  sentAt                 DateTime?                  @map("sent_at") @db.Timestamptz(3)
+  deliveredAt            DateTime?                  @map("delivered_at") @db.Timestamptz(3)
+  returnedAt             DateTime?                  @map("returned_at") @db.Timestamptz(3)
+  cancelledAt            DateTime?                  @map("cancelled_at") @db.Timestamptz(3)
+  sourceCreatedAt        DateTime                   @map("source_created_at") @db.Timestamptz(3)
+  sourceUpdatedAt        DateTime                   @map("source_updated_at") @db.Timestamptz(3)
+  rawSnapshotJson        Json                       @map("raw_snapshot_json") @db.JsonB
+  version                Int                        @default(1)
+  createdAt              DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization           Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                  Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_store_tenant_fkey")
+  customer               Customer?                  @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_customer_tenant_fkey")
+  shippingAddress        CustomerAddress?           @relation(fields: [organizationId, storeId, shippingAddressId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_shipping_address_tenant_fkey")
+  sourceWebhookEvent     WebhookEvent               @relation(fields: [organizationId, storeId, sourceWebhookEventId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "orders_source_webhook_tenant_fkey")
+  items                  OrderItem[]
+  stateHistory           OrderStateHistory[]
+  reconciliationIssues   OrderReconciliationIssue[]
   transportRateDecisions TransportRateDecision[]
-  paymentIntents          PaymentIntent[]
+  paymentIntents         PaymentIntent[]
 
   @@unique([organizationId, storeId, id], map: "orders_organization_store_id_key")
   @@unique([organizationId, storeId, sourceWebhookEventId], map: "orders_source_webhook_tenant_key")
@@ -593,16 +622,16 @@ model OrderStateHistory {
 }
 
 model TransportRatePolicy {
-  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String              @map("organization_id") @db.Uuid
-  storeId        String?             @map("store_id") @db.Uuid
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  storeId        String?                 @map("store_id") @db.Uuid
   version        Int
-  currency       String              @default("COP") @db.Char(3)
-  active         Boolean             @default(false)
-  activatedAt    DateTime?           @map("activated_at") @db.Timestamptz(3)
-  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store          Store?              @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_policies_store_tenant_fkey")
+  currency       String                  @default("COP") @db.Char(3)
+  active         Boolean                 @default(false)
+  activatedAt    DateTime?               @map("activated_at") @db.Timestamptz(3)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization   Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store          Store?                  @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_policies_store_tenant_fkey")
   rules          TransportRateRule[]
   decisions      TransportRateDecision[]
 
@@ -612,21 +641,21 @@ model TransportRatePolicy {
 }
 
 model TransportRateRule {
-  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId   String              @map("organization_id") @db.Uuid
-  policyId         String              @map("policy_id") @db.Uuid
-  ruleKey          String              @map("rule_key") @db.VarChar(80)
-  city             String?             @db.VarChar(120)
-  department       String?             @db.VarChar(120)
-  shopifyProductId String?             @map("shopify_product_id") @db.VarChar(128)
+  id               String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String                  @map("organization_id") @db.Uuid
+  policyId         String                  @map("policy_id") @db.Uuid
+  ruleKey          String                  @map("rule_key") @db.VarChar(80)
+  city             String?                 @db.VarChar(120)
+  department       String?                 @db.VarChar(120)
+  shopifyProductId String?                 @map("shopify_product_id") @db.VarChar(128)
   priority         Int
   amount           BigInt
-  validFrom        DateTime?           @map("valid_from") @db.Timestamptz(3)
-  validTo          DateTime?           @map("valid_to") @db.Timestamptz(3)
-  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  policy           TransportRatePolicy @relation(fields: [organizationId, policyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_rules_policy_tenant_fkey")
+  validFrom        DateTime?               @map("valid_from") @db.Timestamptz(3)
+  validTo          DateTime?               @map("valid_to") @db.Timestamptz(3)
+  createdAt        DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  policy           TransportRatePolicy     @relation(fields: [organizationId, policyId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "transport_rate_rules_policy_tenant_fkey")
   decisions        TransportRateDecision[]
 
   @@unique([policyId, ruleKey], map: "transport_rate_rules_policy_rule_key")
@@ -661,29 +690,30 @@ model TransportRateDecision {
 }
 
 model PaymentIntent {
-  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId         String              @map("organization_id") @db.Uuid
-  storeId                String              @map("store_id") @db.Uuid
-  orderId                String              @map("order_id") @db.Uuid
-  provider               IntegrationProvider @default(WOMPI)
-  externalReference      String              @map("external_reference") @db.VarChar(255)
-  providerCheckoutId     String?             @map("provider_checkout_id") @db.VarChar(128)
-  checkoutUrl            String              @map("checkout_url") @db.VarChar(2048)
-  amount                 BigInt
-  currency               String              @db.Char(3)
-  status                 PaymentIntentStatus @default(PENDING)
-  expiresAt              DateTime            @map("expires_at") @db.Timestamptz(3)
-  expiredAt              DateTime?           @map("expired_at") @db.Timestamptz(3)
-  abandonmentAction      PaymentAbandonmentAction @default(MARK) @map("abandonment_action")
-  attemptNumber          Int                 @map("attempt_number")
-  idempotencyKey         String              @unique(map: "payment_intents_idempotency_key") @map("idempotency_key") @db.VarChar(500)
-  createdAt              DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt              DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization           Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store                  Store               @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_store_tenant_fkey")
-  order                  Order               @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_order_tenant_fkey")
-  providerEvents         PaymentProviderEvent[]
-  reminders              PaymentReminder[]
+  id                   String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String                       @map("organization_id") @db.Uuid
+  storeId              String                       @map("store_id") @db.Uuid
+  orderId              String                       @map("order_id") @db.Uuid
+  provider             IntegrationProvider          @default(WOMPI)
+  externalReference    String                       @map("external_reference") @db.VarChar(255)
+  providerCheckoutId   String?                      @map("provider_checkout_id") @db.VarChar(128)
+  checkoutUrl          String                       @map("checkout_url") @db.VarChar(2048)
+  amount               BigInt
+  currency             String                       @db.Char(3)
+  status               PaymentIntentStatus          @default(PENDING)
+  expiresAt            DateTime                     @map("expires_at") @db.Timestamptz(3)
+  expiredAt            DateTime?                    @map("expired_at") @db.Timestamptz(3)
+  abandonmentAction    PaymentAbandonmentAction     @default(MARK) @map("abandonment_action")
+  attemptNumber        Int                          @map("attempt_number")
+  idempotencyKey       String                       @unique(map: "payment_intents_idempotency_key") @map("idempotency_key") @db.VarChar(500)
+  createdAt            DateTime                     @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization         Organization                 @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                Store                        @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_store_tenant_fkey")
+  order                Order                        @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_intents_order_tenant_fkey")
+  providerEvents       PaymentProviderEvent[]
+  reminders            PaymentReminder[]
+  reconciliationIssues PaymentReconciliationIssue[]
 
   @@unique([provider, externalReference, attemptNumber], map: "payment_intents_provider_reference_attempt_key")
   @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
@@ -694,21 +724,21 @@ model PaymentIntent {
 }
 
 model PaymentReminder {
-  id              String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId  String                @map("organization_id") @db.Uuid
-  storeId         String                @map("store_id") @db.Uuid
-  paymentIntentId String                @map("payment_intent_id") @db.Uuid
-  sequence        Int
-  scheduledAt     DateTime              @map("scheduled_at") @db.Timestamptz(3)
-  status          PaymentReminderStatus @default(SCHEDULED)
-  requestedAt     DateTime?             @map("requested_at") @db.Timestamptz(3)
-  cancelledAt     DateTime?             @map("cancelled_at") @db.Timestamptz(3)
-  cancellationReason String?            @map("cancellation_reason") @db.VarChar(80)
-  createdAt       DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt       DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization    Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store           Store                 @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_store_tenant_fkey")
-  paymentIntent   PaymentIntent         @relation(fields: [organizationId, storeId, paymentIntentId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_intent_tenant_fkey")
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String                @map("organization_id") @db.Uuid
+  storeId            String                @map("store_id") @db.Uuid
+  paymentIntentId    String                @map("payment_intent_id") @db.Uuid
+  sequence           Int
+  scheduledAt        DateTime              @map("scheduled_at") @db.Timestamptz(3)
+  status             PaymentReminderStatus @default(SCHEDULED)
+  requestedAt        DateTime?             @map("requested_at") @db.Timestamptz(3)
+  cancelledAt        DateTime?             @map("cancelled_at") @db.Timestamptz(3)
+  cancellationReason String?               @map("cancellation_reason") @db.VarChar(80)
+  createdAt          DateTime              @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt          DateTime              @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store              Store                 @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_store_tenant_fkey")
+  paymentIntent      PaymentIntent         @relation(fields: [organizationId, storeId, paymentIntentId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reminders_intent_tenant_fkey")
 
   @@unique([paymentIntentId, sequence], map: "payment_reminders_intent_sequence_key")
   @@index([status, scheduledAt], map: "payment_reminders_status_scheduled_idx")
@@ -741,6 +771,90 @@ model PaymentProviderEvent {
   @@index([organizationId, status, receivedAt], map: "payment_provider_events_tenant_status_received_idx")
   @@index([paymentIntentId, receivedAt], map: "payment_provider_events_intent_received_idx")
   @@map("payment_provider_events")
+}
+
+model PaymentReconciliationCheckpoint {
+  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                     @map("organization_id") @db.Uuid
+  storeId             String                     @map("store_id") @db.Uuid
+  provider            IntegrationProvider        @default(WOMPI)
+  windowStartedAt     DateTime                   @map("window_started_at") @db.Timestamptz(3)
+  windowEndedAt       DateTime                   @map("window_ended_at") @db.Timestamptz(3)
+  lastRunAt           DateTime                   @map("last_run_at") @db.Timestamptz(3)
+  nextRunAt           DateTime                   @map("next_run_at") @db.Timestamptz(3)
+  consecutiveFailures Int                        @default(0) @map("consecutive_failures")
+  lastFailureAt       DateTime?                  @map("last_failure_at") @db.Timestamptz(3)
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization        Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store               Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_checkpoints_store_tenant_fkey")
+  runs                PaymentReconciliationRun[]
+
+  @@unique([storeId, provider], map: "payment_reconciliation_checkpoints_store_provider_key")
+  @@unique([organizationId, storeId, id], map: "payment_reconciliation_checkpoints_tenant_id_key")
+  @@index([provider, nextRunAt], map: "payment_reconciliation_checkpoints_provider_next_run_idx")
+  @@index([organizationId, lastRunAt], map: "payment_reconciliation_checkpoints_tenant_run_idx")
+  @@map("payment_reconciliation_checkpoints")
+}
+
+model PaymentReconciliationRun {
+  id              String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String                           @map("organization_id") @db.Uuid
+  storeId         String                           @map("store_id") @db.Uuid
+  checkpointId    String?                          @map("checkpoint_id") @db.Uuid
+  provider        IntegrationProvider              @default(WOMPI)
+  status          PaymentReconciliationRunStatus
+  windowStartedAt DateTime                         @map("window_started_at") @db.Timestamptz(3)
+  windowEndedAt   DateTime                         @map("window_ended_at") @db.Timestamptz(3)
+  scannedCount    Int                              @map("scanned_count")
+  differenceCount Int                              @map("difference_count")
+  newIssueCount   Int                              @map("new_issue_count")
+  resolvedCount   Int                              @map("resolved_count")
+  reportJson      Json                             @map("report_json") @db.JsonB
+  failureCode     String?                          @map("failure_code") @db.VarChar(80)
+  startedAt       DateTime                         @map("started_at") @db.Timestamptz(3)
+  completedAt     DateTime                         @map("completed_at") @db.Timestamptz(3)
+  createdAt       DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization    Organization                     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store           Store                            @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_runs_store_tenant_fkey")
+  checkpoint      PaymentReconciliationCheckpoint? @relation(fields: [organizationId, storeId, checkpointId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_runs_checkpoint_tenant_fkey")
+  detectedIssues  PaymentReconciliationIssue[]
+
+  @@unique([organizationId, storeId, id], map: "payment_reconciliation_runs_tenant_id_key")
+  @@index([organizationId, status, completedAt], map: "payment_reconciliation_runs_tenant_status_idx")
+  @@index([storeId, windowEndedAt], map: "payment_reconciliation_runs_store_window_idx")
+  @@map("payment_reconciliation_runs")
+}
+
+model PaymentReconciliationIssue {
+  id                  String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String                           @map("organization_id") @db.Uuid
+  storeId             String                           @map("store_id") @db.Uuid
+  paymentIntentId     String                           @map("payment_intent_id") @db.Uuid
+  lastDetectedRunId   String                           @map("last_detected_run_id") @db.Uuid
+  provider            IntegrationProvider              @default(WOMPI)
+  issueType           PaymentReconciliationIssueType   @map("issue_type")
+  status              PaymentReconciliationIssueStatus @default(OPEN)
+  fingerprint         String                           @db.Char(64)
+  localStatus         PaymentIntentStatus?             @map("local_status")
+  acceptedEventStatus PaymentIntentStatus?             @map("accepted_event_status")
+  authoritativeStatus PaymentIntentStatus?             @map("authoritative_status")
+  detailJson          Json                             @map("detail_json") @db.JsonB
+  detectionCount      Int                              @default(1) @map("detection_count")
+  firstDetectedAt     DateTime                         @default(now()) @map("first_detected_at") @db.Timestamptz(3)
+  lastDetectedAt      DateTime                         @default(now()) @map("last_detected_at") @db.Timestamptz(3)
+  resolvedAt          DateTime?                        @map("resolved_at") @db.Timestamptz(3)
+  createdAt           DateTime                         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt           DateTime                         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization        Organization                     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store               Store                            @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_issues_store_tenant_fkey")
+  paymentIntent       PaymentIntent                    @relation(fields: [organizationId, storeId, paymentIntentId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_issues_intent_tenant_fkey")
+  lastDetectedRun     PaymentReconciliationRun         @relation(fields: [organizationId, storeId, lastDetectedRunId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "payment_reconciliation_issues_run_tenant_fkey")
+
+  @@unique([storeId, fingerprint], map: "payment_reconciliation_issues_store_fingerprint_key")
+  @@index([organizationId, status, lastDetectedAt], map: "payment_reconciliation_issues_tenant_status_idx")
+  @@index([paymentIntentId, status], map: "payment_reconciliation_issues_intent_status_idx")
+  @@map("payment_reconciliation_issues")
 }
 
 model ReconciliationCheckpoint {

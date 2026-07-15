@@ -18,6 +18,7 @@ export class MetricsService {
   private readonly shopifyReconciliations: Counter<'action' | 'outcome'>;
   private readonly transportRateOperations: Counter<'action' | 'outcome'>;
   private readonly paymentIntentOperations: Counter<'action' | 'outcome'>;
+  private readonly wompiReconciliations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -106,6 +107,12 @@ export class MetricsService {
       name: 'ecommerce_api_payment_intent_operations_total',
       registers: [this.registry],
     });
+    this.wompiReconciliations = new Counter({
+      help: 'Ejecuciones de conciliación Wompi simuladas por resultado acotado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_wompi_reconciliations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -165,6 +172,10 @@ export class MetricsService {
 
   public recordPaymentIntent(action: string, outcome: string): void {
     this.paymentIntentOperations.inc({ action, outcome });
+  }
+
+  public recordWompiReconciliation(action: string, outcome: string): void {
+    this.wompiReconciliations.inc({ action, outcome });
   }
 
   public get contentType(): string {

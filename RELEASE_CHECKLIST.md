@@ -53,6 +53,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Dos recordatorios simulados +8/+16 son durables, idempotentes, auditados y cancelables.
 - [x] Expiración y abandono simulados con política histórica, replay, tenant y carrera probados.
 - [x] Pago aprobado tardío no reescribe un terminal y abre revisión manual auditada.
+- [x] Conciliación Wompi simulada tiene checkpoint, reporte, dedupe, alertas y replay probados.
+- [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.

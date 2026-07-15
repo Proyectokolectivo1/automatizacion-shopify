@@ -13,6 +13,7 @@ import type {
 
 @Injectable()
 export class WompiMockProvider implements WompiProvider {
+  private available = true;
   private readonly transactions = new Map<string, WompiTransactionSnapshot>();
 
   public async createHostedCheckout(
@@ -49,6 +50,7 @@ export class WompiMockProvider implements WompiProvider {
   }
 
   public getTransaction(transactionId: string): Promise<WompiTransactionSnapshot> {
+    if (!this.available) throw new Error('Synthetic Wompi provider is unavailable');
     const transaction = this.transactions.get(transactionId);
     if (transaction === undefined) throw new Error('Synthetic Wompi transaction not found');
     return Promise.resolve({ ...transaction });
@@ -61,6 +63,19 @@ export class WompiMockProvider implements WompiProvider {
     const transaction = this.transactions.get(transactionId);
     if (transaction === undefined) throw new Error('Synthetic Wompi transaction not found');
     this.transactions.set(transactionId, { ...transaction, status });
+  }
+
+  public setSyntheticAvailability(available: boolean): void {
+    this.available = available;
+  }
+
+  public setSyntheticTransactionSnapshot(
+    transactionId: string,
+    snapshot: Partial<Omit<WompiTransactionSnapshot, 'id'>>,
+  ): void {
+    const transaction = this.transactions.get(transactionId);
+    if (transaction === undefined) throw new Error('Synthetic Wompi transaction not found');
+    this.transactions.set(transactionId, { ...transaction, ...snapshot, id: transactionId });
   }
 
   private validate(command: WompiHostedCheckoutCommand): void {

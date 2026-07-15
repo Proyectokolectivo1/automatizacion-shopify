@@ -60,6 +60,8 @@ Actualizado: 2026-07-14
 | D-054  | DECISIÓN           | Scheduler solo emite outbox; WhatsApp carga datos tenant-safe y aplica sus propios controles     | ACEPTADA E2-H4A    |
 | D-055  | DECISIÓN           | Acción de abandono por intención; `MARK` es default mientras DP-002 siga abierta                 | ACEPTADA E2-H5A    |
 | D-056  | DECISIÓN           | `CANCEL` solicita simulación; pago tardío conserva terminal y abre revisión                      | ACEPTADA E2-H5A    |
+| D-057  | DECISIÓN           | Conciliación Wompi detecta y alerta; nunca corrige estados ni importes automáticamente           | ACEPTADA E2-H6A    |
+| D-058  | DECISIÓN           | Checkpoint avanza solo tras comparación completa; fallos generan reporte y reintento             | ACEPTADA E2-H6A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

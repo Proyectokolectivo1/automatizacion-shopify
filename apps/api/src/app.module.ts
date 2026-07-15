@@ -32,6 +32,7 @@ import { WompiMockProvider } from './payments/wompi-mock.provider';
 import { WOMPI_PROVIDER } from './payments/wompi-provider';
 import { WompiWebhookController } from './payments/wompi-webhook.controller';
 import { WompiWebhookService } from './payments/wompi-webhook.service';
+import { WompiReconciliationSchedulerService } from './payments/wompi-reconciliation-scheduler.service';
 import { ShopifyReconciliationController } from './reconciliation/shopify-reconciliation.controller';
 import { ShopifyReconciliationService } from './reconciliation/shopify-reconciliation.service';
 import { TransportRateController } from './rates/transport-rate.controller';
@@ -103,6 +104,7 @@ import { ShopifyWebhookService } from './shopify/shopify-webhook.service';
     PaymentExpirationSchedulerService,
     PaymentReminderSchedulerService,
     WompiWebhookService,
+    WompiReconciliationSchedulerService,
     WompiMockProvider,
     ShopifyMockProvider,
     { provide: WOMPI_PROVIDER, useExisting: WompiMockProvider },

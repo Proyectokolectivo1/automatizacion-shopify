@@ -45,3 +45,5 @@ Actualizado: 2026-07-14
 | R-039 | Carrera del scheduler duplica recordatorios                 | Alta  | Alto    | Unique intent/secuencia, SKIP LOCKED, transacción y prueba concurrente | Mitigado |
 | R-040 | Pago aprobado posterior al vencimiento                      | Media | Crítico | Lock común, terminal inmutable, outbox y revisión manual               | Mitigado |
 | R-041 | Confundir solicitud `CANCEL` con cancelación real           | Media | Alto    | Evento `requested`, modo simulado y no usar `CANCELLED`                | Mitigado |
+| R-042 | Conciliación parcial oculta diferencias financieras         | Media | Crítico | Transacción completa; checkpoint solo avanza en éxito; reporte fallido | Mitigado |
+| R-043 | Reinicio pierde el catálogo authoritative del mock Wompi    | Alta  | Medio   | Fallar cerrado, no avanzar ventana y migrar a sandbox/fixture durable  | Abierto  |

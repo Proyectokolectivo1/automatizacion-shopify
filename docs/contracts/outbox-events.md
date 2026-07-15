@@ -63,5 +63,7 @@ replay idempotente no emite un segundo evento.
   no afirma que Shopify haya cambiado.
 - `payment.intent.late-status-observed.v1`: evidencia de un estado authoritative posterior a un
   estado terminal; puede abrir revisión manual, pero no sobrescribe la intención.
+- `payment.reconciliation.differences-detected.v1`: alerta agregada por reporte diario simulado;
+  incluye conteos, tipos acotados, ventana e IDs internos, nunca datos de transacción o PII.
 
 Creación/cambio y sus eventos se escriben atómicamente. Replays no emiten eventos adicionales.

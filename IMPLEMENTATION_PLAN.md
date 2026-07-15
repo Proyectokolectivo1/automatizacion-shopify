@@ -27,8 +27,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3C   | E2-H3A webhook Wompi simulado      | COMPLETADA                 | checksum, persistencia y consulta authoritative probados  |
 | 3D   | E2-H4A recordatorios simulados     | COMPLETADA                 | agenda 0/8/16/24 h, máximo dos y replay probado           |
 | 3E   | E2-H5A vencimiento simulado        | COMPLETADA                 | expirar, cancelar/marcar, historial y replay probados     |
-| 3F   | E2-H6A conciliación Wompi simulada | SIGUIENTE                  | diferencias, reporte, alertas y replay probados           |
-| 3G   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
+| 3F   | E2-H6A conciliación Wompi simulada | COMPLETADA                 | diferencias, reporte, alertas y replay probados           |
+| 3G   | E3-H1A WhatsApp simulado           | SIGUIENTE                  | configuración, contrato, fixture y controles probados     |
+| 3H   | COD + Wompi + WhatsApp reales      | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales          |
 | 4    | Mastershop                         | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato           |
 | 5    | Impresión                          | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                 |
 | 6    | Operación y dashboard              | PENDIENTE                  | filtros, alertas, métricas y exportación                  |
@@ -227,3 +228,14 @@ Implementar conciliación diaria Wompi exclusivamente en simulación: ventana/ch
 comparación entre intenciones, eventos y estado authoritative del proveedor simulado, diferencias
 deduplicadas, reporte, outbox de alerta, métricas, scheduler, flag y kill switch. No corregir estados
 automáticamente ni llamar proveedores reales.
+
+Resultado: completada el 2026-07-14. La migración dieciocho separa checkpoints, reportes e incidencias
+financieras tenant-safe. El scheduler serializa cada tienda, no avanza la ventana si falla el
+proveedor, compara intención/evento/authoritative, deduplica por huella y solo alerta por outbox. Las
+21 pruebas Wompi cubren replay, carrera, caída, divergencia, resolución y aislamiento sin autocorrección.
+
+## Vigesimoprimera vertical: E3-H1A
+
+Implementar configuración WhatsApp Cloud API exclusivamente simulada: contrato de proveedor, fixture
+versionado, credenciales sintéticas/cifradas, prueba de conexión, flags, modo simulación y kill switch.
+No enviar mensajes, registrar plantillas remotas ni llamar Meta sin credenciales.

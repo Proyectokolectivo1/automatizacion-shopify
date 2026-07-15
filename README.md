@@ -102,6 +102,10 @@ También valida vencimiento a 24 horas, abandono y carreras contra webhooks; con
 `docs/runbooks/payment-expiration.md`. `MARK`/`CANCEL` solo generan solicitudes simuladas y nunca
 mutan Shopify en esta fase.
 
+La conciliación diaria simulada usa el mismo gate; consulte
+`docs/runbooks/wompi-reconciliation.md`. Persiste checkpoint, reportes e incidencias deduplicadas,
+alerta por outbox y nunca corrige automáticamente estados o importes.
+
 ## Estado real
 
 Empiece por [PROJECT_OVERVIEW.md](PROJECT_OVERVIEW.md) para conocer el propósito, lo implementado y lo

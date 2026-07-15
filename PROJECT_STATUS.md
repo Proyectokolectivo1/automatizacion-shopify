@@ -11,8 +11,8 @@ Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatiz
 
 ## Fase actual
 
-Fase 3 — pagos simulados. E2-H1A a E2-H5A están completas; la siguiente vertical es E2-H6A,
-conciliación diaria Wompi exclusivamente en simulación.
+Fase 3 — pagos simulados completada hasta E2-H6A. La siguiente vertical es E3-H1A, configuración y
+proveedor WhatsApp exclusivamente simulados.
 
 ## Avance aproximado por épica
 
@@ -20,7 +20,7 @@ conciliación diaria Wompi exclusivamente en simulación.
 | ------------------------ | -----: | ------------------------------------------------- |
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   70 % | ciclo simulado hasta vencimiento y abandono       |
+| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria |
 | E3 WhatsApp              |    0 % | bloqueada por credenciales                        |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                |
@@ -88,10 +88,14 @@ conciliación diaria Wompi exclusivamente en simulación.
   scheduler concurrente, recordatorios cancelados, outbox, auditoría y métricas probados.
 - Los estados terminales Wompi ya no se sobrescriben por eventos tardíos; una aprobación posterior al
   vencimiento abre `MANUAL_REVIEW` sin afirmar una cancelación Shopify inexistente.
+- E2-H6A: checkpoint diario, reporte e incidencias Wompi tenant-safe; comparación contra último evento
+  aceptado y proveedor simulado, dedupe, resolución, outbox, auditoría, métricas y fallo cerrado.
+- Una caída authoritative crea un reporte fallido y reintento sin avanzar la ventana; ninguna
+  diferencia corrige automáticamente la intención, el importe o el pedido.
 
 ## Siguiente vertical
 
-- E2-H6A: conciliación diaria Wompi simulada con checkpoint, diferencias, reporte y alertas.
+- E3-H1A: configuración y proveedor WhatsApp exclusivamente simulados, sin envío de mensajes.
 
 ## Pendiente
 
@@ -118,7 +122,7 @@ conciliación diaria Wompi exclusivamente en simulación.
 - `pnpm test`: 50 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 10 pruebas sobre PostgreSQL real, 17 migraciones, constraints y cero drift.
+- `pnpm database:verify`: 11 pruebas sobre PostgreSQL real, 18 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -129,7 +133,7 @@ conciliación diaria Wompi exclusivamente en simulación.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
-- `pnpm wompi:verify`: 13 pruebas HTTP/PostgreSQL y 4 contractuales de intención/checkout/webhook.
+- `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
 - GitHub Actions incluye el gate dedicado de reconciliación; su ejecución remota queda pendiente del PR.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
@@ -146,9 +150,9 @@ conciliación diaria Wompi exclusivamente en simulación.
 ## Deuda técnica
 
 Consulte `TECHNICAL_DEBT.md`. No se consideran implementados OpenTelemetry, alertas conectadas,
-scheduler de conciliación, estados operativos posteriores ni integraciones reales.
+workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E2-H6A: conciliación diaria Wompi simulada, checkpoint durable, diferencias deduplicadas,
-reporte, outbox de alerta y replay. No corregir estados ni iniciar tráfico real.
+Implementar E3-H1A: configuración segura y proveedor WhatsApp exclusivamente simulados, con fixture,
+contrato, cifrado, flags y kill switch. No enviar mensajes ni iniciar tráfico real.

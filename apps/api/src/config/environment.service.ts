@@ -289,6 +289,26 @@ export class EnvironmentService {
     };
   }
 
+  public get wompiReconciliation(): Readonly<{
+    batchSize: number;
+    enabled: boolean;
+    intervalHours: number;
+    killSwitch: boolean;
+    lookbackHours: number;
+    pollIntervalMs: number;
+    simulationMode: boolean;
+  }> {
+    return {
+      batchSize: this.values.WOMPI_RECONCILIATION_BATCH_SIZE,
+      enabled: this.values.WOMPI_RECONCILIATION_ENABLED,
+      intervalHours: this.values.WOMPI_RECONCILIATION_INTERVAL_HOURS,
+      killSwitch: this.values.WOMPI_RECONCILIATION_KILL_SWITCH,
+      lookbackHours: this.values.WOMPI_RECONCILIATION_LOOKBACK_HOURS,
+      pollIntervalMs: this.values.WOMPI_RECONCILIATION_POLL_INTERVAL_MS,
+      simulationMode: this.values.WOMPI_RECONCILIATION_SIMULATION_MODE,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

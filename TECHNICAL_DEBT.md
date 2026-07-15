@@ -27,6 +27,7 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-017 | Políticas de tarifa no tienen listado ni consola UI  | Medio   | Añadir consulta paginada y flujo de aprobación seguro  |
 | TD-018 | Prisma/pg avisa sobre query concurrente en tests     | Bajo    | Revalidar adaptador antes de actualizar a pg 9         |
 | TD-019 | Schedulers de pago viven dentro del proceso API      | Medio   | Moverlos al worker-payments conservando locks y gates  |
+| TD-020 | Estado authoritative del mock Wompi vive en memoria  | Medio   | Usar sandbox o fixture durable antes de pruebas largas |
 
 ## Deuda resuelta
 
