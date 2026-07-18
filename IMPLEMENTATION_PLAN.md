@@ -40,8 +40,9 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato             |
 | 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                   |
 | 6A   | E6-H1A cola operativa unificada     | COMPLETADA                 | lectura, filtros y paginación tenant-safe probados          |
-| 6B   | E6-H2A resumen operativo agregado   | SIGUIENTE                  | conteos y ventana tenant-safe probados                      |
-| 6C   | Alertas, dashboard visual y exports | PENDIENTE                  | alertas de negocio, interfaz y exportación                  |
+| 6B   | E6-H2A resumen operativo agregado   | COMPLETADA                 | conteos y ventana tenant-safe probados                      |
+| 6C   | E6-H3A base segura del dashboard    | SIGUIENTE                  | cookie/CSRF/BFF y lectura tenant-safe probados              |
+| 6D   | Alertas, dashboard visual y exports | PENDIENTE                  | alertas de negocio, interfaz y exportación                  |
 | 7    | Rentabilidad y publicidad           | BLOQUEADO_POR_DECISION     | snapshots, atribución con confianza y ROAS                  |
 | 8    | Hardening y lanzamiento             | PENDIENTE                  | carga, seguridad, restore, piloto y aprobación humana       |
 
@@ -361,3 +362,16 @@ Construir un resumen operativo agregado de solo lectura sobre la política v1 de
 una ventana temporal acotada, devolver conteos por tipo/estado/atención con contrato versionado,
 mantener aislamiento tenant, RBAC, auditoría, métricas y controles fail-closed. No duplicar una
 segunda semántica de atención, crear todavía el dashboard visual, emitir alertas ni mutar recursos.
+
+Resultado: completada el 2026-07-17 sin migración nueva. Cola y resumen comparten una única consulta
+tenant-safe y política de atención v1. El endpoint exige ventana `[from,to)` de máximo 31 días y usa
+`GROUPING SETS` para devolver totales y desgloses por tipo/estado en una sola consulta. Siete pruebas
+cubren consistencia, filtros, cero resultados, rangos, RBAC, tenant, auditoría, métrica, redacción y
+kill switch; no se exponen IDs ni PII.
+
+## Trigesimoprimera vertical: E6-H3A
+
+Construir la base segura del dashboard Next.js de solo lectura. Debe resolver autenticación web sin
+Bearer en localStorage mediante cookie HttpOnly/SameSite y protección CSRF o BFF, selección de
+organización tenant-safe y consumo mínimo de cola/resumen. Añadir pruebas web/E2E proporcionales y
+controles fail-closed. No habilitar mutaciones, proveedores reales, alertas automáticas ni release.

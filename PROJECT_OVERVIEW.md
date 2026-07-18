@@ -34,15 +34,15 @@ publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR
 abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
 Las fundaciones están al 100 %, Shopify al 75 %, pagos/tarifas al 80 %, WhatsApp al 90 % y operación
-al 15 %. Ya existe un monorepo reproducible
+al 30 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
 ciclo operativo seguro, catálogo local versionado, envío transaccional durable, estados monotónicos
 y mensajes entrantes cifrados por webhooks sintéticos autenticados. La bandeja simulada ya ofrece
 listado/timeline y asignación versionada tenant-safe; todavía no existen conexiones, entregas ni
-estados Meta reales. La primera cola operativa unificada ya proyecta los cinco dominios con RBAC,
-filtros, cursor estable y mínima exposición de datos.
+estados Meta reales. La cola y su resumen operativo ya proyectan/agregan los cinco dominios con RBAC,
+ventanas/filtros acotados, cursor estable y mínima exposición de datos.
 
 ## Implementado
 
@@ -114,6 +114,8 @@ filtros, cursor estable y mínima exposición de datos.
 - Asignación actual, historial inmutable, idempotencia, outbox, auditoría y métricas sin PII probados.
 - Cola operativa unificada de solo lectura con cinco tipos, atención v1, filtros, cursor keyset,
   índices tenant-safe, auditoría, métricas y controles fail-closed.
+- Resumen agregado con ventana máxima de 31 días, conteos por tipo/estado y una única política de
+  atención compartida con la cola, sin IDs ni PII.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -144,8 +146,8 @@ filtros, cursor estable y mínima exposición de datos.
 
 ### Operación, finanzas y publicidad
 
-- Resumen agregado y dashboard visual sobre la cola ya disponible; faltan alertas, búsquedas y
-  exportaciones.
+- Base web segura y dashboard visual sobre la cola/resumen ya disponibles; faltan alertas, búsquedas
+  y exportaciones.
 - Costos históricos, rentabilidad por pedido y snapshots financieros.
 - Integraciones publicitarias, atribución con nivel de confianza y ROAS.
 - Auditoría funcional y herramientas de reproceso manual.
@@ -172,9 +174,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E6-H2A: construir un resumen operativo agregado de solo lectura, tenant-safe y con RBAC sobre la
-misma política v1 de la cola. Debe usar una ventana temporal acotada, conteos deterministas y mínima
-proyección, sin crear todavía UI completa, alertas automáticas ni mutaciones.
+E6-H3A: construir la base segura del dashboard web de solo lectura. Debe resolver sesión web mediante
+cookie HttpOnly/SameSite y protección CSRF/BFF antes de consumir cola/resumen; queda prohibido guardar
+Bearer en localStorage o añadir mutaciones, alertas automáticas y proveedores reales.
 
 ## Dónde consultar más detalle
 

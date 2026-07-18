@@ -28,6 +28,7 @@ import { RequestObservabilityMiddleware } from './observability/request-observab
 import { TracingService } from './observability/tracing.service';
 import { OperationalQueueController } from './operations/operational-queue.controller';
 import { OperationalQueueService } from './operations/operational-queue.service';
+import { OperationalSummaryService } from './operations/operational-summary.service';
 import { PaymentIntentController } from './payments/payment-intent.controller';
 import { PaymentIntentService } from './payments/payment-intent.service';
 import { PaymentExpirationSchedulerService } from './payments/payment-expiration-scheduler.service';
@@ -112,6 +113,7 @@ import { WhatsAppAssignmentService } from './whatsapp/whatsapp-assignment.servic
     AlertingService,
     MetricsService,
     OperationalQueueService,
+    OperationalSummaryService,
     OrderClassifier,
     OrderClassificationService,
     RequestObservabilityMiddleware,

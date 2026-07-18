@@ -63,6 +63,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Bandeja WhatsApp simulada pagina/lista timeline con RBAC, retención y tenant probados.
 - [x] Asignación de conversaciones WhatsApp simulada completa.
 - [x] Cola operativa unificada pagina y filtra cinco dominios con RBAC, tenant y mínima proyección.
+- [x] Resumen operativo agrega la atención v1 con ventana acotada, RBAC y sin IDs/PII.
 - [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.

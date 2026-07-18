@@ -190,3 +190,23 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
   se conectaron proveedores reales.
 - Riesgo abierto: el siguiente resumen no debe duplicar/divergir de la atención v1 (R-067).
 - Siguiente vertical: E6-H2A, resumen operativo agregado de solo lectura y ventana acotada.
+
+## 2026-07-17 — sesión actual: publicación y E6-H2A
+
+- Se revisaron 71 archivos, diff staged y patrones de secretos; el bloque E3-H7A/E0-H3B/E6-H1A se
+  publicó en `d1755f1` a `origin/codex/foundations-e0-h2` y se actualizó el PR borrador #1.
+- El conector GitHub no pudo editar el PR por permiso 403; `gh` autenticado por keyring fue el
+  fallback previsto por la skill, sin exponer tokens.
+- `token-optimizer` reportó salud 63/100, overhead 17.854 tokens (6,9 %), eficiencia de sesión S/96,
+  cero desperdicio medible, subagentes o metas. No se instalaron hooks/compact globales sin permiso.
+- E6-H2A centraliza tipos, estados y atención v1 en `operational-read-model.ts`; cola y resumen no
+  pueden mantener semánticas separadas.
+- `GET /operations/organizations/:organizationId/queue/summary` exige `[from,to)` <=31 días y agrega
+  totales/atención por tipo y estado con una sola consulta `GROUPING SETS`, sin IDs ni PII.
+- Se reutilizan permiso y controles E6-H1A por ser una proyección menos granular; auditoría/métrica
+  son acotadas y el kill switch falla cerrado.
+- Evidencia final: operations 7/7, database 15/15 y 28/28, validate 73/73 con 100 % crítico, todas las
+  regresiones, infraestructura, observabilidad y auditoría de dependencias verdes.
+- El primer validate final solo detectó formato en dos Markdown nuevos; Prettier lo corrigió.
+- No hubo migración, mutaciones operativas, credenciales, tráfico real ni despliegue.
+- Siguiente vertical: E6-H3A, base segura del dashboard web sin Bearer en localStorage.

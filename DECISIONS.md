@@ -91,6 +91,9 @@ Actualizado: 2026-07-17
 | D-085  | DECISIÓN           | Cada rama limita tenant y pagina por timestamp inmutable más `tipo:UUID`                         | ACEPTADA E6-H1A    |
 | D-086  | DECISIÓN           | Atención v1 deriva solo de estados durables; no se inventan prioridad, SLA ni severidad          | ACEPTADA E6-H1A    |
 | D-087  | DECISIÓN           | Cola solo para owner/admin/operations y con IDs internos/estados/fechas mínimos                  | ACEPTADA E6-H1A    |
+| D-088  | DECISIÓN           | Cola y resumen importan un único read model y una sola política de atención v1                   | ACEPTADA E6-H2A    |
+| D-089  | DECISIÓN           | Resumen usa `[from,to)`, máximo 31 días y una consulta PostgreSQL con `GROUPING SETS`            | ACEPTADA E6-H2A    |
+| D-090  | DECISIÓN           | Resumen comparte permiso/controles de cola porque revela menos detalle del mismo modelo          | ACEPTADA E6-H2A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

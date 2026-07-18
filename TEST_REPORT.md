@@ -866,3 +866,30 @@ y se conservó el constraint. Al intentar paralelizar cuatro gates, varias ejecu
 pasaron. El primer `database:status` detectó correctamente la migración 28 pendiente; se desplegó con
 `pnpm database:migrate` y quedó 28/28 sin borrar volúmenes. No hubo mutaciones operativas,
 credenciales ni tráfico real. E6-H2A es la siguiente vertical.
+
+## Iteración E6-H2A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                     | Resultado                                    |
+| --------------------------- | --------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                 | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Cola/resumen PostgreSQL     | `pnpm operations:verify`    | OK: 7/7                                      |
+| Migraciones/constraints     | `pnpm database:verify`      | OK: 15/15, 28 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`             | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados en serie    | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify` | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`         | OK: seis servicios saludables y persistentes |
+| Estado del esquema          | `pnpm database:status`      | OK: 28/28                                    |
+| Dependencias                | `pnpm audit --prod`         | OK: cero vulnerabilidades conocidas          |
+
+Se centralizaron los cinco tipos, estados y atención v1 en un único read model importado por cola y
+resumen. El nuevo endpoint exige ventana `[from,to)` de máximo 31 días y ejecuta un solo agregado
+`GROUPING SETS`; devuelve totales y desgloses por tipo/estado sin IDs ni PII. Se probaron filtros,
+cero resultados, rangos/campos inválidos, RBAC, tenant ajeno, kill switch, auditoría y métrica.
+
+No hubo migración nueva: los índices de E6-H1A cubren las cinco ramas y `database:status` permanece
+28/28. El primer `pnpm validate` de cierre detectó únicamente formato Prettier en dos documentos
+nuevos; se corrigió y el gate completo pasó al repetir. Antes de E6-H2A se publicó el bloque
+E3-H7A/E0-H3B/E6-H1A en `d1755f1` y se actualizó el PR borrador #1. No hubo mutaciones operativas,
+credenciales ni tráfico real. E6-H3A es la siguiente vertical.

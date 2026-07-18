@@ -279,7 +279,7 @@ export class MetricsService {
     this.observabilityAlertOperations.inc({ action, outcome });
   }
 
-  public recordOperationalQueue(action: 'list', outcome: 'failure' | 'success'): void {
+  public recordOperationalQueue(action: 'list' | 'summary', outcome: 'failure' | 'success'): void {
     this.operationalQueueOperations.inc({ action, outcome });
   }
 

@@ -7,13 +7,13 @@ Actualizado: 2026-07-17
 `EN_DESARROLLO` — desarrollo funcional en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene la base publicada; E3-H7A, E0-H3B y E6-H1A están validadas
-localmente y pendientes de publicación autorizada.
+`codex/foundations-e0-h2` contiene E3-H7A, E0-H3B y E6-H1A en el commit `d1755f1` y el PR borrador #1;
+E6-H2A queda incluida y validada al cierre de esta sesión.
 
 ## Fase actual
 
-Fase 6 — operación interna. E6-H1A completó la cola unificada de solo lectura; la siguiente vertical
-es E6-H2A, resumen operativo agregado sobre la misma política v1.
+Fase 6 — operación interna. E6-H1A/H2A completaron cola y resumen de solo lectura; la siguiente
+vertical es E6-H3A, base segura del dashboard web.
 
 ## Avance aproximado por épica
 
@@ -25,7 +25,7 @@ es E6-H2A, resumen operativo agregado sobre la misma política v1.
 | E3 WhatsApp              |   90 % | ciclo simulado hasta asignación tenant-safe         |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                  |
-| E6 Operación y dashboard |   15 % | cola unificada tenant-safe completada               |
+| E6 Operación y dashboard |   30 % | cola y resumen tenant-safe completados              |
 | E7 Finanzas              |    0 % | pendiente decisiones contables                      |
 | E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución   |
 | E9 Producción            |    0 % | no autorizada                                       |
@@ -124,11 +124,15 @@ es E6-H2A, resumen operativo agregado sobre la misma política v1.
   mediante una consulta `UNION ALL` tenant-bounded y proyección mínima sin PII.
 - Atención v1 determinista, filtros acotados, cursor por timestamp inmutable+tipo/UUID, RBAC exclusivo
   owner/admin/operations, `no-store`, auditoría, métrica, flag y kill switch probados.
+- E6-H2A: resumen de conteos totales/atención por tipo y estado mediante el mismo read model, ventana
+  `[from,to)` obligatoria de máximo 31 días y una sola consulta `GROUPING SETS`.
+- Filtros por tipo/tienda, cero resultados, rango inválido, RBAC, tenant, kill switch, auditoría,
+  métrica y respuesta sin IDs/PII probados; no hubo migración nueva.
 
 ## Siguiente vertical
 
-- E6-H2A: resumen operativo agregado de solo lectura sobre la política v1 de la cola, con ventana
-  temporal acotada, conteos tenant-safe y RBAC; sin UI completa ni mutaciones.
+- E6-H3A: base segura del dashboard web con cookie HttpOnly/SameSite y CSRF/BFF, consumiendo
+  cola/resumen sin localStorage, mutaciones ni conexiones reales.
 
 ## Pendiente
 
@@ -168,8 +172,8 @@ es E6-H2A, resumen operativo agregado sobre la misma política v1.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
 - `pnpm whatsapp:verify`: 25 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
-- `pnpm operations:verify`: 5 pruebas HTTP/PostgreSQL de unificación, cursor, filtros, RBAC, tenant,
-  redacción, auditoría, métrica y kill switch.
+- `pnpm operations:verify`: 7 pruebas HTTP/PostgreSQL de cola/resumen, cursor, ventanas, filtros,
+  RBAC, tenant, redacción, auditoría, métrica y kill switch.
 - GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H5A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` volvió a responder normalmente y reportó cero vulnerabilidades conocidas.
@@ -192,6 +196,6 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E6-H2A como resumen agregado de solo lectura sobre la política v1 ya probada, con rango
-temporal acotado, conteos deterministas, aislamiento tenant y RBAC. No crear UI completa, mutar
-estados, desplegar producción ni conectar proveedores reales.
+Implementar E6-H3A como base segura del dashboard web de solo lectura: cookie HttpOnly/SameSite,
+protección CSRF/BFF y selección tenant-safe antes de renderizar cola/resumen. No almacenar Bearer en
+localStorage, mutar estados, desplegar producción ni conectar proveedores reales.

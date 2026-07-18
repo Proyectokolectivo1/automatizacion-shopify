@@ -65,7 +65,23 @@ interface QueueResponse {
   readonly nextCursor: string | null;
 }
 
-describe('E6-H1A tenant-safe operational queue', () => {
+interface SummaryBreakdown {
+  readonly requiresAttention: number;
+  readonly status?: string;
+  readonly total: number;
+  readonly type?: string;
+}
+
+interface SummaryResponse {
+  readonly byStatus: readonly SummaryBreakdown[];
+  readonly byType: readonly SummaryBreakdown[];
+  readonly contractVersion: 'v1';
+  readonly filters: { readonly storeId: string | null; readonly type: string | null };
+  readonly totals: { readonly requiresAttention: number; readonly total: number };
+  readonly window: { readonly from: string; readonly to: string };
+}
+
+describe('E6 tenant-safe operational read model', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
   let emptyStoreId: string;
@@ -350,6 +366,8 @@ describe('E6-H1A tenant-safe operational queue', () => {
 
   const endpoint = (targetOrganizationId = organizationId) =>
     `/operations/organizations/${targetOrganizationId}/queue`;
+  const summaryEndpoint = (targetOrganizationId = organizationId) =>
+    `${endpoint(targetOrganizationId)}/summary`;
 
   it('projects five bounded attention types without PII or provider identifiers', async () => {
     const response = await request(baseUrl)
@@ -383,6 +401,51 @@ describe('E6-H1A tenant-safe operational queue', () => {
     expect(JSON.stringify(audit)).not.toMatch(/@example\.test|\+5730|checkout\.invalid/u);
     const metrics = await request(baseUrl).get('/metrics').expect(200);
     expect(metrics.text).toContain('ecommerce_api_operational_queue_operations_total');
+  });
+
+  it('summarizes the shared v1 attention policy in one bounded aggregate query', async () => {
+    const response = await request(baseUrl)
+      .get(summaryEndpoint())
+      .query({ from: '2026-07-17T04:00:00.000Z', to: '2026-07-17T11:00:00.000Z' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    const body = response.body as SummaryResponse;
+    expect(body).toMatchObject({
+      contractVersion: 'v1',
+      filters: { storeId: null, type: null },
+      totals: { requiresAttention: 5, total: 7 },
+      window: {
+        from: '2026-07-17T04:00:00.000Z',
+        to: '2026-07-17T11:00:00.000Z',
+      },
+    });
+    expect(body.byType).toEqual(
+      expect.arrayContaining([
+        { requiresAttention: 1, total: 2, type: 'order' },
+        { requiresAttention: 1, total: 1, type: 'payment_intent' },
+        { requiresAttention: 1, total: 1, type: 'shopify_reconciliation_issue' },
+        { requiresAttention: 1, total: 2, type: 'whatsapp_conversation' },
+        { requiresAttention: 1, total: 1, type: 'wompi_reconciliation_issue' },
+      ]),
+    );
+    expect(body.byStatus).toContainEqual({
+      requiresAttention: 3,
+      status: 'open',
+      total: 4,
+    });
+    expect(JSON.stringify(body)).not.toMatch(
+      /pii-must-not-leak|shopify-issue-pii|\+5730|checkout\.invalid|queue-order/u,
+    );
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      orderBy: { createdAt: 'desc' },
+      where: { action: 'operations.summary.viewed' },
+    });
+    expect(audit.metadataJson).toMatchObject({ total: 7, type: 'all', windowMinutes: 420 });
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain(
+      'ecommerce_api_operational_queue_operations_total{action="summary",outcome="success"}',
+    );
   });
 
   it('paginates by immutable timestamp and excludes concurrent newer inserts from the next page', async () => {
@@ -484,6 +547,47 @@ describe('E6-H1A tenant-safe operational queue', () => {
     }
   });
 
+  it('bounds summary windows and supports type, store and empty-result filters', async () => {
+    const window = { from: '2026-07-17T04:00:00.000Z', to: '2026-07-17T11:00:00.000Z' };
+    const orders = await request(baseUrl)
+      .get(summaryEndpoint())
+      .query({ ...window, type: 'order' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect((orders.body as SummaryResponse).totals).toEqual({
+      requiresAttention: 1,
+      total: 2,
+    });
+    expect((orders.body as SummaryResponse).byType).toEqual([
+      { requiresAttention: 1, total: 2, type: 'order' },
+    ]);
+
+    const empty = await request(baseUrl)
+      .get(summaryEndpoint())
+      .query({ ...window, storeId: emptyStoreId })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect(empty.body).toMatchObject({ byStatus: [], byType: [], totals: { total: 0 } });
+
+    for (const query of [
+      { from: window.from },
+      { to: window.to },
+      { from: window.from, to: window.from },
+      { from: '2026-07-18T00:00:00.000Z', to: '2026-07-17T00:00:00.000Z' },
+      { from: '2026-01-01T00:00:00.000Z', to: '2026-02-02T00:00:00.000Z' },
+      { ...window, status: 'open' },
+      { ...window, storeId: 'not-a-uuid' },
+      { ...window, type: 'unknown' },
+      { ...window, unknown: 'value' },
+    ]) {
+      await request(baseUrl)
+        .get(summaryEndpoint())
+        .query(query)
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(400);
+    }
+  });
+
   it('enforces least-privilege RBAC and tenant isolation', async () => {
     await request(baseUrl)
       .get(endpoint())
@@ -506,6 +610,25 @@ describe('E6-H1A tenant-safe operational queue', () => {
     expect(foreignBody.items.every(({ storeId: itemStoreId }) => itemStoreId !== storeId)).toBe(
       true,
     );
+    await request(baseUrl)
+      .get(summaryEndpoint())
+      .query({ from: '2026-07-17T04:00:00.000Z', to: '2026-07-17T12:00:00.000Z' })
+      .set('authorization', `Bearer ${supportToken}`)
+      .expect(403);
+    await request(baseUrl)
+      .get(summaryEndpoint(foreignOrganizationId))
+      .query({ from: '2026-07-17T10:00:00.000Z', to: '2026-07-17T12:00:00.000Z' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(403);
+    const foreignSummary = await request(baseUrl)
+      .get(summaryEndpoint(foreignOrganizationId))
+      .query({ from: '2026-07-17T10:00:00.000Z', to: '2026-07-17T12:00:00.000Z' })
+      .set('authorization', `Bearer ${foreignOwnerToken}`)
+      .expect(200);
+    expect((foreignSummary.body as SummaryResponse).totals).toEqual({
+      requiresAttention: 1,
+      total: 1,
+    });
   });
 
   it('fails closed with its independent kill switch', async () => {
@@ -515,6 +638,11 @@ describe('E6-H1A tenant-safe operational queue', () => {
       await disabledApp.listen(0, '127.0.0.1');
       await request(await disabledApp.getUrl())
         .get(endpoint())
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(503);
+      await request(await disabledApp.getUrl())
+        .get(summaryEndpoint())
+        .query({ from: '2026-07-17T04:00:00.000Z', to: '2026-07-17T11:00:00.000Z' })
         .set('authorization', `Bearer ${ownerToken}`)
         .expect(503);
     } finally {

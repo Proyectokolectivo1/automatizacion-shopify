@@ -70,4 +70,5 @@ Actualizado: 2026-07-17
 | R-064 | Reinicio pierde baseline de transición de alertas             | Media | Medio   | TD-025; estado durable o consulta inicial antes del piloto              | Abierto  |
 | R-065 | Cola unificada mezcla tenant o expone PII entre dominios      | Media | Crítico | Tenant dentro de cada rama, RBAC, proyección mínima y pruebas negativas | Mitigado |
 | R-066 | Cursor global duplica u omite elementos con escrituras nuevas | Media | Alto    | Timestamp inmutable, `tipo:UUID` y prueba de inserción concurrente      | Mitigado |
-| R-067 | Resumen futuro diverge de la política de atención v1          | Media | Medio   | Reutilizar/versionar semántica E6-H1A antes de añadir otro consumidor   | Abierto  |
+| R-067 | Resumen futuro diverge de la política de atención v1          | Media | Medio   | Read model único importado por cola/resumen y pruebas compartidas       | Mitigado |
+| R-068 | Agregado sin ventana degrada PostgreSQL o facilita abuso      | Media | Alto    | Rango obligatorio <=31 días, filtros, índices y una consulta SQL        | Mitigado |
