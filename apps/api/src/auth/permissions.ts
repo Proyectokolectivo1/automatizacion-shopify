@@ -5,6 +5,7 @@ export type Permission =
   | 'integration.manage'
   | 'organization.manage'
   | 'organization.read'
+  | 'operations.alerts.read'
   | 'operations.queue.read'
   | 'outbox.manage'
   | 'reconciliation.manage'
@@ -22,6 +23,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'integration.manage',
     'organization.manage',
     'organization.read',
+    'operations.alerts.read',
     'operations.queue.read',
     'outbox.manage',
     'reconciliation.manage',
@@ -37,6 +39,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
   LOGISTICS: new Set(['organization.read']),
   OPERATIONS: new Set([
     'organization.read',
+    'operations.alerts.read',
     'operations.queue.read',
     'reconciliation.manage',
     'transport-rates.resolve',
@@ -51,6 +54,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'integration.manage',
     'organization.manage',
     'organization.read',
+    'operations.alerts.read',
     'operations.queue.read',
     'outbox.manage',
     'reconciliation.manage',

@@ -131,6 +131,10 @@ describe('identity, sessions and RBAC runtime', () => {
         },
       }),
     ]);
+    const owner = await prisma.user.findUniqueOrThrow({ where: { email: 'owner@example.test' } });
+    await prisma.organizationMembership.create({
+      data: { organizationId: otherOrganizationId, role: 'OWNER', userId: owner.id },
+    });
     const application = await createApplication();
     app = application;
     emailDelivery = application.get(EmailDeliveryService);
@@ -193,6 +197,76 @@ describe('identity, sessions and RBAC runtime', () => {
       .get(`/auth/organizations/${organizationId}/admin-check`)
       .set('authorization', `Bearer ${tokens.accessToken}`)
       .expect(200, { authorized: true, organizationId });
+  });
+
+  it('discovers only active organizations after credential verification without issuing tokens', async () => {
+    const response = await request(baseUrl)
+      .post('/auth/login-options')
+      .send({ email: 'owner@example.test', password: 'Correct-password-123' })
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    expect(parseJson(response.text)).toEqual([
+      {
+        dashboardAllowed: true,
+        name: 'Auth tenant',
+        organizationId,
+        role: 'OWNER',
+      },
+      {
+        dashboardAllowed: true,
+        name: 'Other tenant',
+        organizationId: otherOrganizationId,
+        role: 'OWNER',
+      },
+    ]);
+    expect(response.text).not.toMatch(/accessToken|refreshToken|Correct-password/u);
+    const invalid = await request(baseUrl)
+      .post('/auth/login-options')
+      .send({ email: 'missing@example.test', password: 'Incorrect-password-123' })
+      .expect(401);
+    expect(parseJson(invalid.text)).toMatchObject({ message: 'Invalid credentials' });
+    await request(baseUrl)
+      .post('/auth/login-options')
+      .send({ email: 'owner@example.test', password: 'Correct-password-123', unknown: true })
+      .expect(400);
+  });
+
+  it('lists current memberships and atomically rotates the session when switching tenant', async () => {
+    const original = await login();
+    const options = await request(baseUrl)
+      .get('/auth/organizations')
+      .set('authorization', `Bearer ${original.accessToken}`)
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    expect((parseJson(options.text) as readonly unknown[]).length).toBe(2);
+    const switchedResponse = await request(baseUrl)
+      .post('/auth/switch-organization')
+      .set('authorization', `Bearer ${original.accessToken}`)
+      .send({ organizationId: otherOrganizationId })
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    const switched = tokenSchema.parse(parseJson(switchedResponse.text));
+    await request(baseUrl)
+      .get('/auth/me')
+      .set('authorization', `Bearer ${original.accessToken}`)
+      .expect(401);
+    const me = await request(baseUrl)
+      .get('/auth/me')
+      .set('authorization', `Bearer ${switched.accessToken}`)
+      .expect(200);
+    expect(parseJson(me.text)).toMatchObject({
+      organizationId: otherOrganizationId,
+      role: 'OWNER',
+    });
+    const rejected = await login();
+    await request(baseUrl)
+      .post('/auth/switch-organization')
+      .set('authorization', `Bearer ${rejected.accessToken}`)
+      .send({ organizationId: randomUUID() })
+      .expect(403);
+    expect(await prisma.auditLog.count({ where: { action: 'auth.organization_switched' } })).toBe(
+      1,
+    );
   });
 
   it('applies default-deny RBAC and tenant isolation in the backend', async () => {

@@ -1,19 +1,19 @@
 # Estado del proyecto
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 ## Estado general
 
 `EN_DESARROLLO` — desarrollo funcional en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene E3-H7A, E0-H3B y E6-H1A en el commit `d1755f1` y el PR borrador #1;
-E6-H2A queda incluida y validada al cierre de esta sesión.
+`codex/foundations-e0-h2` contiene el avance publicado hasta E6-H2A en `770c5c5` y el PR borrador #1;
+E6-H3A/E6-H4A quedan implementadas y validadas localmente, pendientes de publicación autorizada.
 
 ## Fase actual
 
-Fase 6 — operación interna. E6-H1A/H2A completaron cola y resumen de solo lectura; la siguiente
-vertical es E6-H3A, base segura del dashboard web.
+Fase 6 — operación interna. E6-H1A..H4A completaron cola, resumen, dashboard seguro y alertas
+durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo lectura.
 
 ## Avance aproximado por épica
 
@@ -25,7 +25,7 @@ vertical es E6-H3A, base segura del dashboard web.
 | E3 WhatsApp              |   90 % | ciclo simulado hasta asignación tenant-safe         |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                  |
-| E6 Operación y dashboard |   30 % | cola y resumen tenant-safe completados              |
+| E6 Operación y dashboard |   55 % | cola, resumen, dashboard y alertas completados      |
 | E7 Finanzas              |    0 % | pendiente decisiones contables                      |
 | E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución   |
 | E9 Producción            |    0 % | no autorizada                                       |
@@ -128,11 +128,19 @@ vertical es E6-H3A, base segura del dashboard web.
   `[from,to)` obligatoria de máximo 31 días y una sola consulta `GROUPING SETS`.
 - Filtros por tipo/tienda, cero resultados, rango inválido, RBAC, tenant, kill switch, auditoría,
   métrica y respuesta sin IDs/PII probados; no hubo migración nueva.
+- E6-H3A: BFF Next.js con opciones de login verificadas, cookies HttpOnly/SameSite/Secure en
+  producción, Origin+CSRF, refresh/logout y cambio tenant con rotación atómica.
+- Dashboard responsive deriva tenant desde `/auth/me`, consume cola/resumen, pagina por cursor opaco,
+  elimina IDs/PII y cubre loading/empty/error sin localStorage/sessionStorage.
+- E6-H4A: cinco reglas v1 explícitas, alertas open/resolved durables, dedupe por índice parcial y
+  evaluación por lotes con locks tenant y una sola lectura agregada por lote.
+- API pública de alertas exclusivamente de lectura para owner/admin/operations, con reglas, filtros,
+  cursor, proyección sin PII, auditoría, métrica, flag y kill switch fail-closed.
 
 ## Siguiente vertical
 
-- E6-H3A: base segura del dashboard web con cookie HttpOnly/SameSite y CSRF/BFF, consumiendo
-  cola/resumen sin localStorage, mutaciones ni conexiones reales.
+- E6-H5A: búsqueda operativa global de solo lectura; contrato, límites, orden, redacción y RBAC deben
+  quedar definidos antes de abordar detalle sensible o exportaciones.
 
 ## Pendiente
 
@@ -156,13 +164,13 @@ vertical es E6-H3A, base segura del dashboard web.
 
 ## Pruebas
 
-- `pnpm test`: 73 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 81 pruebas (73 API/unitarias + 8 BFF web), 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
 - `pnpm observability:verify`: W3C/OTLP, Bearer de métricas, alertas, redacción y fallos Redis/Collector.
-- `pnpm database:verify`: 15 pruebas sobre PostgreSQL real, 28 migraciones, constraints y cero drift.
+- `pnpm database:verify`: 16 pruebas sobre PostgreSQL real, 30 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
-- `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
+- `pnpm auth:verify`: 16 pruebas HTTP/PostgreSQL de sesiones, RBAC, cuenta y switch tenant.
 - `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
 - `pnpm shopify:verify`: 4 pruebas PostgreSQL/HTTP de registro, cifrado, tenant y ciclo de vida.
 - `pnpm shopify:webhooks:verify`: 5 pruebas PostgreSQL/Redis/HTTP de HMAC, sync, recovery y DLQ.
@@ -174,11 +182,14 @@ vertical es E6-H3A, base segura del dashboard web.
 - `pnpm whatsapp:verify`: 25 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
 - `pnpm operations:verify`: 7 pruebas HTTP/PostgreSQL de cola/resumen, cursor, ventanas, filtros,
   RBAC, tenant, redacción, auditoría, métrica y kill switch.
+- `pnpm alerts:verify`: 7 pruebas PostgreSQL/HTTP de scheduler, creación, carrera/replay, reinicio,
+  resolución/recuperación, cursor, RBAC, tenant, redacción, métrica y kill switch.
+- `pnpm web:verify`: 8 pruebas de cookies, CSRF, sesión, tenant derivado y proyección mínima.
 - GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H5A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` volvió a responder normalmente y reportó cero vulnerabilidades conocidas.
-- Las migraciones 24 a 28 fueron aplicadas a la base local persistente; `database:status` confirma
-  28/28 y esquema actualizado.
+- Las migraciones 24 a 30 fueron aplicadas a la base local persistente; `database:status` confirma
+  30/30 y esquema actualizado.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
 ## Errores conocidos
@@ -187,7 +198,7 @@ vertical es E6-H3A, base segura del dashboard web.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Veintiocho migraciones expand-only están verificadas desde vacío.
+- Treinta migraciones reproducibles están verificadas desde vacío; la 30 reconstruye solo índices.
 
 ## Deuda técnica
 
@@ -196,6 +207,6 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E6-H3A como base segura del dashboard web de solo lectura: cookie HttpOnly/SameSite,
-protección CSRF/BFF y selección tenant-safe antes de renderizar cola/resumen. No almacenar Bearer en
-localStorage, mutar estados, desplegar producción ni conectar proveedores reales.
+Definir e implementar E6-H5A como búsqueda operativa global de solo lectura, reutilizando el read
+model y sus límites tenant-safe. No añadir detalle sensible ni exportaciones hasta fijar contrato,
+redacción, volumen y autorización específicos.

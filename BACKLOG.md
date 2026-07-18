@@ -1,6 +1,6 @@
 # Backlog priorizado
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 | ID             | Prioridad      | Trabajo                                                          | Estado                     |
 | -------------- | -------------- | ---------------------------------------------------------------- | -------------------------- |
@@ -44,8 +44,10 @@ Actualizado: 2026-07-17
 | E5-H1..H8      | P1             | Agente e impresión Windows                                       | BLOQUEADO_POR_INVENTARIO   |
 | E6-H1A         | P1             | Cola operativa unificada de solo lectura                         | COMPLETADA                 |
 | E6-H2A         | P1             | Resumen operativo agregado de solo lectura                       | COMPLETADA                 |
-| E6-H3A         | P1 seguridad   | Base segura del dashboard web de solo lectura                    | SIGUIENTE                  |
-| E6-H4..H7      | P1             | Alertas de negocio, dashboard visual y exports                   | PENDIENTE                  |
+| E6-H3A         | P1 seguridad   | Base segura del dashboard web de solo lectura                    | COMPLETADA                 |
+| E6-H4A         | P1             | Alertas operativas internas, durables y deduplicadas             | COMPLETADA                 |
+| E6-H5A         | P1             | Búsqueda operativa global de solo lectura                        | SIGUIENTE                  |
+| E6-H6..H7      | P1             | Detalle y exports operativos                                     | PENDIENTE                  |
 | E7-H1..H5      | P1             | Costos y rentabilidad histórica                                  | BLOQUEADO_POR_DECISION     |
 | E8-H1..H6      | P2             | Ads y atribución                                                 | BLOQUEADO_POR_CREDENCIALES |
 | E9-H1..H8      | P0 lanzamiento | Infra, backups, monitoreo, carga y release                       | PENDIENTE                  |

@@ -1,6 +1,6 @@
 # Deuda técnica
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 No se registra como deuda lo que pertenece a una vertical futura; se registra como backlog.
 
@@ -9,7 +9,6 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 
 | ID     | Deuda                                                  | Impacto | Plan                                                        |
 | ------ | ------------------------------------------------------ | ------- | ----------------------------------------------------------- |
-| TD-002 | La web no tiene pruebas de componente/E2E todavía      | Bajo    | Añadir Playwright con el primer flujo de usuario            |
 | TD-003 | No hay enforcement automático de fronteras modulares   | Medio   | Añadir reglas al crear paquetes de dominio/aplicación       |
 | TD-004 | Node local 22.16.0 difiere del parche fijado 22.23.1   | Medio   | Actualizar toolchain y repetir validación                   |
 | TD-005 | PostCSS requiere override de seguridad transitivo      | Bajo    | Retirar cuando Next.js incluya PostCSS seguro               |
@@ -34,11 +33,13 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-024 | Asignación no se libera al revocar una membresía       | Medio   | Coordinar identidad/asignación antes del piloto             |
 | TD-025 | Estado de transición de alertas vive en proceso API    | Medio   | Hacerlo durable o reconstruirlo desde Alertmanager          |
 | TD-026 | Collector local solo ofrece exportador debug           | Medio   | Seleccionar backend, retención y acceso antes del piloto    |
+| TD-027 | Scheduler de alertas vive dentro del proceso API       | Medio   | Mover a worker dedicado antes de escalar horizontalmente    |
 
 ## Deuda resuelta
 
 - TD-001: el health check que solo comprobaba proceso fue reemplazado en E0-H3 por liveness y
   readiness reales para PostgreSQL, Redis y MinIO.
+- TD-002: E6-H3A añade ocho pruebas BFF/HTTP y revisión real de escritorio/móvil para el primer flujo.
 - E0-H4A no deja cliente generado versionado: `prisma generate` forma parte obligatoria de build y
   pruebas, evitando artefactos derivados obsoletos en Git.
 - E0-H4B eliminó el pool PostgreSQL paralelo del readiness; API y health comparten el lifecycle Prisma.

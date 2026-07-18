@@ -171,6 +171,16 @@ export const environmentSchema = z
     WHATSAPP_ASSIGNMENTS_SIMULATION_MODE: booleanFlag('true'),
     OPERATIONAL_QUEUE_ENABLED: booleanFlag('false'),
     OPERATIONAL_QUEUE_KILL_SWITCH: booleanFlag('true'),
+    OPERATIONAL_ALERTS_ENABLED: booleanFlag('false'),
+    OPERATIONAL_ALERTS_KILL_SWITCH: booleanFlag('true'),
+    OPERATIONAL_ALERTS_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(900_000)
+      .default(60_000),
+    OPERATIONAL_ALERTS_LOOKBACK_HOURS: z.coerce.number().int().min(1).max(744).default(24),
+    OPERATIONAL_ALERTS_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(25),
     POSTGRES_DB: nonEmpty,
     POSTGRES_HOST: nonEmpty,
     POSTGRES_PASSWORD: nonEmpty,

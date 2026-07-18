@@ -453,6 +453,22 @@ export class EnvironmentService {
     };
   }
 
+  public get operationalAlerts(): Readonly<{
+    batchSize: number;
+    enabled: boolean;
+    killSwitch: boolean;
+    lookbackHours: number;
+    pollIntervalMs: number;
+  }> {
+    return {
+      batchSize: this.values.OPERATIONAL_ALERTS_BATCH_SIZE,
+      enabled: this.values.OPERATIONAL_ALERTS_ENABLED,
+      killSwitch: this.values.OPERATIONAL_ALERTS_KILL_SWITCH,
+      lookbackHours: this.values.OPERATIONAL_ALERTS_LOOKBACK_HOURS,
+      pollIntervalMs: this.values.OPERATIONAL_ALERTS_POLL_INTERVAL_MS,
+    };
+  }
+
   public get shopifyReconciliation(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;

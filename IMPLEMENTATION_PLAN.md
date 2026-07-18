@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
 
@@ -41,8 +41,10 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                   |
 | 6A   | E6-H1A cola operativa unificada     | COMPLETADA                 | lectura, filtros y paginación tenant-safe probados          |
 | 6B   | E6-H2A resumen operativo agregado   | COMPLETADA                 | conteos y ventana tenant-safe probados                      |
-| 6C   | E6-H3A base segura del dashboard    | SIGUIENTE                  | cookie/CSRF/BFF y lectura tenant-safe probados              |
-| 6D   | Alertas, dashboard visual y exports | PENDIENTE                  | alertas de negocio, interfaz y exportación                  |
+| 6C   | E6-H3A base segura del dashboard    | COMPLETADA                 | cookie/CSRF/BFF y lectura tenant-safe probados              |
+| 6D   | E6-H4A alertas operativas internas  | COMPLETADA                 | reglas, estado durable y dedupe probados                    |
+| 6E   | E6-H5A búsqueda operativa           | SIGUIENTE                  | búsqueda tenant-safe, acotada y sin PII                     |
+| 6F   | Detalle y exports                   | PENDIENTE                  | navegación y exportación acotadas                           |
 | 7    | Rentabilidad y publicidad           | BLOQUEADO_POR_DECISION     | snapshots, atribución con confianza y ROAS                  |
 | 8    | Hardening y lanzamiento             | PENDIENTE                  | carga, seguridad, restore, piloto y aprobación humana       |
 
@@ -375,3 +377,26 @@ Construir la base segura del dashboard Next.js de solo lectura. Debe resolver au
 Bearer en localStorage mediante cookie HttpOnly/SameSite y protección CSRF o BFF, selección de
 organización tenant-safe y consumo mínimo de cola/resumen. Añadir pruebas web/E2E proporcionales y
 controles fail-closed. No habilitar mutaciones, proveedores reales, alertas automáticas ni release.
+
+Resultado: completada el 2026-07-17 sin migración nueva. Next.js actúa como BFF: access/refresh solo
+viven en cookies HttpOnly/SameSite/Secure en producción, y toda rotación/revocación usa origen+CSRF.
+El login obtiene membresías activas después de verificar credenciales; cada lectura deriva tenant de
+`/auth/me` y elimina IDs/PII antes del navegador. El dashboard responsive consume resumen/cola,
+filtra ventanas/tipo, pagina con cursor opaco y cubre loading/empty/error. Auth 16/16 y web 8/8.
+
+## Trigesimosegunda vertical: E6-H4A
+
+Construir alertas operativas internas, durables y deduplicadas sobre la política de atención v1. Las
+reglas deben ser explícitas/versionadas, con ventanas acotadas, ownership tenant, transiciones
+idempotentes, auditoría, métricas, flag y kill switch. La primera versión solo registra y permite
+leer alertas internas; no envía correo/WhatsApp, no autocorrige recursos y no conecta proveedores.
+
+Resultado: completada con cinco reglas v1, migración de tabla más ajuste forward-only de índices,
+scheduler acotado, estado
+open/resolved durable, dedupe concurrente, API de solo lectura, auditoría, métricas y 7/7 pruebas.
+
+## Trigesimotercera vertical: E6-H5A
+
+Construir búsqueda operativa global de solo lectura sobre el read model compartido. Debe fijar antes
+de editar el contrato de campos consultables, ventana, límites, ranking/orden estable, redacción y
+RBAC. Detalle sensible y exportaciones permanecen fuera de esta vertical.

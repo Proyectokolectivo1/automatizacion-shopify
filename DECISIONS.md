@@ -94,6 +94,14 @@ Actualizado: 2026-07-17
 | D-088  | DECISIÓN           | Cola y resumen importan un único read model y una sola política de atención v1                   | ACEPTADA E6-H2A    |
 | D-089  | DECISIÓN           | Resumen usa `[from,to)`, máximo 31 días y una consulta PostgreSQL con `GROUPING SETS`            | ACEPTADA E6-H2A    |
 | D-090  | DECISIÓN           | Resumen comparte permiso/controles de cola porque revela menos detalle del mismo modelo          | ACEPTADA E6-H2A    |
+| D-091  | DECISIÓN           | Next.js es BFF; tokens API solo viven en cookies HttpOnly y nunca llegan al JavaScript           | ACEPTADA E6-H3A    |
+| D-092  | DECISIÓN           | Login lista membresías tras verificar password y cada request deriva tenant desde `/auth/me`     | ACEPTADA E6-H3A    |
+| D-093  | DECISIÓN           | Crear/rotar/revocar sesión exige Origin exacto y CSRF double-submit; Secure en producción        | ACEPTADA E6-H3A    |
+| D-094  | DECISIÓN           | Proyección web elimina IDs/PII y conserva solo conteos, enums, fechas y cursor opaco             | ACEPTADA E6-H3A    |
+| D-095  | DECISIÓN           | Reglas de alerta son código inmutable v1 y consumen `requires_attention` del read model único    | ACEPTADA E6-H4A    |
+| D-096  | DECISIÓN           | Cada regla conserva ciclos open/resolved y solo una alerta open por tenant+regla+versión         | ACEPTADA E6-H4A    |
+| D-097  | DECISIÓN           | Scheduler evalúa lotes/ventanas acotados bajo locks tenant y una lectura agregada por lote       | ACEPTADA E6-H4A    |
+| D-098  | DECISIÓN           | API de alertas es solo lectura owner/admin/operations, sin PII, SLA, severidad ni notificación   | ACEPTADA E6-H4A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

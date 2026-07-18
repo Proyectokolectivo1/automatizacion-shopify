@@ -28,6 +28,7 @@ export class MetricsService {
   private readonly whatsappAssignmentOperations: Counter<'action' | 'outcome'>;
   private readonly observabilityAlertOperations: Counter<'action' | 'outcome'>;
   private readonly operationalQueueOperations: Counter<'action' | 'outcome'>;
+  private readonly operationalAlertOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -176,6 +177,12 @@ export class MetricsService {
       name: 'ecommerce_api_operational_queue_operations_total',
       registers: [this.registry],
     });
+    this.operationalAlertOperations = new Counter({
+      help: 'Evaluaciones y consultas acotadas de alertas operativas internas.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_operational_alert_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -281,6 +288,13 @@ export class MetricsService {
 
   public recordOperationalQueue(action: 'list' | 'summary', outcome: 'failure' | 'success'): void {
     this.operationalQueueOperations.inc({ action, outcome });
+  }
+
+  public recordOperationalAlerts(
+    action: 'evaluate' | 'list' | 'rules',
+    outcome: 'failure' | 'success',
+  ): void {
+    this.operationalAlertOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

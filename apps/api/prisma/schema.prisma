@@ -309,6 +309,13 @@ enum AuditOutcome {
   @@map("audit_outcome")
 }
 
+enum OperationalAlertStatus {
+  OPEN     @map("open")
+  RESOLVED @map("resolved")
+
+  @@map("operational_alert_status")
+}
+
 enum AccountActionPurpose {
   INVITATION     @map("invitation")
   PASSWORD_RESET @map("password_reset")
@@ -356,8 +363,32 @@ model Organization {
   paymentReconciliationIssues      PaymentReconciliationIssue[]
   reconciliationCheckpoints        ReconciliationCheckpoint[]
   reconciliationIssues             OrderReconciliationIssue[]
+  operationalAlerts                OperationalAlert[]
 
   @@map("organizations")
+}
+
+model OperationalAlert {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId    String                 @map("organization_id") @db.Uuid
+  ruleKey           String                 @map("rule_key") @db.VarChar(80)
+  ruleVersion       Int                    @map("rule_version")
+  itemType          String                 @map("item_type") @db.VarChar(64)
+  status            OperationalAlertStatus @default(OPEN)
+  observedCount     Int                    @map("observed_count")
+  windowStartedAt   DateTime               @map("window_started_at") @db.Timestamptz(3)
+  windowEndedAt     DateTime               @map("window_ended_at") @db.Timestamptz(3)
+  firstDetectedAt   DateTime               @map("first_detected_at") @db.Timestamptz(3)
+  lastDetectedAt    DateTime               @map("last_detected_at") @db.Timestamptz(3)
+  lastEvaluatedAt   DateTime               @map("last_evaluated_at") @db.Timestamptz(3)
+  resolvedAt        DateTime?              @map("resolved_at") @db.Timestamptz(3)
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization      Organization           @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([organizationId, status, lastDetectedAt, id], map: "operational_alerts_tenant_status_cursor_idx")
+  @@index([organizationId, itemType, status, lastDetectedAt, id], map: "operational_alerts_tenant_type_status_cursor_idx")
+  @@map("operational_alerts")
 }
 
 model User {

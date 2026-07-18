@@ -1,6 +1,6 @@
 # Checklist de release
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 Estado global: **NO LISTO PARA RELEASE**.
 
@@ -64,6 +64,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Asignación de conversaciones WhatsApp simulada completa.
 - [x] Cola operativa unificada pagina y filtra cinco dominios con RBAC, tenant y mínima proyección.
 - [x] Resumen operativo agrega la atención v1 con ventana acotada, RBAC y sin IDs/PII.
+- [x] Dashboard web usa BFF/cookies HttpOnly, CSRF, tenant derivado y proyección sin IDs/PII.
+- [x] Alertas operativas internas son durables, deduplicadas, tenant-safe, auditadas y fail-closed.
 - [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.

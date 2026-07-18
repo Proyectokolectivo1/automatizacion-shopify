@@ -1,55 +1,53 @@
 # Prompt para la siguiente sesión
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
-Continúa directamente en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está
-`EN_DESARROLLO`; no está listo para piloto ni producción. E0-H1 a E0-H5C, E0-H4C, E0-H3B,
-E1-H1A a E1-H5A, E2-H1A a E2-H6A, E3-H1A a E3-H7A y E6-H1A/H2A están completas. E6-H3A es la
-siguiente vertical.
+Continúa en `C:\Users\Usuario\Documents\Automatizacion Shopify`. El proyecto está `EN_DESARROLLO`;
+no está listo para piloto ni producción. E0-H1..H5C, E1-H1A..H5A, E2-H1A..H6A,
+E3-H1A..H7A y E6-H1A..H4A están completas. E6-H5A es la siguiente vertical propuesta.
 
 Repositorio: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. Rama
-`codex/foundations-e0-h2`, PR borrador #1. El bloque hasta E6-H1A fue publicado en `d1755f1`; revisa
-el log para el commit E6-H2A. No hagas commit/push adicional sin petición del usuario. GitHub CLI usa
-el keyring. No uses el PAT expuesto y confirma su revocación antes de aceptar credenciales nuevas.
+`codex/foundations-e0-h2`, PR borrador #1. El avance publicado llega a E6-H2A (`770c5c5`);
+E6-H3A/E6-H4A están validadas localmente y pendientes de publicación autorizada. GitHub CLI usa
+keyring. No usar el PAT expuesto y no hacer commit/push sin petición explícita.
 
-Usa siempre la skill `token-optimizer`: ejecuta su diagnóstico Codex read-only y aplica su disciplina
-de contexto. No instales hooks, compact prompt, status line ni configuración global sin aprobación.
-
-Lee por completo las fuentes maestras, controles vivos, `PROJECT_OVERVIEW.md`, `SESSION_LOG.md`,
-`docs/architecture/project-continuity.md` y la documentación E6-H1A/H2A antes de editar. Actualiza
-todos los controles y el log append-only cuando cambie el estado.
+Usa siempre `token-optimizer` en modo Codex read-only. No instales hooks, compact prompt, status line
+ni configuración global sin aprobación. Lee controles vivos, `PROJECT_OVERVIEW.md`, `SESSION_LOG.md`,
+continuidad y documentación E6-H1A/H2A/H3A antes de editar.
 
 ## Baseline
 
-Ejecuta instalación congelada, `pnpm validate`, integración, database/outbox/DLQ/auth/identity,
-todos los gates Shopify/Wompi/WhatsApp/operations, migraciones, observabilidad, infraestructura y
-`pnpm audit --prod`. Ejecuta en serie las suites que llaman `prisma generate`; no borres volúmenes.
+- `pnpm validate`: 81 pruebas totales; API 20 archivos/73 pruebas y 100 % crítico, web 8/8.
+- `pnpm auth:verify`: 16/16; `pnpm operations:verify`: 7/7.
+- `pnpm alerts:verify`: 7/7; `pnpm database:verify`: 16/16; 30/30 migraciones y cero drift.
+- Todos los gates Shopify/Wompi/WhatsApp, outbox/DLQ/identity/integración, infraestructura,
+  observabilidad y `pnpm audit --prod` están verdes.
+- El compose debe quedar detenido con volúmenes persistentes al cerrar.
 
-Baseline al cierre de E6-H2A: `pnpm validate` con 20 archivos/73 pruebas y 100 % crítico,
-`pnpm operations:verify` 7/7, `pnpm whatsapp:verify` 25/25, `pnpm database:verify` 15/15 y 28/28
-migraciones. Todos los gates funcionales, observabilidad, infraestructura y auditoría están verdes.
-El compose local se deja detenido con volúmenes persistentes.
+## Garantías E6-H3A
 
-## Siguiente vertical exacta: E6-H3A
+- Next.js es BFF; los tokens solo viven en cookies HttpOnly/SameSite/Secure en producción.
+- Crear/rotar/revocar sesión exige Origin exacto y, con sesión, CSRF double-submit.
+- Login ofrece únicamente membresías activas después de verificar credenciales/rate limit.
+- Cada lectura deriva organización de `/auth/me`; nunca confiar en tenant enviado/guardado por web.
+- La proyección web elimina email, IDs de recursos/tienda, relaciones, PII y cuerpos.
+- CSP permite `unsafe-eval` solo en desarrollo; producción fue comprobada sin esa fuente.
 
-Construye la base segura del dashboard Next.js de solo lectura antes de añadir visualizaciones:
+## Garantías E6-H4A
 
-- decidir y documentar un flujo BFF/sesión web que use cookies `HttpOnly`, `Secure` en producción y
-  `SameSite`, sin exponer el access token a JavaScript ni guardarlo en localStorage/sessionStorage;
-- incorporar protección CSRF para toda ruta web que cree/rote/revoque sesión y mantener CORS/orígenes
-  default-deny; no debilitar el contrato API Bearer existente para clientes no web;
-- seleccionar organización solo desde membresías activas retornadas por backend y revalidar tenant en
-  cada request; nunca confiar en un ID conservado por el navegador;
-- crear un shell accesible de dashboard y estados loading/empty/error que consuman resumen/cola a
-  través del BFF, sin mostrar PII, payloads o IDs externos;
-- mantener filtros/rangos acotados y cursores opacos; no sumar páginas parciales para simular totales;
-- añadir pruebas unitarias y E2E/HTTP para cookie flags, CSRF, logout/revocación, RBAC, tenant, ausencia
-  de tokens en HTML/storage/logs y degradación segura de la API;
-- activar el gate web correspondiente en CI y documentar arquitectura, contrato, seguridad, pruebas y
-  runbook antes de marcarla completa;
-- no añadir mutaciones operativas, alertas automáticas, exports, proveedores reales ni despliegue.
+- Cinco reglas inmutables v1 reutilizan `requires_attention`; no existe SLA ni severidad inventada.
+- Scheduler y evaluador usan lote/ventana acotados, locks tenant y una lectura agregada por lote.
+- PostgreSQL conserva ciclos open/resolved y un índice parcial impide dos alertas abiertas por regla.
+- La API pública solo ofrece reglas/listado owner/admin/operations con cursor, filtros y `no-store`.
+- Alertas, auditoría y métricas no contienen PII, IDs fuente, payloads ni cardinalidad libre.
+- Flags/kill switch fallan cerrados; no hay notificaciones, autocorrección, exportación o proveedor real.
 
-Conserva las garantías previas: la atención v1 solo vive en `operational-read-model.ts`; el resumen
-usa `[from,to)` <=31 días; Collector/alertas no tumban API; métricas productivas exigen Bearer;
-contenido WhatsApp vencido no se descifra. TD-023/024/025/026 y R-018 siguen abiertas. Proveedores
-reales permanecen bloqueados.
+## Siguiente vertical propuesta: E6-H5A
+
+Construye búsqueda operativa global de solo lectura sobre el read model compartido. Antes de editar,
+fija el contrato exacto de campos consultables, ventana máxima, límites, orden/ranking estable,
+redacción y RBAC. Mantén detalle sensible y exportaciones fuera de E6-H5A salvo que el control maestro
+los autorice expresamente. Reutiliza tenant, auditoría, métricas, flag/kill switch y pruebas negativas.
+
+Conserva TD-023/024/025/026 y los bloqueos externos. No borres volúmenes ni presentes mocks como
+integraciones reales.

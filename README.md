@@ -57,6 +57,10 @@ pnpm orders:classification:verify
 pnpm shopify:reconciliation:verify
 pnpm transport-rates:verify
 pnpm wompi:verify
+pnpm whatsapp:verify
+pnpm operations:verify
+pnpm alerts:verify
+pnpm web:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -105,6 +109,14 @@ mutan Shopify en esta fase.
 La conciliación diaria simulada usa el mismo gate; consulte
 `docs/runbooks/wompi-reconciliation.md`. Persiste checkpoint, reportes e incidencias deduplicadas,
 alerta por outbox y nunca corrige automáticamente estados o importes.
+
+Las alertas operativas internas se validan con `pnpm alerts:verify`; consulte
+`docs/runbooks/operational-alerts.md`. Persisten ciclos de atención v1 deduplicados y solo ofrecen
+lectura tenant-safe; no envían notificaciones ni corrigen recursos.
+
+El dashboard interno usa Next.js como BFF y se valida con `pnpm web:verify`; consulte
+`docs/runbooks/web-dashboard.md`. Los tokens API solo viven en cookies HttpOnly, toda mutación de
+sesión exige CSRF/origen y el navegador recibe una proyección operativa sin IDs ni PII.
 
 ## Estado real
 

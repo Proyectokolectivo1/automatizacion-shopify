@@ -24,6 +24,7 @@
     "test:shopify-order": "pnpm prisma:generate && vitest run --config vitest.shopify-order.config.ts",
     "test:order-classification": "pnpm prisma:generate && vitest run --config vitest.order-classification.config.ts",
     "test:operational-queue": "pnpm prisma:generate && vitest run --config vitest.operational-queue.config.ts",
+    "test:operational-alerts": "pnpm prisma:generate && vitest run --config vitest.operational-alerts.config.ts",
     "test:shopify-reconciliation": "pnpm prisma:generate && vitest run --config vitest.shopify-reconciliation.config.ts",
     "test:transport-rate": "pnpm prisma:generate && vitest run --config vitest.transport-rate.config.ts",
     "test:wompi": "pnpm prisma:generate && vitest run --config vitest.wompi.config.ts",

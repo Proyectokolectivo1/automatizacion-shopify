@@ -164,7 +164,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('28');
+    expect(migrations.rows[0]?.count).toBe('30');
     const operationalIndexes = await database.query<{ indexname: string }>(
       `SELECT indexname FROM pg_indexes
        WHERE indexname = ANY($1::text[]) ORDER BY indexname`,
@@ -1339,6 +1339,59 @@ describe('initial database migration', () => {
           next_run_at)
          VALUES ($1, $2, 'wompi', NOW(), NOW(), NOW(), NOW())`,
         [paymentIntent.organization_id, paymentIntent.store_id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+  });
+
+  it('enforces tenant-safe operational alert lifecycle and open-alert deduplication', async () => {
+    const organization = await database.query<{ id: string }>(
+      `INSERT INTO organizations (name) VALUES ('Operational Alert Constraints') RETURNING id`,
+    );
+    const organizationId = organization.rows[0]?.id;
+    const alertValues = [
+      organizationId,
+      'order_attention',
+      1,
+      'order',
+      2,
+      new Date('2026-07-18T09:00:00.000Z'),
+      new Date('2026-07-18T12:00:00.000Z'),
+    ];
+    await database.query(
+      `INSERT INTO operational_alerts
+       (organization_id, rule_key, rule_version, item_type, observed_count,
+        window_started_at, window_ended_at, first_detected_at, last_detected_at,
+        last_evaluated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $7, $7)`,
+      alertValues,
+    );
+    await expect(
+      database.query(
+        `INSERT INTO operational_alerts
+         (organization_id, rule_key, rule_version, item_type, observed_count,
+          window_started_at, window_ended_at, first_detected_at, last_detected_at,
+          last_evaluated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $7, $7)`,
+        alertValues,
+      ),
+    ).rejects.toMatchObject({ code: '23505' });
+    await expect(
+      database.query(
+        `INSERT INTO operational_alerts
+         (organization_id, rule_key, rule_version, item_type, status, observed_count,
+          window_started_at, window_ended_at, first_detected_at, last_detected_at,
+          last_evaluated_at)
+         VALUES ($1, 'payment_intent_attention', 1, 'order', 'open', 1,
+          $2, $3, $3, $3, $3)`,
+        [organizationId, alertValues[5], alertValues[6]],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `UPDATE operational_alerts
+         SET status = 'resolved', observed_count = 0, resolved_at = NULL
+         WHERE organization_id = $1 AND rule_key = 'order_attention'`,
+        [organizationId],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

@@ -893,3 +893,63 @@ No hubo migración nueva: los índices de E6-H1A cubren las cinco ramas y `datab
 nuevos; se corrigió y el gate completo pasó al repetir. Antes de E6-H2A se publicó el bloque
 E3-H7A/E0-H3B/E6-H1A en `d1755f1` y se actualizó el PR borrador #1. No hubo mutaciones operativas,
 credenciales ni tráfico real. E6-H3A es la siguiente vertical.
+
+## Iteración E6-H3A
+
+Fecha: 2026-07-17.
+
+| Validación                     | Comando/medio                 | Resultado                                   |
+| ------------------------------ | ----------------------------- | ------------------------------------------- |
+| Formatter/lint/types/builds    | `pnpm validate`               | OK: 81 pruebas y ambos builds               |
+| Cobertura crítica API          | `pnpm test`                   | OK: 20 archivos/73 pruebas, 100 %           |
+| BFF/cookies/CSRF/tenant        | `pnpm web:verify`             | OK: 8/8                                     |
+| Auth/membresías/switch         | `pnpm auth:verify`            | OK: 16/16 PostgreSQL/HTTP                   |
+| Cola/resumen                   | `pnpm operations:verify`      | OK: 7/7                                     |
+| Migraciones/constraints        | `pnpm database:verify/status` | OK: 15/15, 28/28 y cero drift               |
+| Regresión funcional            | gates dedicados en serie      | OK: todos los dominios                      |
+| Infraestructura/observabilidad | gates runtime                 | OK: seis servicios, persistencia y recovery |
+| Dependencias                   | `pnpm audit --prod`           | OK: cero vulnerabilidades conocidas         |
+| Interfaz escritorio/móvil      | navegador local               | OK: render, labels, hidratación y error     |
+| Headers productivos            | build + request local         | OK: CSP sin eval, DENY y nosniff            |
+
+El BFF no devuelve access/refresh, email, `itemId`, `storeId` ni relaciones. El tenant se obtiene de
+`/auth/me`; un `organizationId` malicioso en la query se rechaza antes de contactar la API. Login
+solo muestra membresías activas después de verificar contraseña y el switch revoca la sesión previa
+antes de crear la siguiente.
+
+Incidencias corregidas durante el cierre: una aserción Supertest usaba un matcher asimétrico como
+cuerpo exacto; la CSP inicial bloqueaba React Refresh en desarrollo; y Autoprefixer pidió
+`flex-end`. Se corrigieron y repitieron los gates. Producción conserva `unsafe-eval` bloqueado. No
+hubo migración, credenciales, tráfico real, mutaciones operativas ni despliegue.
+
+## Iteración E6-H4A
+
+Fecha: 2026-07-18.
+
+| Validación                     | Comando                  | Resultado                                        |
+| ------------------------------ | ------------------------ | ------------------------------------------------ |
+| Formatter/lint/types/builds    | `pnpm validate`          | OK: 81 pruebas y ambos builds                    |
+| Cobertura crítica API          | `pnpm test`              | OK: 20 archivos/73 pruebas, 100 %                |
+| Alertas PostgreSQL/HTTP        | `pnpm alerts:verify`     | OK: 7/7                                          |
+| Migraciones/constraints        | `pnpm database:verify`   | OK: 16/16, 30/30 y cero drift                    |
+| Cola/read model compartido     | `pnpm operations:verify` | OK: 7/7                                          |
+| Auth y dashboard BFF           | gates dedicados          | OK: auth 16/16 y web 8/8                         |
+| Regresión de dominios          | gates en serie           | OK: todos                                        |
+| Infraestructura/observabilidad | gates runtime            | OK: persistencia, alertas, fallos y recuperación |
+| Dependencias                   | `pnpm audit --prod`      | OK: cero vulnerabilidades conocidas              |
+
+Se añadieron cinco reglas v1 explícitas sobre el único read model de atención, una tabla tenant-safe
+de ciclos open/resolved y dedupe durable por índice parcial. El scheduler recorre organizaciones en
+lotes; cada evaluación adquiere locks transaccionales ordenados y ejecuta una lectura agregada y una
+transición SQL por lote. La API pública se limita a reglas/listado con RBAC, cursor, filtros,
+`no-store` y proyección sin PII ni IDs fuente.
+
+La primera prueba integrada detectó casts ausentes en el CTE; la siguiente expuso que un lock tomado
+dentro de la misma sentencia conserva un snapshot previo. Se corrigió adquiriendo locks en una
+sentencia anterior de la misma transacción y la carrera quedó verde. `database:verify` detectó además
+la dirección física divergente de dos índices; la migración forward-only 30 la alineó con Prisma y
+eliminó el drift. El primer `pnpm validate` final detectó únicamente accesos `any` de Supertest; se
+tiparon y el gate completo pasó al repetir.
+
+No hubo notificaciones, autocorrecciones, exportaciones, credenciales, tráfico real, despliegue ni
+publicación Git. E6-H5A, búsqueda operativa global de solo lectura, es la siguiente vertical propuesta.

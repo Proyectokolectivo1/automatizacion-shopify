@@ -1,6 +1,6 @@
 # Resumen general del proyecto
 
-Actualizado: 2026-07-17
+Actualizado: 2026-07-18
 
 > Este documento debe actualizarse en cada sesión donde cambien funcionalidades, alcance, bloqueos,
 > riesgos, pruebas o el siguiente paso del proyecto.
@@ -34,7 +34,7 @@ publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR
 abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
 Las fundaciones están al 100 %, Shopify al 75 %, pagos/tarifas al 80 %, WhatsApp al 90 % y operación
-al 30 %. Ya existe un monorepo reproducible
+al 55 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
@@ -42,7 +42,10 @@ ciclo operativo seguro, catálogo local versionado, envío transaccional durable
 y mensajes entrantes cifrados por webhooks sintéticos autenticados. La bandeja simulada ya ofrece
 listado/timeline y asignación versionada tenant-safe; todavía no existen conexiones, entregas ni
 estados Meta reales. La cola y su resumen operativo ya proyectan/agregan los cinco dominios con RBAC,
-ventanas/filtros acotados, cursor estable y mínima exposición de datos.
+ventanas/filtros acotados, cursor estable y mínima exposición. Un dashboard Next.js responsive los
+consume mediante BFF, cookies HttpOnly y protección CSRF sin exponer tokens ni IDs de recursos.
+Las alertas operativas internas materializan esa misma atención v1 con reglas versionadas, estado
+durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectura.
 
 ## Implementado
 
@@ -116,6 +119,10 @@ ventanas/filtros acotados, cursor estable y mínima exposición de datos.
   índices tenant-safe, auditoría, métricas y controles fail-closed.
 - Resumen agregado con ventana máxima de 31 días, conteos por tipo/estado y una única política de
   atención compartida con la cola, sin IDs ni PII.
+- Login web por membresías activas, rotación tenant-safe, cookies HttpOnly/SameSite/Secure en
+  producción, CSRF/origen y dashboard accesible con filtros, cursor y estados seguros.
+- Alertas operativas v1 con scheduler por lotes, locks tenant, ciclos open/resolved durables, índice
+  parcial de dedupe, API de reglas/listado, auditoría, métricas y controles fail-closed.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -146,8 +153,7 @@ ventanas/filtros acotados, cursor estable y mínima exposición de datos.
 
 ### Operación, finanzas y publicidad
 
-- Base web segura y dashboard visual sobre la cola/resumen ya disponibles; faltan alertas, búsquedas
-  y exportaciones.
+- Búsquedas/detalle y exportaciones acotadas sobre el dashboard ya disponible.
 - Costos históricos, rentabilidad por pedido y snapshots financieros.
 - Integraciones publicitarias, atribución con nivel de confianza y ROAS.
 - Auditoría funcional y herramientas de reproceso manual.
@@ -174,9 +180,8 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E6-H3A: construir la base segura del dashboard web de solo lectura. Debe resolver sesión web mediante
-cookie HttpOnly/SameSite y protección CSRF/BFF antes de consumir cola/resumen; queda prohibido guardar
-Bearer en localStorage o añadir mutaciones, alertas automáticas y proveedores reales.
+E6-H5A: búsqueda operativa global de solo lectura sobre el read model compartido. Antes de incluir
+detalle o exportaciones se debe fijar su contrato mínimo, límites, redacción y criterios de acceso.
 
 ## Dónde consultar más detalle
 

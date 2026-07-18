@@ -1,6 +1,6 @@
 # Seguridad de autenticación
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-17
 
 - Argon2id v1: 19 MiB, 2 iteraciones, paralelismo 1, salida 32 bytes y parámetros versionados.
 - Password de API: 12 a 128 caracteres; salt generado por Argon2.
@@ -19,6 +19,9 @@ Actualizado: 2026-07-14
 - El bootstrap es local, no acepta argumentos y su secreto solo existe en el entorno del proceso.
 - Administración de identidad requiere `identity.manage`, flag explícito y kill switch desactivado.
 - Cambiar rol o revocar membresía invalida todas las sesiones afectadas en la misma transacción.
+- El descubrimiento de organizaciones verifica contraseña, estado/bloqueo y rate limit antes de
+  devolver membresías; una organización enviada por el navegador siempre se revalida en backend.
+- El cambio de organización revoca la sesión anterior y crea otra de forma atómica.
 
-La API presupone HTTPS en despliegue. La UI futura no debe usar `localStorage`; cookie/CSRF, proxy
-confiable y MFA deberán resolverse antes del piloto.
+La API presupone HTTPS en despliegue. El BFF E6-H3A guarda tokens solo en cookies HttpOnly y aplica
+origen+CSRF; MFA y proxy confiable deberán resolverse antes del piloto.

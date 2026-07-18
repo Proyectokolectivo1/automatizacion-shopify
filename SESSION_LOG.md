@@ -210,3 +210,41 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - El primer validate final solo detectó formato en dos Markdown nuevos; Prettier lo corrigió.
 - No hubo migración, mutaciones operativas, credenciales, tráfico real ni despliegue.
 - Siguiente vertical: E6-H3A, base segura del dashboard web sin Bearer en localStorage.
+
+## 2026-07-17 — sesión actual: E6-H3A dashboard web seguro
+
+- `token-optimizer` se ejecutó en modo Codex read-only: overhead 17.854 (6,9 %), eficiencia S/96 y
+  cero desperdicio medible; no se instalaron hooks/configuración global.
+- NestJS añade opciones de login tras verificar contraseña, listado propio de membresías y switch de
+  organización que revoca/crea sesión de forma atómica.
+- Next.js actúa como BFF con cookies access/refresh HttpOnly, SameSite, Secure en producción, CSRF
+  CSPRNG, Origin exacto, timeout interno y errores acotados.
+- El dashboard responsive deriva tenant de `/auth/me`, consume cola/resumen, filtra rango/tipo,
+  pagina por cursor opaco y elimina email/IDs/relaciones antes del navegador.
+- La revisión real de escritorio/móvil detectó CSP incompatible con React Refresh; `unsafe-eval`
+  quedó limitado a desarrollo y el build productivo se comprobó sin esa directiva.
+- Evidencia final: validate 81/81, API 73/73 con 100 % crítico, web 8/8, auth 16/16, operations 7/7,
+  database 15/15 y 28/28; todos los gates, infraestructura, observabilidad y audit verdes.
+- No hubo migración, mutaciones operativas, credenciales, tráfico real ni despliegue. Los cambios
+  E6-H3A quedan locales y no se publican sin una petición explícita.
+- Siguiente vertical: E6-H4A, alertas operativas internas, durables y deduplicadas.
+
+## 2026-07-18 — sesión actual: E6-H4A alertas operativas durables
+
+- `token-optimizer` se ejecutó en modo Codex read-only: overhead 17.854 tokens (6,9 %), eficiencia
+  histórica S/96, cero desperdicio medible; no se instalaron hooks/configuración global.
+- Cinco reglas inmutables v1 consumen la política `requires_attention` compartida; no se introdujeron
+  SLA, severidad, prioridad ni semánticas paralelas.
+- Migraciones 29/30 añaden `operational_alerts`, constraints de lifecycle/tenant, dedupe parcial e
+  índices alineados con Prisma; la base persistente quedó 30/30 y sin drift.
+- Scheduler/evaluador recorren lotes acotados, adquieren locks tenant ordenados y ejecutan una lectura
+  agregada más una transición SQL; replay, carrera, resolución y reapertura son idempotentes.
+- `GET /operations/organizations/:organizationId/alerts[/rules]` es solo lectura para
+  owner/admin/operations, usa cursor/filtros/no-store y no expone PII, IDs fuente ni payloads.
+- Evidencia final: validate 81/81, API 73/73 con 100 % crítico, web 8/8, alerts 7/7, database 16/16,
+  auth 16/16, operations 7/7; todos los gates funcionales/runtime y audit de dependencias verdes.
+- Incidencias corregidas: casts SQL del CTE, snapshot previo al lock, dirección de índices y tipado
+  estricto de cuerpos Supertest. No quedan defectos conocidos en E6-H4A.
+- No hubo credenciales, tráfico real, notificaciones, autocorrecciones, exportaciones, despliegue,
+  commit ni push. E6-H3A/E6-H4A permanecen locales hasta autorización explícita.
+- Siguiente vertical propuesta: E6-H5A, búsqueda operativa global de solo lectura.

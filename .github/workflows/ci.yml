@@ -81,6 +81,12 @@ jobs:
       - name: Verify unified operational queue
         run: pnpm operations:verify
 
+      - name: Verify durable operational alerts
+        run: pnpm alerts:verify
+
+      - name: Verify secure web BFF and dashboard contracts
+        run: pnpm web:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

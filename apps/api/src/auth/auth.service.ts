@@ -1,12 +1,19 @@
 import { randomUUID } from 'node:crypto';
 
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 
 import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
 import { AuditService } from './audit.service';
 import { AuthRateLimitService } from './auth-rate-limit.service';
-import type { AuthPrincipal, AuthTokens } from './auth.types';
+import { roleHasPermission } from './permissions';
+import type { AuthOrganizationOption, AuthPrincipal, AuthTokens } from './auth.types';
 import { PasswordService } from './password.service';
 import { hashSensitive, issueOpaqueToken, parseOpaqueToken, safeHashEquals } from './token';
 
@@ -21,6 +28,19 @@ interface LoginCommand {
 interface RefreshCommand {
   readonly ipAddress: string;
   readonly refreshToken: string;
+  readonly userAgent: string | undefined;
+}
+
+interface DiscoverOrganizationsCommand {
+  readonly email: string;
+  readonly ipAddress: string;
+  readonly password: string;
+}
+
+interface SwitchOrganizationCommand {
+  readonly ipAddress: string;
+  readonly organizationId: string;
+  readonly principal: AuthPrincipal;
   readonly userAgent: string | undefined;
 }
 
@@ -101,6 +121,53 @@ export class AuthService {
     return this.publicTokens(tokens);
   }
 
+  public async discoverOrganizations(
+    command: DiscoverOrganizationsCommand,
+  ): Promise<readonly AuthOrganizationOption[]> {
+    const email = command.email.trim().toLowerCase();
+    if (!(await this.rateLimit.consume(email, command.ipAddress, 'login-options'))) {
+      await this.audit.record({ action: 'auth.login_options', outcome: 'DENIED' });
+      throw new HttpException('Too many login attempts', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    const user = await this.prisma.user.findUnique({
+      include: {
+        memberships: {
+          include: { organization: true },
+          orderBy: [{ organization: { name: 'asc' } }, { organizationId: 'asc' }],
+          where: { status: 'ACTIVE' },
+        },
+      },
+      where: { email },
+    });
+    const passwordMatches = await this.password.verify(user?.passwordHash, command.password);
+    const accountAvailable =
+      user?.status === 'ACTIVE' &&
+      (user.lockedUntil === null || user.lockedUntil <= new Date()) &&
+      user.memberships.length > 0;
+    if (!passwordMatches || !accountAvailable || user === null) {
+      if (user !== null) await this.recordFailedLogin(user.id);
+      await this.audit.record({
+        action: 'auth.login_options',
+        actorUserId: user?.id,
+        outcome: 'FAILURE',
+      });
+      throw new UnauthorizedException(INVALID_CREDENTIALS);
+    }
+    await this.rateLimit.clear(email, command.ipAddress, 'login-options');
+    await this.audit.record({
+      action: 'auth.login_options',
+      actorUserId: user.id,
+      metadata: { organizationCount: user.memberships.length },
+      outcome: 'SUCCESS',
+    });
+    return user.memberships.map(({ organization, organizationId, role }) => ({
+      dashboardAllowed: roleHasPermission(role, 'operations.queue.read'),
+      name: organization.name,
+      organizationId,
+      role,
+    }));
+  }
+
   public async authenticate(accessToken: string): Promise<AuthPrincipal> {
     const parsed = parseOpaqueToken(accessToken);
     if (parsed === undefined) throw new UnauthorizedException('Invalid session');
@@ -141,6 +208,22 @@ export class AuthService {
       sessionId: session.id,
       userId: session.userId,
     };
+  }
+
+  public async listOrganizations(
+    principal: AuthPrincipal,
+  ): Promise<readonly AuthOrganizationOption[]> {
+    const memberships = await this.prisma.organizationMembership.findMany({
+      include: { organization: true },
+      orderBy: [{ organization: { name: 'asc' } }, { organizationId: 'asc' }],
+      where: { status: 'ACTIVE', userId: principal.userId },
+    });
+    return memberships.map(({ organization, organizationId, role }) => ({
+      dashboardAllowed: roleHasPermission(role, 'operations.queue.read'),
+      name: organization.name,
+      organizationId,
+      role,
+    }));
   }
 
   public async refresh(command: RefreshCommand): Promise<AuthTokens> {
@@ -208,6 +291,51 @@ export class AuthService {
       organizationId: session.organizationId,
       outcome: 'SUCCESS',
       resourceId: session.id,
+      resourceType: 'auth_session',
+    });
+    return this.publicTokens(tokens);
+  }
+
+  public async switchOrganization(command: SwitchOrganizationCommand): Promise<AuthTokens> {
+    const tokens = this.createTokenPair();
+    await this.prisma.$transaction(async (transaction) => {
+      const membership = await transaction.organizationMembership.findFirst({
+        include: { user: true },
+        where: {
+          organizationId: command.organizationId,
+          status: 'ACTIVE',
+          userId: command.principal.userId,
+        },
+      });
+      if (membership === null || membership.user.status !== 'ACTIVE') {
+        throw new ForbiddenException('Organization access denied');
+      }
+      const revoked = await transaction.authSession.updateMany({
+        data: { revokedAt: new Date() },
+        where: { id: command.principal.sessionId, revokedAt: null },
+      });
+      if (revoked.count !== 1) throw new UnauthorizedException('Invalid session');
+      await transaction.authSession.create({
+        data: {
+          accessExpiresAt: tokens.accessExpiresAt,
+          accessTokenHash: tokens.accessHash,
+          id: tokens.sessionId,
+          ipHash: hashSensitive(command.ipAddress),
+          organizationId: command.organizationId,
+          refreshExpiresAt: tokens.refreshExpiresAt,
+          refreshTokenHash: tokens.refreshHash,
+          userAgentHash: command.userAgent ? hashSensitive(command.userAgent) : null,
+          userId: command.principal.userId,
+        },
+      });
+    });
+    await this.audit.record({
+      action: 'auth.organization_switched',
+      actorUserId: command.principal.userId,
+      metadata: { sessionRotated: true },
+      organizationId: command.organizationId,
+      outcome: 'SUCCESS',
+      resourceId: tokens.sessionId,
       resourceType: 'auth_session',
     });
     return this.publicTokens(tokens);
