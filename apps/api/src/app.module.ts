@@ -64,6 +64,8 @@ import { WhatsAppTemplateController } from './whatsapp/whatsapp-template.control
 import { WhatsAppTemplateService } from './whatsapp/whatsapp-template.service';
 import { WhatsAppStatusController } from './whatsapp/whatsapp-status.controller';
 import { WhatsAppStatusService } from './whatsapp/whatsapp-status.service';
+import { WhatsAppInboundController } from './whatsapp/whatsapp-inbound.controller';
+import { WhatsAppInboundService } from './whatsapp/whatsapp-inbound.service';
 
 @Module({
   controllers: [
@@ -80,6 +82,7 @@ import { WhatsAppStatusService } from './whatsapp/whatsapp-status.service';
     WompiWebhookController,
     WhatsAppIntegrationController,
     WhatsAppMessageController,
+    WhatsAppInboundController,
     WhatsAppStatusController,
     WhatsAppTemplateController,
   ],
@@ -123,6 +126,7 @@ import { WhatsAppStatusService } from './whatsapp/whatsapp-status.service';
     WhatsAppCredentialCipher,
     WhatsAppIntegrationService,
     WhatsAppMessageService,
+    WhatsAppInboundService,
     WhatsAppStatusService,
     WhatsAppTemplateService,
     WhatsAppMockProvider,

@@ -92,8 +92,23 @@ enum WhatsAppMessageStatus {
   SIMULATED_DELIVERED @map("simulated_delivered")
   SIMULATED_READ      @map("simulated_read")
   SIMULATED_FAILED    @map("simulated_failed")
+  SIMULATED_RECEIVED  @map("simulated_received")
 
   @@map("whatsapp_message_status")
+}
+
+enum WhatsAppInboundIdentityResolution {
+  KNOWN_CUSTOMER  @map("known_customer")
+  UNKNOWN_CONTACT @map("unknown_contact")
+
+  @@map("whatsapp_inbound_identity_resolution")
+}
+
+enum WhatsAppInboundWebhookOutcome {
+  ACCEPTED  @map("accepted")
+  DUPLICATE @map("duplicate")
+
+  @@map("whatsapp_inbound_webhook_outcome")
 }
 
 enum WhatsAppStatusWebhookOutcome {
@@ -302,6 +317,7 @@ model Organization {
   whatsappConversations            WhatsAppConversation[]
   whatsappMessages                 WhatsAppMessage[]
   whatsappStatusWebhookEvents      WhatsAppStatusWebhookEvent[]
+  whatsappInboundWebhookEvents     WhatsAppInboundWebhookEvent[]
   whatsappMessageStatusHistory     WhatsAppMessageStatusHistory[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
@@ -460,6 +476,7 @@ model Store {
   whatsappConversations            WhatsAppConversation[]
   whatsappMessages                 WhatsAppMessage[]
   whatsappStatusWebhookEvents      WhatsAppStatusWebhookEvent[]
+  whatsappInboundWebhookEvents     WhatsAppInboundWebhookEvent[]
   whatsappMessageStatusHistory     WhatsAppMessageStatusHistory[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
@@ -541,21 +558,24 @@ model WhatsAppTemplate {
 }
 
 model WhatsAppConversation {
-  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String                     @map("organization_id") @db.Uuid
-  storeId        String                     @map("store_id") @db.Uuid
-  customerId     String                     @map("customer_id") @db.Uuid
-  phoneE164      String                     @map("phone_e164") @db.VarChar(32)
-  status         WhatsAppConversationStatus @default(OPEN)
-  lastMessageAt  DateTime                   @map("last_message_at") @db.Timestamptz(3)
-  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime                   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization   Organization               @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store          Store                      @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_store_tenant_fkey")
-  customer       Customer                   @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_customer_tenant_fkey")
-  messages       WhatsAppMessage[]
+  id                   String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String                        @map("organization_id") @db.Uuid
+  storeId              String                        @map("store_id") @db.Uuid
+  customerId           String?                       @map("customer_id") @db.Uuid
+  phoneE164            String?                       @map("phone_e164") @db.VarChar(32)
+  contactHash          String?                       @map("contact_hash") @db.Char(64)
+  status               WhatsAppConversationStatus    @default(OPEN)
+  lastMessageAt        DateTime                      @map("last_message_at") @db.Timestamptz(3)
+  createdAt            DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                Store                         @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_store_tenant_fkey")
+  customer             Customer?                     @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_customer_tenant_fkey")
+  messages             WhatsAppMessage[]
+  inboundWebhookEvents WhatsAppInboundWebhookEvent[]
 
   @@unique([storeId, phoneE164], map: "whatsapp_conversations_store_phone_key")
+  @@unique([storeId, contactHash], map: "whatsapp_conversations_store_contact_hash_key")
   @@unique([organizationId, storeId, id], map: "whatsapp_conversations_tenant_id_key")
   @@index([organizationId, status, lastMessageAt], map: "whatsapp_conversations_tenant_status_last_idx")
   @@index([customerId, lastMessageAt], map: "whatsapp_conversations_customer_last_idx")
@@ -567,13 +587,16 @@ model WhatsAppMessage {
   organizationId      String                         @map("organization_id") @db.Uuid
   storeId             String                         @map("store_id") @db.Uuid
   conversationId      String                         @map("conversation_id") @db.Uuid
-  orderId             String                         @map("order_id") @db.Uuid
-  templateId          String                         @map("template_id") @db.Uuid
+  orderId             String?                        @map("order_id") @db.Uuid
+  templateId          String?                        @map("template_id") @db.Uuid
   direction           WhatsAppMessageDirection       @default(OUTBOUND)
-  providerMessageId   String                         @unique(map: "whatsapp_messages_provider_message_key") @map("provider_message_id") @db.VarChar(160)
+  providerMessageId   String                         @map("provider_message_id") @db.VarChar(160)
   type                WhatsAppMessageType            @default(TEMPLATE)
   status              WhatsAppMessageStatus          @default(SIMULATED_ACCEPTED)
-  body                String                         @db.VarChar(4096)
+  body                String?                        @db.VarChar(4096)
+  encryptedBodyJson   Json?                          @map("encrypted_body_json") @db.JsonB
+  contentFingerprint  String?                        @map("content_fingerprint") @db.Char(64)
+  senderHash          String?                        @map("sender_hash") @db.Char(64)
   metadataJson        Json                           @map("metadata_json") @db.JsonB
   businessKeyHash     String                         @unique(map: "whatsapp_messages_business_key_hash_key") @map("business_key_hash") @db.Char(64)
   requestFingerprint  String                         @map("request_fingerprint") @db.Char(64)
@@ -581,20 +604,58 @@ model WhatsAppMessage {
   deliveredAt         DateTime?                      @map("delivered_at") @db.Timestamptz(3)
   readAt              DateTime?                      @map("read_at") @db.Timestamptz(3)
   failedAt            DateTime?                      @map("failed_at") @db.Timestamptz(3)
+  receivedAt          DateTime?                      @map("received_at") @db.Timestamptz(3)
+  retentionExpiresAt  DateTime?                      @map("retention_expires_at") @db.Timestamptz(3)
   createdAt           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
   organization        Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   store               Store                          @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_store_tenant_fkey")
   conversation        WhatsAppConversation           @relation(fields: [organizationId, storeId, conversationId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_conversation_tenant_fkey")
-  order               Order                          @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_order_tenant_fkey")
-  template            WhatsAppTemplate               @relation(fields: [organizationId, storeId, templateId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_template_tenant_fkey")
+  order               Order?                         @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_order_tenant_fkey")
+  template            WhatsAppTemplate?              @relation(fields: [organizationId, storeId, templateId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_template_tenant_fkey")
   statusWebhookEvents WhatsAppStatusWebhookEvent[]
   statusHistory       WhatsAppMessageStatusHistory[]
+  inboundWebhookEvents WhatsAppInboundWebhookEvent[]
 
   @@unique([organizationId, storeId, id], map: "whatsapp_messages_tenant_id_key")
+  @@unique([storeId, providerMessageId], map: "whatsapp_messages_store_provider_message_key")
   @@index([conversationId, createdAt], map: "whatsapp_messages_conversation_created_idx")
   @@index([orderId, createdAt], map: "whatsapp_messages_order_created_idx")
   @@index([organizationId, status, createdAt], map: "whatsapp_messages_tenant_status_created_idx")
   @@map("whatsapp_messages")
+}
+
+model WhatsAppInboundWebhookEvent {
+  id                    String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String                            @map("organization_id") @db.Uuid
+  storeId               String                            @map("store_id") @db.Uuid
+  conversationId        String                            @map("conversation_id") @db.Uuid
+  messageId             String                            @map("message_id") @db.Uuid
+  externalEventId       String                            @map("external_event_id") @db.VarChar(128)
+  eventType             String                            @map("event_type") @db.VarChar(80)
+  fixtureVersion        String                            @map("fixture_version") @db.VarChar(16)
+  identityResolution    WhatsAppInboundIdentityResolution @map("identity_resolution")
+  outcome               WhatsAppInboundWebhookOutcome
+  signatureValid        Boolean                           @default(true) @map("signature_valid")
+  payloadHash           String                            @map("payload_hash") @db.Char(64)
+  providerMessageIdHash String                            @map("provider_message_id_hash") @db.Char(64)
+  senderHash            String                            @map("sender_hash") @db.Char(64)
+  payloadRedactedJson   Json                              @map("payload_redacted_json") @db.JsonB
+  contentLength         Int                               @map("content_length")
+  occurredAt            DateTime                          @map("occurred_at") @db.Timestamptz(3)
+  receivedAt            DateTime                          @default(now()) @map("received_at") @db.Timestamptz(3)
+  processedAt           DateTime                          @map("processed_at") @db.Timestamptz(3)
+  organization          Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                 Store                             @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_inbound_webhook_events_store_tenant_fkey")
+  conversation          WhatsAppConversation              @relation(fields: [organizationId, storeId, conversationId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_inbound_webhook_events_conversation_tenant_fkey")
+  message               WhatsAppMessage                   @relation(fields: [organizationId, storeId, messageId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_inbound_webhook_events_message_tenant_fkey")
+
+  @@unique([storeId, externalEventId], map: "whatsapp_inbound_webhook_events_store_external_key")
+  @@unique([organizationId, storeId, id], map: "whatsapp_inbound_webhook_events_tenant_id_key")
+  @@index([messageId, receivedAt], map: "whatsapp_inbound_webhook_events_message_received_idx")
+  @@index([conversationId, occurredAt], map: "whatsapp_inbound_webhook_events_conversation_occurred_idx")
+  @@index([organizationId, outcome, receivedAt], map: "whatsapp_inbound_webhook_events_tenant_outcome_idx")
+  @@index([payloadHash], map: "whatsapp_inbound_webhook_events_payload_hash_idx")
+  @@map("whatsapp_inbound_webhook_events")
 }
 
 model WhatsAppStatusWebhookEvent {

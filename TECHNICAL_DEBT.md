@@ -1,6 +1,6 @@
 # Deuda técnica
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 No se registra como deuda lo que pertenece a una vertical futura; se registra como backlog.
 
@@ -30,6 +30,7 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-020 | Estado authoritative del mock Wompi vive en memoria    | Medio   | Usar sandbox o fixture durable antes de pruebas largas      |
 | TD-021 | Servicios de mutación repiten el protocolo idempotente | Medio   | Extraer una primitiva común sin alterar scopes ni snapshots |
 | TD-022 | El mock WhatsApp se invoca dentro de la transacción DB | Medio   | Mover el adaptador real a worker/outbox antes de Meta       |
+| TD-023 | Contenido inbound vencido aún no tiene job de purga    | Alto    | Implementar purga auditable antes de aceptar tráfico real   |
 
 ## Deuda resuelta
 

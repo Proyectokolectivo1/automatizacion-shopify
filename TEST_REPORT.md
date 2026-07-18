@@ -1,6 +1,6 @@
 # Reporte de pruebas
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 ## Baseline inicial
 
@@ -730,3 +730,32 @@ del cierre verde.
 Las migraciones veintidós y veintitrés se aplicaron a la base persistente sin borrar datos y
 `database:status` confirmó 23/23. No hubo llamadas, credenciales, números, cuerpos ni PII reales.
 Meta continúa `BLOQUEADO_POR_CREDENCIALES`; E3-H5A es la siguiente vertical.
+
+## Iteración E3-H5A
+
+Fecha: 2026-07-15.
+
+| Validación                  | Comando                | Resultado                                    |
+| --------------------------- | ---------------------- | -------------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico   |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 17/17                                    |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 26 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados        | OK: integración y 12 áreas previas           |
+| Observabilidad/infra        | gates runtime          | OK: degradación, recuperación y persistencia |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410    |
+
+Se validaron fixture inbound estricto, HMAC sobre cuerpo crudo, firma inválida, replay, colisión,
+carrera, dedupe de mensaje externo, identidad conocida/desconocida, tenant no revelador, kill
+switch, cifrado AES-GCM, seudónimo compatible con rotación, retención marcada, inmutabilidad,
+redacción, outbox, auditoría y métrica acotada. No se aceptó un payload Meta.
+
+El primer baseline integrado falló porque Docker Desktop estaba detenido; después de iniciarlo, el
+mismo gate y toda la regresión pasaron. La prueba contractual Wompi contenía una expiración fija del
+2026-07-15 que venció durante esta sesión; se movió a 2099 para conservar un fixture determinista.
+La ejecución aislada del nuevo contrato pasó 3/3 pero, por diseño del comando genérico, falló su
+umbral global al cubrir un único archivo; `pnpm validate` confirmó después 69/69 y 100 % crítico.
+
+Las migraciones 24/25/26 se aplicaron a la base persistente sin borrar datos y `database:status`
+confirmó 26/26. No hubo llamadas, credenciales, teléfonos, cuerpos ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H6A es la siguiente vertical.

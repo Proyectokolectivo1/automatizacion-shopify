@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
 
@@ -32,8 +32,8 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3H   | E3-H2A plantillas simuladas         | COMPLETADA                 | catálogo, versiones, estados y variables probados           |
 | 3I   | E3-H3A envío transaccional simulado | COMPLETADA                 | render, mensaje durable, replay y aceptación local probados |
 | 3J   | E3-H4A estados webhook simulados    | COMPLETADA                 | autenticidad, orden monotónico y replay probados            |
-| 3K   | E3-H5A mensajes entrantes simulados | SIGUIENTE                  | ingreso durable, dedupe, tenant y redacción probados        |
-| 3L   | E3-H6A bandeja simulada             | PENDIENTE                  | consulta, timeline y filtros tenant-safe probados           |
+| 3K   | E3-H5A mensajes entrantes simulados | COMPLETADA                 | ingreso durable, dedupe, tenant y redacción probados        |
+| 3L   | E3-H6A bandeja simulada             | SIGUIENTE                  | consulta, timeline y filtros tenant-safe probados           |
 | 3M   | E3-H7A asignación simulada          | PENDIENTE                  | ownership, carrera, RBAC y auditoría probados               |
 | 3N   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales            |
 | 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato             |
@@ -294,3 +294,16 @@ autenticado con un tipo/fixture versionado propio. Persistir mensaje y conversac
 deduplicación, consentimiento/identidad no reveladora, retención/redacción explícitas, outbox,
 auditoría y métricas acotados. Probar firma, replay, carrera, desconocidos, aislamiento y kill switch;
 no aceptar el payload Meta real ni construir todavía la bandeja E3-H6.
+
+Resultado: completada el 2026-07-15. Las migraciones veinticuatro a veintiséis agregan el estado
+inbound, contenido cifrado, conversaciones seudónimas, eventos inmutables y unicidad tenant-safe. El fixture
+estricto se autentica antes de parsear, deduplica evento/mensaje y resuelve identidad solo dentro de
+la tienda. Texto, teléfono e ID externo quedan fuera de outbox, auditoría y métricas; firma, replay,
+colisión, carrera, desconocidos, tenant, kill switch, retención marcada y redacción están probados.
+
+## Vigesimosexta vertical: E3-H6A
+
+Implementar una bandeja de conversaciones exclusivamente simulada: listado paginado tenant-safe,
+timeline de mensajes, filtros acotados y acceso RBAC. El contenido inbound debe descifrarse solo para
+usuarios autorizados, nunca después de su vencimiento ni en logs/métricas; no responder mensajes,
+asignar agentes todavía ni invocar Meta.

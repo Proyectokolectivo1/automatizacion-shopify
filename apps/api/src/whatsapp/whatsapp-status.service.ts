@@ -25,7 +25,7 @@ import {
   decideWhatsAppStatusTransition,
   toWhatsAppInternalStatus,
   whatsappStatusWebhookSchema,
-  type WhatsAppInternalStatus,
+  type WhatsAppObservedInternalStatus,
 } from './whatsapp-status.contract';
 import { verifySimulatedWhatsAppStatusSignature } from './whatsapp-status-signature';
 
@@ -114,6 +114,7 @@ export class WhatsAppStatusService {
               WHERE organization_id = ${connection.organizationId}::uuid
                 AND store_id = ${command.storeId}::uuid
                 AND provider_message_id = ${event.providerMessageId}
+                AND direction = 'outbound'
               FOR UPDATE
             `;
             const message =
@@ -337,7 +338,7 @@ export class WhatsAppStatusService {
   }
 
   private statusUpdate(
-    status: WhatsAppInternalStatus,
+    status: WhatsAppObservedInternalStatus,
     occurredAt: Date,
   ): Prisma.WhatsAppMessageUpdateInput {
     switch (status) {
@@ -349,8 +350,6 @@ export class WhatsAppStatusService {
         return { readAt: occurredAt, status: WhatsAppMessageStatus.SIMULATED_READ };
       case 'SIMULATED_SENT':
         return { sentAt: occurredAt, status: WhatsAppMessageStatus.SIMULATED_SENT };
-      case 'SIMULATED_ACCEPTED':
-        throw new Error('Accepted is not a webhook-observed status');
     }
   }
 

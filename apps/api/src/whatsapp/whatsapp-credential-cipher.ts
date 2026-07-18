@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto';
 
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { z } from 'zod';
@@ -18,6 +18,14 @@ export interface WhatsAppCredentialEnvelope {
   readonly iv: string;
   readonly version: string;
 }
+
+export interface WhatsAppInboundPseudonyms {
+  readonly candidates: readonly string[];
+  readonly current: string;
+}
+
+type WhatsAppCipherPurpose =
+  'access-token' | 'webhook-secret' | `inbound-message-content:${string}`;
 
 @Injectable()
 export class WhatsAppCredentialCipher {
@@ -47,11 +55,79 @@ export class WhatsAppCredentialCipher {
     return this.decryptForPurpose(value, organizationId, storeId, 'webhook-secret');
   }
 
+  public encryptInboundMessageContent(
+    content: string,
+    organizationId: string,
+    storeId: string,
+    messageId: string,
+  ): WhatsAppCredentialEnvelope {
+    return this.encryptForPurpose(
+      content,
+      organizationId,
+      storeId,
+      `inbound-message-content:${messageId}`,
+    );
+  }
+
+  public decryptInboundMessageContent(
+    value: unknown,
+    organizationId: string,
+    storeId: string,
+    messageId: string,
+  ): string {
+    return this.decryptForPurpose(
+      value,
+      organizationId,
+      storeId,
+      `inbound-message-content:${messageId}`,
+    );
+  }
+
+  public pseudonymizeInboundSender(
+    senderPhoneE164: string,
+    organizationId: string,
+    storeId: string,
+  ): WhatsAppInboundPseudonyms {
+    const { key: currentKey, version: currentVersion } = this.currentKey();
+    const keyring = this.keyring();
+    const current = this.keyedDigest(
+      currentKey,
+      senderPhoneE164,
+      organizationId,
+      storeId,
+      'inbound-sender',
+    );
+    const candidates = [
+      current,
+      ...[...keyring.entries()]
+        .filter(([version]) => version !== currentVersion)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([, key]) =>
+          this.keyedDigest(key, senderPhoneE164, organizationId, storeId, 'inbound-sender'),
+        ),
+    ];
+    return { candidates: [...new Set(candidates)], current };
+  }
+
+  public fingerprintInboundContent(
+    content: string,
+    organizationId: string,
+    storeId: string,
+  ): string {
+    return this.keyedDigest(
+      this.currentKey().key,
+      content,
+      organizationId,
+      storeId,
+      'inbound-content',
+    );
+  }
+
   private encryptForPurpose(
     value: string,
     organizationId: string,
     storeId: string,
-    purpose: 'access-token' | 'webhook-secret',
+    purpose: WhatsAppCipherPurpose,
   ): WhatsAppCredentialEnvelope {
     const { key, version } = this.currentKey();
     const iv = randomBytes(12);
@@ -70,7 +146,7 @@ export class WhatsAppCredentialCipher {
     value: unknown,
     organizationId: string,
     storeId: string,
-    purpose: 'access-token' | 'webhook-secret',
+    purpose: WhatsAppCipherPurpose,
   ): string {
     const envelope = envelopeSchema.safeParse(value);
     if (!envelope.success) throw new ServiceUnavailableException('Invalid credential envelope');
@@ -95,12 +171,21 @@ export class WhatsAppCredentialCipher {
     }
   }
 
-  private aad(
+  private aad(organizationId: string, storeId: string, purpose: WhatsAppCipherPurpose): Buffer {
+    return Buffer.from(`whatsapp:${organizationId}:${storeId}:${purpose}`, 'utf8');
+  }
+
+  private keyedDigest(
+    key: Buffer,
+    value: string,
     organizationId: string,
     storeId: string,
-    purpose: 'access-token' | 'webhook-secret',
-  ): Buffer {
-    return Buffer.from(`whatsapp:${organizationId}:${storeId}:${purpose}`, 'utf8');
+    namespace: 'inbound-content' | 'inbound-sender',
+  ): string {
+    return createHmac('sha256', key)
+      .update(`whatsapp:${organizationId}:${storeId}:${namespace}:`, 'utf8')
+      .update(value, 'utf8')
+      .digest('hex');
   }
 
   private currentKey(): { key: Buffer; version: string } {

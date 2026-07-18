@@ -19,7 +19,12 @@ export type WhatsAppInternalStatus =
   | 'SIMULATED_DELIVERED'
   | 'SIMULATED_FAILED'
   | 'SIMULATED_READ'
+  | 'SIMULATED_RECEIVED'
   | 'SIMULATED_SENT';
+export type WhatsAppObservedInternalStatus = Exclude<
+  WhatsAppInternalStatus,
+  'SIMULATED_ACCEPTED' | 'SIMULATED_RECEIVED'
+>;
 
 export interface WhatsAppStatusTransitionDecision {
   readonly applied: boolean;
@@ -28,7 +33,7 @@ export interface WhatsAppStatusTransitionDecision {
 }
 
 const progressiveRank: Readonly<
-  Record<Exclude<WhatsAppInternalStatus, 'SIMULATED_FAILED'>, number>
+  Record<Exclude<WhatsAppInternalStatus, 'SIMULATED_FAILED' | 'SIMULATED_RECEIVED'>, number>
 > = {
   SIMULATED_ACCEPTED: 0,
   SIMULATED_SENT: 1,
@@ -36,18 +41,24 @@ const progressiveRank: Readonly<
   SIMULATED_READ: 3,
 };
 
-export function toWhatsAppInternalStatus(status: WhatsAppObservedStatus): WhatsAppInternalStatus {
-  return `SIMULATED_${status.toUpperCase()}` as WhatsAppInternalStatus;
+export function toWhatsAppInternalStatus(
+  status: WhatsAppObservedStatus,
+): WhatsAppObservedInternalStatus {
+  return `SIMULATED_${status.toUpperCase()}` as WhatsAppObservedInternalStatus;
 }
 
 export function decideWhatsAppStatusTransition(
   current: WhatsAppInternalStatus,
-  observed: WhatsAppInternalStatus,
+  observed: WhatsAppObservedInternalStatus,
 ): WhatsAppStatusTransitionDecision {
   if (current === observed) {
     return { applied: false, reason: 'duplicate_status', resultingStatus: current };
   }
-  if (current === 'SIMULATED_READ' || current === 'SIMULATED_FAILED') {
+  if (
+    current === 'SIMULATED_READ' ||
+    current === 'SIMULATED_FAILED' ||
+    current === 'SIMULATED_RECEIVED'
+  ) {
     return { applied: false, reason: 'terminal_state', resultingStatus: current };
   }
   if (observed === 'SIMULATED_FAILED') {

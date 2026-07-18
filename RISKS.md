@@ -1,6 +1,6 @@
 # Registro de riesgos
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 | ID    | Riesgo                                                      | Prob. | Impacto | Mitigación                                                              | Estado   |
 | ----- | ----------------------------------------------------------- | ----- | ------- | ----------------------------------------------------------------------- | -------- |
@@ -58,3 +58,6 @@ Actualizado: 2026-07-14
 | R-052 | Aceptación simulada se confunde con entrega Meta            | Media | Crítico | Estado exclusivo, timestamps nulos, constraints, contrato y ADR-004     | Mitigado |
 | R-053 | Eventos tardíos o carreras regresan un estado WhatsApp      | Alta  | Crítico | Lock, máquina monotónica, terminales inmutables e historial             | Mitigado |
 | R-054 | Firma sintética se interpreta como autenticación oficial    | Media | Crítico | Nombre/versionado explícitos, flags, secreto separado y ADR-005         | Mitigado |
+| R-055 | Texto inbound queda retenido después de su plazo            | Media | Crítico | Cifrado, vencimiento explícito y purga obligatoria antes de Meta real   | Abierto  |
+| R-056 | Rotación de keyring parte la identidad seudónima            | Baja  | Alto    | Consultar versiones históricas y migrar el hash al recibir otro mensaje | Mitigado |
+| R-057 | Payload inbound sintético se confunde con webhook Meta      | Media | Crítico | Fixture/IDs/header explícitos, schema estricto, flags y ADR-006         | Mitigado |

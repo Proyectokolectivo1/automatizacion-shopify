@@ -122,6 +122,10 @@ export const environmentSchema = z.object({
     .max(1_048_576)
     .default(262_144),
   WHATSAPP_WEBHOOKS_SIMULATION_MODE: booleanFlag('true'),
+  WHATSAPP_INBOUND_ENABLED: booleanFlag('false'),
+  WHATSAPP_INBOUND_KILL_SWITCH: booleanFlag('true'),
+  WHATSAPP_INBOUND_SIMULATION_MODE: booleanFlag('true'),
+  WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   POSTGRES_DB: nonEmpty,
   POSTGRES_HOST: nonEmpty,
   POSTGRES_PASSWORD: nonEmpty,

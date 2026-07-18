@@ -8,7 +8,7 @@ describe('synthetic Wompi hosted checkout contract', () => {
   const provider = new WompiMockProvider();
 
   it('constructs the official parameters and integrity order on a non-routable host', async () => {
-    const expiresAt = new Date('2026-07-15T12:00:00.000Z');
+    const expiresAt = new Date('2099-07-15T12:00:00.000Z');
     const result = await provider.createHostedCheckout({
       amountMinor: 1_200_000,
       currency: 'COP',
@@ -48,7 +48,7 @@ describe('synthetic Wompi hosted checkout contract', () => {
       provider.createHostedCheckout({
         amountMinor: 0,
         currency: 'COP',
-        expiresAt: new Date('2026-07-15T12:00:00.000Z'),
+        expiresAt: new Date('2099-07-15T12:00:00.000Z'),
         reference: 'invalid reference',
       }),
     ).rejects.toThrow('Invalid synthetic Wompi checkout command');

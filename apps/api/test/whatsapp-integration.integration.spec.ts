@@ -13,6 +13,7 @@ import { createApplication } from '../src/app.factory';
 import { PASSWORD_PARAMETERS, PasswordService } from '../src/auth/password.service';
 import { loadEnvironmentFiles } from '../src/config/load-environment';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { WhatsAppCredentialCipher } from '../src/whatsapp/whatsapp-credential-cipher';
 
 loadEnvironmentFiles();
 
@@ -54,6 +55,10 @@ const environmentNames = [
   'WHATSAPP_WEBHOOKS_KILL_SWITCH',
   'WHATSAPP_WEBHOOKS_MAX_BODY_BYTES',
   'WHATSAPP_WEBHOOKS_SIMULATION_MODE',
+  'WHATSAPP_INBOUND_ENABLED',
+  'WHATSAPP_INBOUND_KILL_SWITCH',
+  'WHATSAPP_INBOUND_SIMULATION_MODE',
+  'WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -104,6 +109,15 @@ interface StatusResponse {
   readonly outcome: string;
 }
 
+interface InboundResponse {
+  readonly conversationId: string;
+  readonly duplicate: boolean;
+  readonly eventId: string;
+  readonly messageId: string;
+  readonly mode: string;
+  readonly status: string;
+}
+
 describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
@@ -145,6 +159,10 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     process.env.WHATSAPP_WEBHOOKS_KILL_SWITCH = 'false';
     process.env.WHATSAPP_WEBHOOKS_MAX_BODY_BYTES = '262144';
     process.env.WHATSAPP_WEBHOOKS_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_INBOUND_ENABLED = 'true';
+    process.env.WHATSAPP_INBOUND_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_INBOUND_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS = '30';
     process.env.WHATSAPP_CREDENTIAL_KEY_VERSION = 'v1';
     process.env.WHATSAPP_CREDENTIAL_KEYS_JSON = JSON.stringify({
       v1: randomBytes(32).toString('base64url'),
@@ -343,6 +361,35 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     const signature = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
     return request(baseUrl)
       .post(`/webhooks/whatsapp/${targetStoreId}/statuses`)
+      .set('content-type', 'application/json')
+      .set('x-simulated-whatsapp-signature-v1', signature)
+      .send(rawBody.toString('utf8'));
+  };
+
+  const inboundPayload = (
+    senderPhoneE164: string,
+    providerMessageId = `simulated:${randomBytes(32).toString('hex')}`,
+    externalEventId = `synthetic-inbound-${randomUUID()}`,
+    text = 'Synthetic inbound customer message',
+  ) => ({
+    _fixture: { synthetic: true, version: 'v1' },
+    eventType: 'message.received',
+    externalEventId,
+    message: { text, type: 'text' },
+    occurredAt: new Date().toISOString(),
+    providerMessageId,
+    senderPhoneE164,
+  });
+
+  const deliverInbound = (
+    payload: ReturnType<typeof inboundPayload>,
+    secret = webhookSecret,
+    targetStoreId = storeId,
+  ) => {
+    const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
+    const signature = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
+    return request(baseUrl)
+      .post(`/webhooks/whatsapp/${targetStoreId}/messages`)
       .set('content-type', 'application/json')
       .set('x-simulated-whatsapp-signature-v1', signature)
       .send(rawBody.toString('utf8'));
@@ -947,6 +994,171 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     ).toBe(history.filter(({ applied }) => applied).length);
   });
 
+  it('authenticates and persists a known inbound message with encrypted retained content', async () => {
+    const text = 'Synthetic known inbound secret text';
+    const payload = inboundPayload('+573001112233', undefined, undefined, text);
+    await deliverInbound(payload, initialToken).expect(401);
+    expect(
+      await prisma.whatsAppInboundWebhookEvent.count({
+        where: { externalEventId: payload.externalEventId, storeId },
+      }),
+    ).toBe(0);
+
+    const accepted = await deliverInbound(payload).expect(202);
+    const response = accepted.body as InboundResponse;
+    expect(response).toMatchObject({
+      duplicate: false,
+      mode: 'simulation',
+      status: 'simulated_received',
+    });
+    expect(JSON.stringify(response)).not.toContain(text);
+    expect(JSON.stringify(response)).not.toContain(payload.senderPhoneE164);
+    expect(JSON.stringify(response)).not.toContain(payload.providerMessageId);
+
+    const message = await prisma.whatsAppMessage.findUniqueOrThrow({
+      where: { id: response.messageId },
+    });
+    expect(message).toMatchObject({
+      body: null,
+      direction: 'INBOUND',
+      orderId: null,
+      status: 'SIMULATED_RECEIVED',
+      templateId: null,
+      type: 'TEXT',
+    });
+    expect(message.encryptedBodyJson).not.toBeNull();
+    expect(JSON.stringify(message.encryptedBodyJson)).not.toContain(text);
+    expect(message.receivedAt).toBeInstanceOf(Date);
+    expect(message.retentionExpiresAt?.getTime()).toBeGreaterThan(
+      (message.receivedAt?.getTime() ?? 0) + 29 * 24 * 60 * 60 * 1000,
+    );
+    const cipher = app?.get(WhatsAppCredentialCipher);
+    expect(
+      cipher?.decryptInboundMessageContent(
+        message.encryptedBodyJson,
+        organizationId,
+        storeId,
+        message.id,
+      ),
+    ).toBe(text);
+    const conversation = await prisma.whatsAppConversation.findUniqueOrThrow({
+      where: { id: response.conversationId },
+    });
+    expect(conversation.customerId).not.toBeNull();
+    expect(conversation.contactHash).toMatch(/^[0-9a-f]{64}$/u);
+    const event = await prisma.whatsAppInboundWebhookEvent.findUniqueOrThrow({
+      where: { id: response.eventId },
+    });
+    expect(event).toMatchObject({
+      identityResolution: 'KNOWN_CUSTOMER',
+      outcome: 'ACCEPTED',
+    });
+
+    const replay = await deliverInbound(payload).expect(202);
+    expect(replay.body as InboundResponse).toMatchObject({
+      duplicate: true,
+      eventId: response.eventId,
+      messageId: response.messageId,
+    });
+    await deliverInbound({
+      ...payload,
+      message: { ...payload.message, text: `${text} changed` },
+    }).expect(409);
+    expect(
+      await prisma.outboxEvent.count({
+        where: {
+          aggregateId: message.id,
+          eventType: 'whatsapp.message.simulated-received.v1',
+        },
+      }),
+    ).toBe(1);
+  });
+
+  it('deduplicates concurrent unknown inbound contacts without persisting their phone', async () => {
+    const text = 'Synthetic unknown inbound content';
+    const payload = inboundPayload('+573009998877', undefined, undefined, text);
+    const concurrent = await Promise.all([deliverInbound(payload), deliverInbound(payload)]);
+    expect(concurrent.map(({ status }) => status)).toEqual([202, 202]);
+    const responses = concurrent.map(({ body }) => body as InboundResponse);
+    expect(new Set(responses.map(({ messageId }) => messageId)).size).toBe(1);
+    expect(new Set(responses.map(({ eventId }) => eventId)).size).toBe(1);
+    expect(responses.filter(({ duplicate }) => duplicate)).toHaveLength(1);
+
+    const messageId = responses[0]?.messageId ?? '';
+    const conversationId = responses[0]?.conversationId ?? '';
+    const conversation = await prisma.whatsAppConversation.findUniqueOrThrow({
+      where: { id: conversationId },
+    });
+    expect(conversation).toMatchObject({ customerId: null, phoneE164: null });
+    expect(conversation.contactHash).toMatch(/^[0-9a-f]{64}$/u);
+
+    const providerReplay = await deliverInbound({
+      ...payload,
+      externalEventId: `synthetic-inbound-provider-replay-${randomUUID()}`,
+    }).expect(202);
+    expect(providerReplay.body as InboundResponse).toMatchObject({
+      duplicate: true,
+      messageId,
+    });
+    const events = await prisma.whatsAppInboundWebhookEvent.findMany({
+      orderBy: { receivedAt: 'asc' },
+      where: { messageId },
+    });
+    expect(events).toHaveLength(2);
+    expect(events.map(({ outcome }) => outcome)).toEqual(['ACCEPTED', 'DUPLICATE']);
+    expect(
+      await prisma.whatsAppMessage.count({
+        where: { providerMessageId: payload.providerMessageId },
+      }),
+    ).toBe(1);
+    expect(
+      await prisma.outboxEvent.count({
+        where: { aggregateId: messageId, eventType: 'whatsapp.message.simulated-received.v1' },
+      }),
+    ).toBe(1);
+
+    const evidence = JSON.stringify({
+      audit: await prisma.auditLog.findMany({
+        where: { resourceType: 'whatsapp_inbound_webhook_event' },
+      }),
+      events,
+      outbox: await prisma.outboxEvent.findMany({ where: { aggregateId: messageId } }),
+    });
+    expect(evidence).not.toContain(payload.senderPhoneE164);
+    expect(evidence).not.toContain(payload.providerMessageId);
+    expect(evidence).not.toContain(text);
+    await expect(
+      prisma.whatsAppInboundWebhookEvent.update({
+        data: { contentLength: 1 },
+        where: { id: events[0]?.id ?? '' },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('keeps tenant lookup non-revealing and fails closed on the inbound kill switch', async () => {
+    const payload = inboundPayload('+573008887766');
+    await deliverInbound(payload, webhookSecret, foreignStoreId).expect(404);
+    process.env.WHATSAPP_INBOUND_KILL_SWITCH = 'true';
+    const disabledApp = await createApplication();
+    try {
+      await disabledApp.listen(0, '127.0.0.1');
+      const disabledUrl = await disabledApp.getUrl();
+      const rawBody = Buffer.from(JSON.stringify(payload), 'utf8');
+      const signature = `sha256=${createHmac('sha256', webhookSecret)
+        .update(rawBody)
+        .digest('hex')}`;
+      await request(disabledUrl)
+        .post(`/webhooks/whatsapp/${storeId}/messages`)
+        .set('content-type', 'application/json')
+        .set('x-simulated-whatsapp-signature-v1', signature)
+        .send(rawBody.toString('utf8'))
+        .expect(503);
+    } finally {
+      await disabledApp.close();
+      process.env.WHATSAPP_INBOUND_KILL_SWITCH = 'false';
+    }
+  });
+
   it('fails closed when the independent webhook kill switch is active', async () => {
     const message = await prisma.whatsAppMessage.findFirstOrThrow({ where: { orderId } });
     process.env.WHATSAPP_WEBHOOKS_KILL_SWITCH = 'true';
@@ -986,6 +1198,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     const metrics = await request(baseUrl).get('/metrics').expect(200);
     expect(metrics.text).toContain('ecommerce_api_whatsapp_message_operations_total');
     expect(metrics.text).toContain('ecommerce_api_whatsapp_status_webhooks_total');
+    expect(metrics.text).toContain('ecommerce_api_whatsapp_inbound_webhooks_total');
     const statusEvidence = JSON.stringify({
       events: await prisma.whatsAppStatusWebhookEvent.findMany(),
       history: await prisma.whatsAppMessageStatusHistory.findMany(),

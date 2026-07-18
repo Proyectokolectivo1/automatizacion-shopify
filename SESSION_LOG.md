@@ -1,6 +1,6 @@
 # Registro cronológico de sesiones
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 Este archivo es append-only: cada sesión de desarrollo agrega una entrada al final. No reemplaza los
 nueve controles obligatorios; conserva el relevo cronológico entre sesiones y enlaza la evidencia
@@ -91,3 +91,22 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - `pnpm audit --prod` sigue bloqueado por HTTP 410 del endpoint retirado; no se marcó verde.
 - Meta real continúa `BLOQUEADO_POR_CREDENCIALES`; no hubo llamadas, credenciales ni PII real.
 - Siguiente vertical: E3-H5A, mensajes entrantes WhatsApp exclusivamente simulados.
+
+## 2026-07-15 — sesión actual: E3-H5A
+
+- Objetivo: mensajes inbound durables exclusivamente simulados, sin tráfico Meta ni bandeja.
+- Baseline: Docker Desktop estaba detenido; se inició sin borrar volúmenes y la regresión pasó.
+- Se agregaron fixture/contrato inbound v1, HMAC de cuerpo crudo, mensaje cifrado, conversación
+  conocida/seudónima, retención marcada, evento inmutable, outbox, auditoría, métrica y controles.
+- Dedupe por evento y mensaje externo, colisiones, carrera, identidad desconocida, tenant, firma
+  inválida, kill switch y ausencia de PII en evidencias quedaron probados.
+- La identidad seudónima usa el keyring versionado y conserva continuidad durante rotaciones si las
+  versiones históricas permanecen disponibles.
+- Evidencia final: `pnpm validate` con 69 unitarias/100 % crítico, 17 WhatsApp, 14 de migración sin
+  drift, integración y todas las regresiones, observabilidad e infraestructura verdes.
+- Se corrigió el fixture Wompi vencido sustituyendo su fecha fija por 2099; no cambió lógica real.
+- Las migraciones 24/25/26 quedaron aplicadas y `database:status` confirmó 26/26.
+- `pnpm audit --prod` sigue bloqueado por HTTP 410; la purga de contenido vencido queda TD-023 y
+  bloquea tráfico real junto con credenciales/contrato Meta.
+- Commit lógico: `feat: add simulated WhatsApp inbound messages`; PR borrador #1.
+- Siguiente vertical: E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.

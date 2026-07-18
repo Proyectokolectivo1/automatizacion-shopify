@@ -361,13 +361,16 @@ export class WhatsAppMessageService {
       conversationId: string;
       createdAt: Date;
       id: string;
-      orderId: string;
+      orderId: string | null;
       providerMessageId: string;
       storeId: string;
-      templateId: string;
+      templateId: string | null;
     },
-    template: { eventType: string; languageCode: string; version: number },
+    template: { eventType: string; languageCode: string; version: number } | null,
   ): WhatsAppMessageResult {
+    if (message.orderId === null || message.templateId === null || template === null) {
+      throw new ServiceUnavailableException('Outbound WhatsApp message evidence is incomplete');
+    }
     return {
       conversationId: message.conversationId,
       createdAt: message.createdAt.toISOString(),

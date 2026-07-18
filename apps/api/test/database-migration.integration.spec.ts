@@ -117,6 +117,7 @@ describe('initial database migration', () => {
           'whatsapp_templates',
           'whatsapp_conversations',
           'whatsapp_messages',
+          'whatsapp_inbound_webhook_events',
           'whatsapp_message_status_history',
           'whatsapp_status_webhook_events',
         ],
@@ -151,6 +152,7 @@ describe('initial database migration', () => {
       'users',
       'webhook_events',
       'whatsapp_conversations',
+      'whatsapp_inbound_webhook_events',
       'whatsapp_message_status_history',
       'whatsapp_messages',
       'whatsapp_status_webhook_events',
@@ -160,7 +162,7 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('23');
+    expect(migrations.rows[0]?.count).toBe('26');
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -582,6 +584,118 @@ describe('initial database migration', () => {
          (organization_id, store_id, customer_id, phone_e164, last_message_at)
          VALUES ($1, $2, $3, '3001112233', NOW())`,
         [organizationId, storeId, customer.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+
+    const unknownConversation = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_conversations
+       (organization_id, store_id, contact_hash, last_message_at)
+       VALUES ($1, $2, repeat('7', 64), NOW()) RETURNING id`,
+      [organizationId, storeId],
+    );
+    const inboundMessage = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_messages
+       (organization_id, store_id, conversation_id, provider_message_id, direction, type, status,
+        encrypted_body_json, content_fingerprint, sender_hash, metadata_json, business_key_hash,
+        request_fingerprint, received_at, retention_expires_at)
+       VALUES ($1, $2, $3, $4, 'inbound', 'text', 'simulated_received',
+        '{"authTag":"synthetic-tag","ciphertext":"synthetic-ciphertext","iv":"synthetic-iv","version":"v1"}',
+        repeat('8', 64), repeat('7', 64),
+        '{"mode":"simulation","fixtureVersion":"v1","contentEncrypted":true}',
+        repeat('9', 64), repeat('a', 64), NOW(), NOW() + INTERVAL '30 days')
+       RETURNING id`,
+      [organizationId, storeId, unknownConversation.rows[0]?.id, `simulated:${'8'.repeat(64)}`],
+    );
+    const inboundEvent = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_inbound_webhook_events
+       (organization_id, store_id, conversation_id, message_id, external_event_id, event_type,
+        fixture_version, identity_resolution, outcome, payload_hash, provider_message_id_hash,
+        sender_hash, payload_redacted_json, content_length, occurred_at, received_at, processed_at)
+       VALUES ($1, $2, $3, $4, $5, 'message.received', 'v1', 'unknown_contact', 'accepted',
+        repeat('b', 64), repeat('c', 64), repeat('7', 64),
+        '{"mode":"simulation","synthetic":true,"contentLength":17}', 17, NOW(), NOW(), NOW())
+       RETURNING id`,
+      [
+        organizationId,
+        storeId,
+        unknownConversation.rows[0]?.id,
+        inboundMessage.rows[0]?.id,
+        randomUUID(),
+      ],
+    );
+    const secondInboundStore = await database.query<{ id: string }>(
+      `INSERT INTO stores
+       (organization_id, name, shopify_shop_domain, timezone, currency)
+       VALUES ($1, 'Second WhatsApp Inbound Store', 'whatsapp-inbound-second.myshopify.com',
+        'America/Bogota', 'COP') RETURNING id`,
+      [organizationId],
+    );
+    const secondUnknownConversation = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_conversations
+       (organization_id, store_id, contact_hash, last_message_at)
+       VALUES ($1, $2, repeat('6', 64), NOW()) RETURNING id`,
+      [organizationId, secondInboundStore.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_messages
+         (organization_id, store_id, conversation_id, provider_message_id, direction, type, status,
+          encrypted_body_json, content_fingerprint, sender_hash, metadata_json, business_key_hash,
+          request_fingerprint, received_at, retention_expires_at)
+         VALUES ($1, $2, $3, $4, 'inbound', 'text', 'simulated_received',
+          '{"authTag":"other-tag","ciphertext":"other-ciphertext","iv":"other-iv","version":"v1"}',
+          repeat('5', 64), repeat('6', 64),
+          '{"mode":"simulation","fixtureVersion":"v1","contentEncrypted":true}',
+          repeat('4', 64), repeat('3', 64), NOW(), NOW() + INTERVAL '30 days')`,
+        [
+          organizationId,
+          secondInboundStore.rows[0]?.id,
+          secondUnknownConversation.rows[0]?.id,
+          `simulated:${'8'.repeat(64)}`,
+        ],
+      ),
+    ).resolves.toBeDefined();
+    await expect(
+      database.query(`UPDATE whatsapp_messages SET encrypted_body_json = '{}' WHERE id = $1`, [
+        inboundMessage.rows[0]?.id,
+      ]),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `UPDATE whatsapp_inbound_webhook_events SET outcome = 'duplicate' WHERE id = $1`,
+        [inboundEvent.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_messages
+         (organization_id, store_id, conversation_id, provider_message_id, direction, type, status,
+          body, encrypted_body_json, content_fingerprint, sender_hash, metadata_json,
+          business_key_hash, request_fingerprint, received_at, retention_expires_at)
+         VALUES ($1, $2, $3, $4, 'inbound', 'text', 'simulated_received', 'plaintext leak',
+          '{"authTag":"tag","ciphertext":"ciphertext","iv":"iv","version":"v1"}',
+          repeat('d', 64), repeat('7', 64),
+          '{"mode":"simulation","fixtureVersion":"v1"}', repeat('e', 64), repeat('f', 64),
+          NOW(), NOW() + INTERVAL '30 days')`,
+        [organizationId, storeId, unknownConversation.rows[0]?.id, `simulated:${'9'.repeat(64)}`],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_inbound_webhook_events
+         (organization_id, store_id, conversation_id, message_id, external_event_id, event_type,
+          fixture_version, identity_resolution, outcome, payload_hash, provider_message_id_hash,
+          sender_hash, payload_redacted_json, content_length, occurred_at, received_at, processed_at)
+         VALUES ($1, $2, $3, $4, $5, 'message.received', 'v1', 'unknown_contact', 'duplicate',
+          repeat('1', 64), repeat('2', 64), repeat('3', 64),
+          '{"mode":"simulation","synthetic":true,"text":"leaked"}', 6, NOW(), NOW(), NOW())`,
+        [
+          organizationId,
+          storeId,
+          unknownConversation.rows[0]?.id,
+          inboundMessage.rows[0]?.id,
+          randomUUID(),
+        ],
       ),
     ).rejects.toMatchObject({ code: '23514' });
   });

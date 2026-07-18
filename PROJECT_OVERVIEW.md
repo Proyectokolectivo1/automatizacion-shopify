@@ -1,6 +1,6 @@
 # Resumen general del proyecto
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-15
 
 > Este documento debe actualizarse en cada sesión donde cambien funcionalidades, alcance, bloqueos,
 > riesgos, pruebas o el siguiente paso del proyecto.
@@ -37,8 +37,9 @@ Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas 
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
-ciclo operativo seguro, catálogo local versionado, envío transaccional durable y estados monotónicos
-por webhook sintético autenticado; todavía no existen conexiones, entregas ni estados Meta reales.
+ciclo operativo seguro, catálogo local versionado, envío transaccional durable, estados monotónicos
+y mensajes entrantes cifrados por webhooks sintéticos autenticados; todavía no existen conexiones,
+entregas ni estados Meta reales.
 
 ## Implementado
 
@@ -101,6 +102,8 @@ por webhook sintético autenticado; todavía no existen conexiones, entregas ni 
 - Conversación durable, estado `simulated_accepted`, outbox/auditoría sin PII y kill switch probados.
 - Webhook de estados WhatsApp sintético v1 con HMAC sobre cuerpo crudo y secreto cifrado separado.
 - Estados monotónicos `simulated_*`, terminales inmutables, replay, carrera e historial probados.
+- Webhook inbound sintético v1, mensaje cifrado, conversación conocida/seudónima y retención marcada.
+- Dedupe por evento/mensaje, identidad tenant-safe, redacción, inmutabilidad y outbox inbound probados.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -120,7 +123,7 @@ por webhook sintético autenticado; todavía no existen conexiones, entregas ni 
 
 ### Pagos y WhatsApp
 
-- Mensajes entrantes simulados, bandeja operativa y asignación a agentes WhatsApp.
+- Bandeja operativa simulada y asignación de conversaciones a agentes WhatsApp.
 - WhatsApp Cloud API real y registro/revisión remota de plantillas.
 - Mocks, fixtures y pruebas contractuales por vertical mientras falten credenciales.
 
@@ -159,9 +162,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E3-H5A: mensajes entrantes WhatsApp exclusivamente simulados mediante webhook sintético autenticado,
-persistencia tenant-safe, deduplicación y redacción de PII. Meta/WhatsApp real permanece
-`BLOQUEADO_POR_CREDENCIALES`; E3-H6/E3-H7 continúan pendientes.
+E3-H6A: bandeja de conversaciones WhatsApp exclusivamente simulada, con consulta tenant-safe,
+timeline, paginación y filtros sin exponer PII. Meta/WhatsApp real permanece
+`BLOQUEADO_POR_CREDENCIALES`; E3-H7 continúa pendiente.
 
 ## Dónde consultar más detalle
 
