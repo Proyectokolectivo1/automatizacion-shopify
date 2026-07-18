@@ -25,8 +25,9 @@ repetir una respuesta perdida sin crear otro agregado.
 intentos. Los intentos no pueden ser negativos y un evento `published` requiere `published_at`. El
 E0-H4B añadió leases, error redactado y estado `dead_letter`. `job_executions` conserva el estado de
 cada intento del consumidor. E0-H4C añadió ownership organizacional, backfill y generaciones de
-entrega. Los checks de ownership se mantienen `NOT VALID` hasta verificar que no existan filas legacy
-sin propietario, pero ya impiden escrituras nuevas incompletas. Consulte `outbox-events.md`.
+entrega. E0-H4D verificó que no existían filas legacy incompatibles y validó las seis constraints de
+ownership/evento previamente `NOT VALID`; el gate exige desde entonces cero constraints pendientes.
+Estas ya impedían escrituras nuevas incompletas. Consulte `outbox-events.md`.
 
 No hay API pública ni datos de negocio en esta vertical. Los checks SQL se contrastan contra el
 esquema Prisma mediante `prisma migrate diff`.

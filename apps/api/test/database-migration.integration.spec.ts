@@ -164,7 +164,14 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('30');
+    expect(migrations.rows[0]?.count).toBe('33');
+    const unvalidatedConstraints = await database.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM pg_constraint
+       WHERE NOT convalidated
+         AND conrelid::regclass::text IN ('outbox_events', 'job_executions')`,
+    );
+    expect(unvalidatedConstraints.rows[0]?.count).toBe('0');
     const operationalIndexes = await database.query<{ indexname: string }>(
       `SELECT indexname FROM pg_indexes
        WHERE indexname = ANY($1::text[]) ORDER BY indexname`,
@@ -1255,12 +1262,25 @@ describe('initial database migration', () => {
         [history.rows[0]?.id],
       ),
     ).rejects.toMatchObject({ code: 'P0001' });
+    await database.query(
+      `INSERT INTO whatsapp_conversation_assignment_history
+       (organization_id, store_id, conversation_id, version, action, actor_membership_id,
+        previous_assignee_membership_id, reason_code)
+       VALUES ($1, $2, $3, 3, 'unassign', $4, $5, 'membership_revoked')`,
+      [
+        organizationId,
+        store.rows[0]?.id,
+        conversation.rows[0]?.id,
+        actor.rows[0]?.id,
+        agent.rows[0]?.id,
+      ],
+    );
     await expect(
       database.query(
         `INSERT INTO whatsapp_conversation_assignment_history
          (organization_id, store_id, conversation_id, version, action, actor_membership_id,
           previous_assignee_membership_id, reason_code)
-         VALUES ($1, $2, $3, 3, 'unassign', $4, $5, 'manual_release')`,
+         VALUES ($1, $2, $3, 4, 'unassign', $4, $5, 'manual_release')`,
         [
           foreignOrganizationId,
           foreignStore.rows[0]?.id,

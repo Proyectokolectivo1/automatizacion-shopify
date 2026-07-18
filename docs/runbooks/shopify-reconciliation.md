@@ -20,7 +20,8 @@ y falla cerrado.
 3. Ejecute `pnpm shopify:reconciliation:verify` para la prueba aislada y reproducible.
 4. Para inspección manual, habilite temporalmente el flag y desactive el kill switch solo en el
    proceso local. Use una ventana corta y una tienda simulada activa.
-5. Consulte incidencias abiertas antes de reprocesar una sola con una clave idempotente nueva.
+5. Consulte incidencias abiertas recorriendo `nextCursor` hasta `null`; no cambie `status` durante la
+   misma paginación. Reprocese una sola con una clave idempotente nueva.
 6. Restaure inmediatamente los valores seguros.
 
 ## Diagnóstico
@@ -32,6 +33,9 @@ y falla cerrado.
 Observe el contador `ecommerce_api_shopify_reconciliations_total` por resultado y los audit logs
 `shopify.reconciliation.*`. No edite estados SQL manualmente: el reproceso debe pasar por la API y
 el outbox.
+
+Un cursor 400 se descarta y la consulta se reinicia desde la primera página con el filtro deseado.
+No decodifique ni modifique el cursor en clientes.
 
 ## Kill switch y recuperación
 

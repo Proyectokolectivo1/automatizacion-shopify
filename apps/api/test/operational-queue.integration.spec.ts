@@ -36,8 +36,14 @@ const prismaCli = createRequire(resolve(process.cwd(), 'package.json')).resolve(
 );
 const password = 'Correct-password-123';
 const environmentNames = [
+  'OPERATIONAL_DETAIL_ENABLED',
+  'OPERATIONAL_DETAIL_KILL_SWITCH',
+  'OPERATIONAL_EXPORT_ENABLED',
+  'OPERATIONAL_EXPORT_KILL_SWITCH',
   'OPERATIONAL_QUEUE_ENABLED',
   'OPERATIONAL_QUEUE_KILL_SWITCH',
+  'OPERATIONAL_SEARCH_ENABLED',
+  'OPERATIONAL_SEARCH_KILL_SWITCH',
   'POSTGRES_DB',
 ] as const;
 const previousEnvironment = new Map(
@@ -81,13 +87,55 @@ interface SummaryResponse {
   readonly window: { readonly from: string; readonly to: string };
 }
 
+interface SearchResponse {
+  readonly contractVersion: 'v1';
+  readonly items: readonly {
+    readonly attentionReason: string | null;
+    readonly itemId: string;
+    readonly matchKind: 'contains' | 'exact_field' | 'exact_id' | 'prefix';
+    readonly occurredAt: string;
+    readonly requiresAttention: boolean;
+    readonly status: string;
+    readonly type: string;
+  }[];
+  readonly nextCursor: string | null;
+}
+
+interface DetailResponse {
+  readonly contractVersion: 'v1';
+  readonly item: {
+    readonly attentionReason: string | null;
+    readonly details: Readonly<Record<string, boolean | number | string | null>>;
+    readonly occurredAt: string;
+    readonly requiresAttention: boolean;
+    readonly status: string;
+    readonly type: string;
+  };
+  readonly timeline: readonly Readonly<Record<string, number | string | null>>[];
+}
+
+interface ExportResponse {
+  readonly contractVersion: 'v1';
+  readonly rows: readonly {
+    readonly attentionReason: string | null;
+    readonly occurredAt: string;
+    readonly requiresAttention: boolean;
+    readonly status: string;
+    readonly type: string;
+  }[];
+  readonly truncated: boolean;
+  readonly window: { readonly from: string; readonly to: string };
+}
+
 describe('E6 tenant-safe operational read model', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
+  let attentionOrderId: string;
   let emptyStoreId: string;
   let foreignOrganizationId: string;
   let foreignOwnerToken: string;
   let organizationId: string;
+  let operationsToken: string;
   let ownerToken: string;
   let prisma: PrismaClient;
   let readOnlyToken: string;
@@ -109,8 +157,14 @@ describe('E6 tenant-safe operational read model', () => {
       },
     );
     Object.assign(process.env, {
+      OPERATIONAL_DETAIL_ENABLED: 'true',
+      OPERATIONAL_DETAIL_KILL_SWITCH: 'false',
+      OPERATIONAL_EXPORT_ENABLED: 'true',
+      OPERATIONAL_EXPORT_KILL_SWITCH: 'false',
       OPERATIONAL_QUEUE_ENABLED: 'true',
       OPERATIONAL_QUEUE_KILL_SWITCH: 'false',
+      OPERATIONAL_SEARCH_ENABLED: 'true',
+      OPERATIONAL_SEARCH_KILL_SWITCH: 'false',
       POSTGRES_DB: databaseName,
     });
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
@@ -213,6 +267,20 @@ describe('E6 tenant-safe operational read model', () => {
       new Date('2026-07-17T10:00:00.000Z'),
       'attention',
     );
+    attentionOrderId = attentionOrder.id;
+    await prisma.orderStateHistory.create({
+      data: {
+        fromState: 'RECEIVED',
+        metadataJson: { email: 'history-pii-must-not-leak@example.test' },
+        orderId: attentionOrder.id,
+        organizationId,
+        reason: 'synthetic_test_transition',
+        storeId,
+        toState: 'MANUAL_REVIEW',
+        triggerId: randomUUID(),
+        triggerType: 'test_fixture',
+      },
+    });
     await createOrder(
       organizationId,
       storeId,
@@ -338,17 +406,19 @@ describe('E6 tenant-safe operational read model', () => {
         .expect(200);
       return (response.body as Tokens).accessToken;
     };
-    [ownerToken, supportToken, readOnlyToken, foreignOwnerToken] = await Promise.all([
-      login(owner.email),
-      login(support.email),
-      login(reader.email),
-      login(foreignOwner.email, foreignOrganizationId),
-    ]);
+    [ownerToken, operationsToken, supportToken, readOnlyToken, foreignOwnerToken] =
+      await Promise.all([
+        login(owner.email),
+        login(operations.email),
+        login(support.email),
+        login(reader.email),
+        login(foreignOwner.email, foreignOrganizationId),
+      ]);
   });
 
   afterAll(async () => {
     await app?.close();
-    await prisma.$disconnect();
+    await prisma?.$disconnect();
     for (const [name, value] of previousEnvironment) {
       if (value === undefined) delete process.env[name];
       else process.env[name] = value;
@@ -368,6 +438,16 @@ describe('E6 tenant-safe operational read model', () => {
     `/operations/organizations/${targetOrganizationId}/queue`;
   const summaryEndpoint = (targetOrganizationId = organizationId) =>
     `${endpoint(targetOrganizationId)}/summary`;
+  const searchEndpoint = (targetOrganizationId = organizationId) =>
+    `/operations/organizations/${targetOrganizationId}/search`;
+  const detailEndpoint = (type: string, itemId: string, targetOrganizationId = organizationId) =>
+    `/operations/organizations/${targetOrganizationId}/items/${type}/${itemId}`;
+  const exportEndpoint = (targetOrganizationId = organizationId) =>
+    `/operations/organizations/${targetOrganizationId}/export`;
+  const searchWindow = {
+    from: '2026-07-17T04:00:00.000Z',
+    to: '2026-07-17T12:00:00.000Z',
+  };
 
   it('projects five bounded attention types without PII or provider identifiers', async () => {
     const response = await request(baseUrl)
@@ -631,8 +711,282 @@ describe('E6 tenant-safe operational read model', () => {
     });
   });
 
+  it('searches only approved operational fields with deterministic ranking and no PII', async () => {
+    const exactIdentifier = await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, q: attentionOrderId })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    expect((exactIdentifier.body as SearchResponse).items).toEqual([
+      expect.objectContaining({
+        itemId: attentionOrderId,
+        matchKind: 'exact_id',
+        status: 'manual_review',
+        type: 'order',
+      }),
+    ]);
+
+    const exactStatus = await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, q: 'open' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const exactBody = exactStatus.body as SearchResponse;
+    expect(exactBody.items).toHaveLength(4);
+    expect(exactBody.items.every(({ matchKind }) => matchKind === 'exact_field')).toBe(true);
+    expect(exactBody.items.map(({ occurredAt }) => occurredAt)).toEqual(
+      [...exactBody.items.map(({ occurredAt }) => occurredAt)].sort().reverse(),
+    );
+    expect(JSON.stringify(exactBody)).not.toMatch(
+      /pii-must-not-leak|shopify-issue-pii|@example\.test|\+5730|checkout\.invalid|queue-order/u,
+    );
+
+    for (const sensitiveQuery of ['pii-must-not-leak@example.test', '+573001112233']) {
+      const response = await request(baseUrl)
+        .get(searchEndpoint())
+        .query({ ...searchWindow, q: sensitiveQuery })
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+      expect((response.body as SearchResponse).items).toHaveLength(0);
+    }
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      orderBy: { createdAt: 'desc' },
+      where: { action: 'operations.search.executed' },
+    });
+    expect(audit.metadataJson).toMatchObject({ queryKind: 'text', windowMinutes: 480 });
+    expect(JSON.stringify(audit)).not.toMatch(/pii-must-not-leak|@example\.test|\+5730/u);
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain(
+      'ecommerce_api_operational_search_operations_total{outcome="success"}',
+    );
+  });
+
+  it('binds search cursors to immutable filters and enforces bounds, RBAC and tenant isolation', async () => {
+    const first = await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, limit: 1, q: 'open' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const firstBody = first.body as SearchResponse;
+    expect(firstBody.items).toHaveLength(1);
+    expect(firstBody.nextCursor).not.toBeNull();
+
+    const second = await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, cursor: firstBody.nextCursor, limit: 1, q: 'open' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect((second.body as SearchResponse).items[0]?.itemId).not.toBe(firstBody.items[0]?.itemId);
+    await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, cursor: firstBody.nextCursor, limit: 1, q: 'error' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(400);
+
+    for (const query of [
+      { ...searchWindow },
+      { ...searchWindow, q: 'x' },
+      { from: searchWindow.from, q: 'open' },
+      { from: '2026-01-01T00:00:00.000Z', q: 'open', to: '2026-02-02T00:00:00.000Z' },
+      { ...searchWindow, q: 'open', unknown: 'value' },
+    ]) {
+      await request(baseUrl)
+        .get(searchEndpoint())
+        .query(query)
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(400);
+    }
+    await request(baseUrl)
+      .get(searchEndpoint())
+      .query({ ...searchWindow, q: 'open' })
+      .set('authorization', `Bearer ${supportToken}`)
+      .expect(403);
+    await request(baseUrl)
+      .get(searchEndpoint(foreignOrganizationId))
+      .query({ ...searchWindow, q: 'manual_review' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(403);
+    const foreign = await request(baseUrl)
+      .get(searchEndpoint(foreignOrganizationId))
+      .query({ ...searchWindow, q: 'manual_review' })
+      .set('authorization', `Bearer ${foreignOwnerToken}`)
+      .expect(200);
+    expect((foreign.body as SearchResponse).items).toHaveLength(1);
+    expect((foreign.body as SearchResponse).items[0]?.itemId).not.toBe(attentionOrderId);
+  });
+
+  it('returns minimal discriminated detail for all operational types without free-form data', async () => {
+    const queue = await request(baseUrl)
+      .get(endpoint())
+      .query({ requiresAttention: 'true' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const queueBody = queue.body as QueueResponse;
+    expect(new Set(queueBody.items.map(({ type }) => type)).size).toBe(5);
+
+    const details = await Promise.all(
+      queueBody.items.map(async ({ itemId, type }) => {
+        const response = await request(baseUrl)
+          .get(detailEndpoint(type, itemId))
+          .set('authorization', `Bearer ${ownerToken}`)
+          .expect(200)
+          .expect('cache-control', 'no-store');
+        return response.body as DetailResponse;
+      }),
+    );
+    expect(new Set(details.map(({ item }) => item.details.kind))).toEqual(
+      new Set([
+        'order',
+        'payment_intent',
+        'shopify_reconciliation_issue',
+        'whatsapp_conversation',
+        'wompi_reconciliation_issue',
+      ]),
+    );
+    const order = details.find(
+      ({ item, timeline }) => item.type === 'order' && timeline.length > 0,
+    );
+    expect(order?.item.details).toMatchObject({
+      currency: 'COP',
+      kind: 'order',
+      paymentMode: 'unclassified',
+      totalAmount: '10000',
+    });
+    expect(order?.timeline).toEqual([
+      expect.objectContaining({
+        event: 'state_transition',
+        fromStatus: 'received',
+        toStatus: 'manual_review',
+      }),
+    ]);
+    expect(details.every(({ timeline }) => timeline.length <= 25)).toBe(true);
+    expect(JSON.stringify(details)).not.toMatch(
+      /history-pii-must-not-leak|pii-must-not-leak|shopify-issue-pii|@example\.test|\+5730|checkout\.invalid|queue-order|evidenceJson|detailJson|metadataJson/u,
+    );
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      orderBy: { createdAt: 'desc' },
+      where: { action: 'operations.detail.viewed' },
+    });
+    expect(audit.metadataJson).toMatchObject({ timelineCount: 0 });
+    expect(JSON.stringify(audit)).not.toContain(queueBody.items[0]?.itemId);
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain(
+      'ecommerce_api_operational_detail_operations_total{outcome="success"}',
+    );
+  });
+
+  it('makes detail lookups non-revealing across invalid, unauthorized, missing and foreign targets', async () => {
+    await request(baseUrl)
+      .get(detailEndpoint('order', attentionOrderId))
+      .set('authorization', `Bearer ${supportToken}`)
+      .expect(403);
+    await request(baseUrl)
+      .get(detailEndpoint('order', attentionOrderId, foreignOrganizationId))
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(403);
+    await request(baseUrl)
+      .get(detailEndpoint('order', randomUUID()))
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(404);
+    await request(baseUrl)
+      .get(detailEndpoint('unknown', attentionOrderId))
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(400);
+    await request(baseUrl)
+      .get(detailEndpoint('order', 'not-a-uuid'))
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(400);
+  });
+
+  it('exports bounded redacted rows with owner-only RBAC, tenant isolation and durable rate limiting', async () => {
+    const first = await request(baseUrl)
+      .get(exportEndpoint())
+      .query({ ...searchWindow, limit: 2 })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200)
+      .expect('cache-control', 'no-store');
+    const firstBody = first.body as ExportResponse;
+    expect(firstBody).toMatchObject({ contractVersion: 'v1', truncated: true });
+    expect(firstBody.rows).toHaveLength(2);
+    expect(firstBody.rows.map(({ occurredAt }) => occurredAt)).toEqual(
+      [...firstBody.rows.map(({ occurredAt }) => occurredAt)].sort().reverse(),
+    );
+    expect(JSON.stringify(firstBody)).not.toMatch(
+      /pii-must-not-leak|shopify-issue-pii|@example\.test|\+5730|checkout\.invalid|queue-order|itemId|storeId/u,
+    );
+
+    const filtered = await request(baseUrl)
+      .get(exportEndpoint())
+      .query({ ...searchWindow, requiresAttention: 'false', type: 'order' })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    expect((filtered.body as ExportResponse).rows).toEqual([
+      expect.objectContaining({
+        requiresAttention: false,
+        status: 'ready_for_logistics',
+        type: 'order',
+      }),
+    ]);
+
+    await request(baseUrl)
+      .get(exportEndpoint())
+      .query({ ...searchWindow })
+      .set('authorization', `Bearer ${operationsToken}`)
+      .expect(403);
+    await request(baseUrl)
+      .get(exportEndpoint(foreignOrganizationId))
+      .query({ ...searchWindow })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(403);
+    const foreign = await request(baseUrl)
+      .get(exportEndpoint(foreignOrganizationId))
+      .query({ ...searchWindow })
+      .set('authorization', `Bearer ${foreignOwnerToken}`)
+      .expect(200);
+    expect((foreign.body as ExportResponse).rows).toHaveLength(1);
+    expect(JSON.stringify(foreign.body)).not.toContain(attentionOrderId);
+
+    for (const query of [
+      { from: searchWindow.from, to: '2026-07-25T04:00:00.001Z' },
+      { ...searchWindow, limit: 1001 },
+      { ...searchWindow, unknown: 'value' },
+    ]) {
+      await request(baseUrl)
+        .get(exportEndpoint())
+        .query(query)
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(400);
+    }
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      await request(baseUrl)
+        .get(exportEndpoint())
+        .query({ ...searchWindow, limit: 1 })
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(200);
+    }
+    await request(baseUrl)
+      .get(exportEndpoint())
+      .query({ ...searchWindow, limit: 1 })
+      .set('authorization', `Bearer ${ownerToken}`)
+      .expect(429);
+
+    const audit = await prisma.auditLog.findFirstOrThrow({
+      orderBy: { createdAt: 'desc' },
+      where: { action: 'operations.export.generated' },
+    });
+    expect(audit.metadataJson).toMatchObject({ rowCount: 1, windowMinutes: 480 });
+    expect(JSON.stringify(audit)).not.toMatch(/@example\.test|\+5730/u);
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain('ecommerce_api_operational_export_operations_total');
+  });
+
   it('fails closed with its independent kill switch', async () => {
+    process.env.OPERATIONAL_DETAIL_KILL_SWITCH = 'true';
+    process.env.OPERATIONAL_EXPORT_KILL_SWITCH = 'true';
     process.env.OPERATIONAL_QUEUE_KILL_SWITCH = 'true';
+    process.env.OPERATIONAL_SEARCH_KILL_SWITCH = 'true';
     const disabledApp = await createApplication();
     try {
       await disabledApp.listen(0, '127.0.0.1');
@@ -645,9 +999,26 @@ describe('E6 tenant-safe operational read model', () => {
         .query({ from: '2026-07-17T04:00:00.000Z', to: '2026-07-17T11:00:00.000Z' })
         .set('authorization', `Bearer ${ownerToken}`)
         .expect(503);
+      await request(await disabledApp.getUrl())
+        .get(searchEndpoint())
+        .query({ ...searchWindow, q: 'open' })
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(503);
+      await request(await disabledApp.getUrl())
+        .get(detailEndpoint('order', attentionOrderId))
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(503);
+      await request(await disabledApp.getUrl())
+        .get(exportEndpoint())
+        .query({ ...searchWindow })
+        .set('authorization', `Bearer ${ownerToken}`)
+        .expect(503);
     } finally {
       await disabledApp.close();
       process.env.OPERATIONAL_QUEUE_KILL_SWITCH = 'false';
+      process.env.OPERATIONAL_SEARCH_KILL_SWITCH = 'false';
+      process.env.OPERATIONAL_DETAIL_KILL_SWITCH = 'false';
+      process.env.OPERATIONAL_EXPORT_KILL_SWITCH = 'false';
     }
   });
 });

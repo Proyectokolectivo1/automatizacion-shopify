@@ -23,8 +23,10 @@
     }
   },
   "scripts": {
+    "architecture:verify": "node scripts/verify-module-boundaries.mjs",
     "build": "turbo run build",
     "auth:verify": "pnpm --filter @ecommerce/api test:auth",
+    "backup:verify": "node scripts/verify-postgres-backup.mjs",
     "database:migrate": "pnpm --filter @ecommerce/api database:migrate",
     "database:status": "pnpm --filter @ecommerce/api database:status",
     "database:verify": "pnpm --filter @ecommerce/api test:database",
@@ -39,12 +41,16 @@
     "infra:verify": "node scripts/verify-local-infra.mjs",
     "identity:bootstrap": "pnpm --filter @ecommerce/api bootstrap:owner",
     "identity:verify": "pnpm --filter @ecommerce/api test:identity",
+    "finance:verify": "pnpm --filter @ecommerce/api test:finance",
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
-    "observability:verify": "node scripts/verify-observability.mjs",
+    "load:verify": "pnpm --filter @ecommerce/api test:load",
+    "observability:verify": "pnpm --filter @ecommerce/api build && node scripts/verify-observability.mjs",
     "operations:verify": "pnpm --filter @ecommerce/api test:operational-queue",
     "alerts:verify": "pnpm --filter @ecommerce/api test:operational-alerts",
     "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",
     "prisma:generate": "pnpm --filter @ecommerce/api prisma:generate",
+    "release:smoke": "pnpm build && node scripts/verify-release-smoke.mjs",
+    "security:verify": "node scripts/verify-security-baseline.mjs",
     "shopify:verify": "pnpm --filter @ecommerce/api test:shopify",
     "shopify:webhooks:verify": "pnpm --filter @ecommerce/api test:shopify-webhook",
     "shopify:orders:verify": "pnpm --filter @ecommerce/api test:shopify-order",
@@ -57,7 +63,7 @@
     "test": "turbo run test",
     "test:integration": "pnpm --filter @ecommerce/api test:integration",
     "typecheck": "turbo run typecheck",
-    "validate": "pnpm prisma:generate && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "validate": "pnpm prisma:generate && pnpm architecture:verify && pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "devDependencies": {
     "@eslint/eslintrc": "3.3.6",

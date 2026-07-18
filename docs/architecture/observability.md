@@ -30,6 +30,12 @@ el primer estado sano establece baseline, `up -> down` envía una alerta activa 
 resuelve. Estados repetidos no vuelven a notificar. Alertmanager agrupa/deduplica y entrega a un
 receptor local que conserva solo estado y timestamp, nunca el payload completo.
 
+E0-H3C reconstruye el baseline antes de la primera observación mediante `GET /api/v2/alerts`. Solo
+acepta la alerta propia por labels exactas y un `startsAt` RFC3339 válido, limita respuesta/cantidad y
+comparte la consulta concurrente. Una alerta activa se adopta sin otro `firing`; si la dependencia ya
+está sana, se envía el único `resolved` con su inicio original. Fallo/contrato inválido no fija baseline,
+se reintenta y nunca cambia liveness/readiness.
+
 Invariantes:
 
 1. Logs, spans, alertas y métricas no incluyen bodies, query strings, headers de autenticación,
@@ -41,3 +47,7 @@ Invariantes:
 6. Una caída de Collector, Alertmanager o receptor no tumba la API ni falsea readiness.
 7. Trazas y alertas tienen flag y kill switch; permanecen apagadas por defecto.
 8. `/metrics` es loopback por defecto y exige Bearer técnico en producción.
+
+E9-H5A añade un drill local medido de Redis/Collector. Sus presupuestos 15 s/30 s son gates de
+regresión para Docker Desktop, no objetivos productivos. Consulte
+`local-observability-recovery-drill.md`.

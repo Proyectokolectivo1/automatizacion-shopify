@@ -28,6 +28,18 @@ const simulatedOrderSchema = z
     test: z.literal(true),
   })
   .passthrough();
+const liveOrderSchema = z
+  .object({
+    id: z.union([z.number().int().safe(), z.string().trim().min(1).max(128)]),
+    test: z.boolean().optional(),
+  })
+  .passthrough();
+
+interface VerifiedPayload {
+  readonly providerResourceId: string;
+  readonly sourceVersion: string;
+  readonly synthetic: boolean;
+}
 
 export interface ShopifyWebhookCommand {
   readonly apiVersion: string;
@@ -44,7 +56,7 @@ export interface ShopifyWebhookResult {
   readonly accepted: true;
   readonly duplicate: boolean;
   readonly eventId: string;
-  readonly mode: 'simulation';
+  readonly mode: 'live' | 'simulation';
 }
 
 @Injectable()
@@ -86,12 +98,14 @@ export class ShopifyWebhookService {
       throw new UnauthorizedException('Invalid Shopify webhook');
     }
 
-    const secret = this.cipher.decryptWebhookSecret(
+    const secrets = this.cipher.decryptWebhookSecrets(
       connection.encryptedWebhookSecretJson,
       connection.organizationId,
       command.storeId,
     );
-    if (!verifyShopifyWebhookHmac(command.rawBody, command.hmac, secret)) {
+    if (
+      !secrets.some((secret) => verifyShopifyWebhookHmac(command.rawBody, command.hmac, secret))
+    ) {
       await this.recordFailure(connection.organizationId, command.storeId, 'invalid_signature');
       throw new UnauthorizedException('Invalid Shopify webhook');
     }
@@ -102,7 +116,7 @@ export class ShopifyWebhookService {
       throw new BadRequestException('Invalid Shopify webhook timestamp');
     }
 
-    const payload = this.parseVerifiedPayload(command.rawBody);
+    const payload = this.parseVerifiedPayload(command.rawBody, command.apiVersion);
     const payloadHash = this.sha256(command.rawBody);
     const correlationId = this.requestContext.correlationId ?? randomUUID();
     const eventId = randomUUID();
@@ -122,11 +136,11 @@ export class ShopifyWebhookService {
             id: eventId,
             organizationId: connection.organizationId,
             payloadHash,
-            providerResourceId: String(payload.id),
+            providerResourceId: payload.providerResourceId,
             payloadRedactedJson: {
-              fixtureVersion: payload._fixture.version,
-              providerResourceIdHash: this.sha256(Buffer.from(String(payload.id), 'utf8')),
-              synthetic: true,
+              providerResourceIdHash: this.sha256(Buffer.from(payload.providerResourceId, 'utf8')),
+              sourceVersion: payload.sourceVersion,
+              synthetic: payload.synthetic,
             },
             provider: 'SHOPIFY',
             signatureValid: true,
@@ -144,9 +158,9 @@ export class ShopifyWebhookService {
             eventVersion: 1,
             organizationId: connection.organizationId,
             payloadJson: {
-              fixtureVersion: payload._fixture.version,
-              mode: 'simulation',
+              mode: this.mode,
               provider: 'shopify',
+              sourceVersion: payload.sourceVersion,
               storeId: command.storeId,
               topic: command.topic,
               webhookEventId: eventId,
@@ -157,7 +171,7 @@ export class ShopifyWebhookService {
           data: {
             action: 'shopify.webhook.received',
             correlationId,
-            metadataJson: { mode: 'simulation', topic: command.topic },
+            metadataJson: { mode: this.mode, topic: command.topic },
             organizationId: connection.organizationId,
             outcome: 'SUCCESS',
             resourceId: eventId,
@@ -166,7 +180,7 @@ export class ShopifyWebhookService {
         });
       });
       this.metrics.recordShopifyWebhook(command.topic, 'accepted');
-      return { accepted: true, duplicate: false, eventId, mode: 'simulation' };
+      return { accepted: true, duplicate: false, eventId, mode: this.mode };
     } catch (error) {
       if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
         this.metrics.recordShopifyWebhook(command.topic, 'failed');
@@ -187,28 +201,44 @@ export class ShopifyWebhookService {
         throw new ConflictException('Webhook delivery ID was reused with a different payload');
       }
       this.metrics.recordShopifyWebhook(command.topic, 'duplicate');
-      return { accepted: true, duplicate: true, eventId: existing.id, mode: 'simulation' };
+      return { accepted: true, duplicate: true, eventId: existing.id, mode: this.mode };
     }
   }
 
-  private parseVerifiedPayload(rawBody: Buffer): z.infer<typeof simulatedOrderSchema> {
+  private parseVerifiedPayload(rawBody: Buffer, apiVersion: string): VerifiedPayload {
     let parsed: unknown;
     try {
       parsed = JSON.parse(rawBody.toString('utf8')) as unknown;
     } catch {
       throw new BadRequestException('Invalid Shopify webhook JSON');
     }
-    const result = simulatedOrderSchema.safeParse(parsed);
-    if (!result.success) {
-      throw new BadRequestException('Only versioned synthetic Shopify fixtures are accepted');
+    if (this.mode === 'simulation') {
+      const result = simulatedOrderSchema.safeParse(parsed);
+      if (!result.success) {
+        throw new BadRequestException('Only versioned synthetic Shopify fixtures are accepted');
+      }
+      return {
+        providerResourceId: String(result.data.id),
+        sourceVersion: result.data._fixture.version,
+        synthetic: true,
+      };
     }
-    return result.data;
+    if (typeof parsed === 'object' && parsed !== null && Object.hasOwn(parsed, '_fixture')) {
+      throw new BadRequestException('Synthetic Shopify payload is not accepted in live mode');
+    }
+    const result = liveOrderSchema.safeParse(parsed);
+    if (!result.success) throw new BadRequestException('Invalid Shopify order webhook payload');
+    return {
+      providerResourceId: String(result.data.id),
+      sourceVersion: apiVersion,
+      synthetic: false,
+    };
   }
 
   private assertEnabled(): void {
     const controls = this.environment.shopifyWebhooks;
-    if (!controls.enabled || controls.killSwitch || !controls.simulationMode) {
-      throw new ServiceUnavailableException('Shopify webhook simulation is disabled');
+    if (!controls.enabled || controls.killSwitch) {
+      throw new ServiceUnavailableException('Shopify webhook ingress is disabled');
     }
   }
 
@@ -224,11 +254,15 @@ export class ShopifyWebhookService {
     this.metrics.recordShopifyWebhook('orders/create', reason);
     await this.audit.record({
       action: 'shopify.webhook.rejected',
-      metadata: { mode: 'simulation', reason, topic: 'orders/create' },
+      metadata: { mode: this.mode, reason, topic: 'orders/create' },
       organizationId,
       outcome: 'FAILURE',
       resourceId: storeId,
       resourceType: 'shopify_store',
     });
+  }
+
+  private get mode(): 'live' | 'simulation' {
+    return this.environment.shopify.simulationMode ? 'simulation' : 'live';
   }
 }

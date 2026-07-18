@@ -139,6 +139,8 @@ export const environmentSchema = z
     WOMPI_RECONCILIATION_INTERVAL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     WOMPI_RECONCILIATION_LOOKBACK_HOURS: z.coerce.number().int().min(1).max(720).default(24),
     WOMPI_RECONCILIATION_BATCH_SIZE: z.coerce.number().int().min(1).max(500).default(25),
+    FINANCE_OVERVIEW_ENABLED: booleanFlag('false'),
+    FINANCE_OVERVIEW_KILL_SWITCH: booleanFlag('true'),
     WHATSAPP_CREDENTIAL_KEY_VERSION: optionalTrimmed(z.string().regex(/^v[1-9][0-9]*$/u)),
     WHATSAPP_CREDENTIAL_KEYS_JSON: optionalTrimmed(z.string().max(8_192)),
     WHATSAPP_INTEGRATIONS_ENABLED: booleanFlag('false'),
@@ -163,6 +165,15 @@ export const environmentSchema = z
     WHATSAPP_INBOUND_KILL_SWITCH: booleanFlag('true'),
     WHATSAPP_INBOUND_SIMULATION_MODE: booleanFlag('true'),
     WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    WHATSAPP_RETENTION_PURGE_ENABLED: booleanFlag('false'),
+    WHATSAPP_RETENTION_PURGE_KILL_SWITCH: booleanFlag('true'),
+    WHATSAPP_RETENTION_PURGE_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(86_400_000)
+      .default(300_000),
+    WHATSAPP_RETENTION_PURGE_BATCH_SIZE: z.coerce.number().int().min(1).max(1_000).default(100),
     WHATSAPP_INBOX_ENABLED: booleanFlag('false'),
     WHATSAPP_INBOX_KILL_SWITCH: booleanFlag('true'),
     WHATSAPP_INBOX_SIMULATION_MODE: booleanFlag('true'),
@@ -171,6 +182,12 @@ export const environmentSchema = z
     WHATSAPP_ASSIGNMENTS_SIMULATION_MODE: booleanFlag('true'),
     OPERATIONAL_QUEUE_ENABLED: booleanFlag('false'),
     OPERATIONAL_QUEUE_KILL_SWITCH: booleanFlag('true'),
+    OPERATIONAL_DETAIL_ENABLED: booleanFlag('false'),
+    OPERATIONAL_DETAIL_KILL_SWITCH: booleanFlag('true'),
+    OPERATIONAL_EXPORT_ENABLED: booleanFlag('false'),
+    OPERATIONAL_EXPORT_KILL_SWITCH: booleanFlag('true'),
+    OPERATIONAL_SEARCH_ENABLED: booleanFlag('false'),
+    OPERATIONAL_SEARCH_KILL_SWITCH: booleanFlag('true'),
     OPERATIONAL_ALERTS_ENABLED: booleanFlag('false'),
     OPERATIONAL_ALERTS_KILL_SWITCH: booleanFlag('true'),
     OPERATIONAL_ALERTS_POLL_INTERVAL_MS: z.coerce
@@ -195,6 +212,7 @@ export const environmentSchema = z
     SHOPIFY_INTEGRATIONS_KILL_SWITCH: booleanFlag('true'),
     SHOPIFY_SIMULATION_MODE: booleanFlag('true'),
     SHOPIFY_WEBHOOKS_ENABLED: booleanFlag('false'),
+    SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: optionalTrimmed(z.url().max(2_048)),
     SHOPIFY_WEBHOOKS_KILL_SWITCH: booleanFlag('true'),
     SHOPIFY_WEBHOOKS_MAX_BODY_BYTES: z.coerce
       .number()
@@ -203,12 +221,26 @@ export const environmentSchema = z
       .max(1_048_576)
       .default(262_144),
     SHOPIFY_WEBHOOKS_SIMULATION_MODE: booleanFlag('true'),
+    SHOPIFY_WEBHOOK_SECRET_OVERLAP_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     SHOPIFY_ORDER_SYNC_ENABLED: booleanFlag('false'),
     SHOPIFY_ORDER_SYNC_KILL_SWITCH: booleanFlag('true'),
     SHOPIFY_ORDER_SYNC_SIMULATION_MODE: booleanFlag('true'),
+    SHOPIFY_ORDER_ACTIONS_ENABLED: booleanFlag('false'),
+    SHOPIFY_ORDER_ACTIONS_KILL_SWITCH: booleanFlag('true'),
+    SHOPIFY_ORDER_CANCEL_ENABLED: booleanFlag('false'),
     SHOPIFY_RECONCILIATION_ENABLED: booleanFlag('false'),
+    SHOPIFY_RECONCILIATION_BATCH_SIZE: z.coerce.number().int().min(1).max(100).default(10),
+    SHOPIFY_RECONCILIATION_INTERVAL_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     SHOPIFY_RECONCILIATION_KILL_SWITCH: booleanFlag('true'),
+    SHOPIFY_RECONCILIATION_LOOKBACK_HOURS: z.coerce.number().int().min(1).max(168).default(24),
     SHOPIFY_RECONCILIATION_MAX_WINDOW_HOURS: z.coerce.number().int().min(1).max(168).default(24),
+    SHOPIFY_RECONCILIATION_MAX_PAGES: z.coerce.number().int().min(1).max(250).default(25),
+    SHOPIFY_RECONCILIATION_POLL_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(1_000)
+      .max(900_000)
+      .default(60_000),
     SHOPIFY_RECONCILIATION_SIMULATION_MODE: booleanFlag('true'),
     SHOPIFY_RECONCILIATION_STUCK_AFTER_MINUTES: z.coerce
       .number()
@@ -233,6 +265,38 @@ export const environmentSchema = z
         code: 'custom',
         message: 'must be bearer in production',
         path: ['METRICS_ACCESS_MODE'],
+      });
+    }
+    const activeShopifyModes = [
+      [environment.SHOPIFY_INTEGRATIONS_ENABLED, environment.SHOPIFY_SIMULATION_MODE],
+      [environment.SHOPIFY_WEBHOOKS_ENABLED, environment.SHOPIFY_WEBHOOKS_SIMULATION_MODE],
+      [environment.SHOPIFY_ORDER_SYNC_ENABLED, environment.SHOPIFY_ORDER_SYNC_SIMULATION_MODE],
+      [
+        environment.SHOPIFY_RECONCILIATION_ENABLED,
+        environment.SHOPIFY_RECONCILIATION_SIMULATION_MODE,
+      ],
+    ].filter(([enabled]) => enabled);
+    if (
+      activeShopifyModes.some(
+        ([, simulation]) => simulation !== environment.SHOPIFY_SIMULATION_MODE,
+      )
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'active Shopify components must use the global simulation mode',
+        path: ['SHOPIFY_SIMULATION_MODE'],
+      });
+    }
+    if (
+      environment.SHOPIFY_INTEGRATIONS_ENABLED &&
+      !environment.SHOPIFY_SIMULATION_MODE &&
+      (environment.SHOPIFY_WEBHOOK_CALLBACK_BASE_URL === undefined ||
+        !environment.SHOPIFY_WEBHOOK_CALLBACK_BASE_URL.startsWith('https://'))
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'an HTTPS callback base URL is required for live Shopify',
+        path: ['SHOPIFY_WEBHOOK_CALLBACK_BASE_URL'],
       });
     }
   });

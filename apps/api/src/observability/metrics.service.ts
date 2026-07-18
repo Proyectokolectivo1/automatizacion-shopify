@@ -18,16 +18,21 @@ export class MetricsService {
   private readonly shopifyReconciliations: Counter<'action' | 'outcome'>;
   private readonly transportRateOperations: Counter<'action' | 'outcome'>;
   private readonly paymentIntentOperations: Counter<'action' | 'outcome'>;
+  private readonly financeOverviewOperations: Counter<'action' | 'outcome'>;
   private readonly wompiReconciliations: Counter<'action' | 'outcome'>;
   private readonly whatsappOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappTemplateOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappMessageOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappStatusWebhooks: Counter<'outcome'>;
   private readonly whatsappInboundWebhooks: Counter<'outcome'>;
+  private readonly whatsappRetentionPurges: Counter<'outcome'>;
   private readonly whatsappInboxOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappAssignmentOperations: Counter<'action' | 'outcome'>;
   private readonly observabilityAlertOperations: Counter<'action' | 'outcome'>;
   private readonly operationalQueueOperations: Counter<'action' | 'outcome'>;
+  private readonly operationalDetailOperations: Counter<'outcome'>;
+  private readonly operationalExportOperations: Counter<'outcome'>;
+  private readonly operationalSearchOperations: Counter<'outcome'>;
   private readonly operationalAlertOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
@@ -117,6 +122,12 @@ export class MetricsService {
       name: 'ecommerce_api_payment_intent_operations_total',
       registers: [this.registry],
     });
+    this.financeOverviewOperations = new Counter({
+      help: 'Consultas de resumen financiero simuladas por resultado acotado.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_finance_overview_operations_total',
+      registers: [this.registry],
+    });
     this.wompiReconciliations = new Counter({
       help: 'Ejecuciones de conciliación Wompi simuladas por resultado acotado.',
       labelNames: ['action', 'outcome'],
@@ -153,6 +164,12 @@ export class MetricsService {
       name: 'ecommerce_api_whatsapp_inbound_webhooks_total',
       registers: [this.registry],
     });
+    this.whatsappRetentionPurges = new Counter({
+      help: 'Lotes de purga de contenido inbound vencido por resultado acotado.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_whatsapp_retention_purges_total',
+      registers: [this.registry],
+    });
     this.whatsappInboxOperations = new Counter({
       help: 'Consultas acotadas de la bandeja WhatsApp exclusivamente simulada.',
       labelNames: ['action', 'outcome'],
@@ -175,6 +192,24 @@ export class MetricsService {
       help: 'Consultas acotadas de la cola operativa unificada.',
       labelNames: ['action', 'outcome'],
       name: 'ecommerce_api_operational_queue_operations_total',
+      registers: [this.registry],
+    });
+    this.operationalDetailOperations = new Counter({
+      help: 'Consultas acotadas de detalle operativo mínimo.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_operational_detail_operations_total',
+      registers: [this.registry],
+    });
+    this.operationalExportOperations = new Counter({
+      help: 'Generaciones acotadas de export operativo redactado.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_operational_export_operations_total',
+      registers: [this.registry],
+    });
+    this.operationalSearchOperations = new Counter({
+      help: 'Consultas acotadas de la búsqueda operativa global.',
+      labelNames: ['outcome'],
+      name: 'ecommerce_api_operational_search_operations_total',
       registers: [this.registry],
     });
     this.operationalAlertOperations = new Counter({
@@ -244,6 +279,10 @@ export class MetricsService {
     this.paymentIntentOperations.inc({ action, outcome });
   }
 
+  public recordFinanceOverview(action: string, outcome: string): void {
+    this.financeOverviewOperations.inc({ action, outcome });
+  }
+
   public recordWompiReconciliation(action: string, outcome: string): void {
     this.wompiReconciliations.inc({ action, outcome });
   }
@@ -268,6 +307,10 @@ export class MetricsService {
     this.whatsappInboundWebhooks.inc({ outcome });
   }
 
+  public recordWhatsAppRetentionPurge(outcome: 'failure' | 'noop' | 'purged' | 'skipped'): void {
+    this.whatsappRetentionPurges.inc({ outcome });
+  }
+
   public recordWhatsAppInboxOperation(action: 'list' | 'timeline', outcome: string): void {
     this.whatsappInboxOperations.inc({ action, outcome });
   }
@@ -288,6 +331,18 @@ export class MetricsService {
 
   public recordOperationalQueue(action: 'list' | 'summary', outcome: 'failure' | 'success'): void {
     this.operationalQueueOperations.inc({ action, outcome });
+  }
+
+  public recordOperationalDetail(outcome: 'failure' | 'success'): void {
+    this.operationalDetailOperations.inc({ outcome });
+  }
+
+  public recordOperationalExport(outcome: 'failure' | 'success'): void {
+    this.operationalExportOperations.inc({ outcome });
+  }
+
+  public recordOperationalSearch(outcome: 'failure' | 'success'): void {
+    this.operationalSearchOperations.inc({ outcome });
   }
 
   public recordOperationalAlerts(

@@ -3,8 +3,6 @@
 ## Verificación completa
 
 ```bash
-pnpm infra:up
-pnpm build
 pnpm test:integration
 pnpm observability:verify
 pnpm infra:verify
@@ -12,7 +10,8 @@ pnpm infra:verify
 
 La prueba runtime valida propagación W3C, correlación de logs/spans, autenticación de métricas,
 alerta única al detener Redis, resolución al recuperarlo y continuidad de API al detener Collector.
-Los servicios detenidos se restauran en bloques de limpieza.
+El comando ya construye la API, inicia Compose, mide detección/recuperación y restaura los servicios
+detenidos en bloques de limpieza.
 
 ## Endpoints locales
 
@@ -56,9 +55,10 @@ no usan `bearer` o el token tiene menos de 32 caracteres.
 5. Ejecute `pnpm infra:verify` para probar protocolos y persistencia.
 6. No elimine volúmenes para resolver health checks.
 
-Una falla de exportación o entrega se registra y cuenta en métricas, pero la API continúa. El estado
-de transición de alertas vive en el proceso: un reinicio puede volver a establecer baseline y una
-alerta activa puede requerir nueva evaluación; consulte TD-025.
+Una falla de exportación o entrega se registra y cuenta en métricas, pero la API continúa. Al iniciar,
+la primera evaluación consulta alertas activas de Alertmanager; si falla o el contrato no es válido no
+establece baseline y reintenta en el siguiente readiness. Revise los eventos
+`dependency_alert_state_hydrated`/`dependency_alert_state_hydration_failed` sin copiar respuestas.
 
 ## Seguridad
 

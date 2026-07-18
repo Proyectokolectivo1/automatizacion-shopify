@@ -30,10 +30,11 @@ habilita el proveedor simulado.
 
 Los constraints impiden que un webhook interno se presente como firma válida. El sincronizador solo
 acepta HMAC verificado o un evento marcado explícitamente como generado por reconciliación.
+La inspección pagina por `firstDetectedAt` inmutable+UUID y liga cada cursor al filtro de estado.
 
 ## Límites actuales
 
-- Solo simulación; cualquier modo real falla cerrado.
-- Ejecución manual autenticada; el scheduler periódico pertenece a una vertical posterior.
+- Simulation/live deben coincidir con el modo global; la evidencia remota sigue bloqueada por credenciales.
+- Existe scheduler multi-tienda fail-closed y se conserva ejecución manual autenticada para diagnóstico.
 - Ventana máxima configurable, 24 horas por defecto, y hasta 100 incidencias por consulta.
 - No se guarda payload Shopify crudo ni PII adicional en las incidencias.

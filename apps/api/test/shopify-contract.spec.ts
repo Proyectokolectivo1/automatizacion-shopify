@@ -68,11 +68,47 @@ describe('Shopify simulated provider contract and security controls', () => {
     const probe = { accessToken: 'mock-valid-token-value', shopDomain: 'safe.myshopify.com' };
     const first = await provider.testConnection(probe);
     expect(await provider.testConnection(probe)).toEqual(first);
-    expect(first).toMatchObject({ fixtureVersion: 'v1', healthy: true, mode: 'simulation' });
+    expect(first).toMatchObject({
+      capabilities: { inventory: true, locations: true, orders: true },
+      healthy: true,
+      mode: 'simulation',
+      sourceVersion: 'v1',
+    });
     expect(JSON.stringify(first)).not.toContain(probe.accessToken);
     await expect(
       provider.testConnection({ ...probe, accessToken: 'mock-invalid-token' }),
     ).resolves.toMatchObject({ healthy: false, mode: 'simulation' });
+  });
+
+  it('parameterizes only the reserved 500-order load fixture range', async () => {
+    const provider = new ShopifyMockProvider();
+    const query = {
+      accessToken: 'mock-valid-token-value',
+      orderId: '9000000000001',
+      shopDomain: 'safe.myshopify.com',
+    };
+    const first = (await provider.fetchOrder(query)) as {
+      customer: { email: string; id: number };
+      id: number;
+      name: string;
+    };
+    expect(first).toMatchObject({
+      customer: { email: 'load-0001@example.test', id: 9_200_000_000_001 },
+      id: 9_000_000_000_001,
+      name: '#LOAD-0001',
+    });
+    await expect(
+      provider.fetchOrder({ ...query, orderId: '9000000000500' }),
+    ).resolves.toMatchObject({
+      id: 9_000_000_000_500,
+      name: '#LOAD-0500',
+    });
+    await expect(provider.fetchOrder({ ...query, orderId: '9000000000501' })).rejects.toThrow(
+      /fixture was not found/u,
+    );
+    await expect(
+      provider.fetchOrder({ ...query, orderId: 'missing-synthetic-order' }),
+    ).rejects.toThrow(/fixture was not found/u);
   });
 
   it('encrypts with tenant/store AAD and decrypts old versions during key rotation', () => {
@@ -111,7 +147,6 @@ describe('Shopify simulated provider contract and security controls', () => {
   it.each([
     { enabled: 'false', killSwitch: 'false', simulation: 'true' },
     { enabled: 'true', killSwitch: 'true', simulation: 'true' },
-    { enabled: 'true', killSwitch: 'false', simulation: 'false' },
   ])('fails closed with controls $enabled/$killSwitch/$simulation', async (controls) => {
     const restore = setEnvironment({
       SHOPIFY_INTEGRATIONS_ENABLED: controls.enabled,

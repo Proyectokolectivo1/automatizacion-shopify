@@ -11,3 +11,4 @@ apps/api/src/generated/prisma/
 pnpm-debug.log*
 .DS_Store
 Thumbs.db
+.artifacts/

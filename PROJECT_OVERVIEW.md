@@ -33,11 +33,14 @@ El repositorio canónico público es
 publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR borrador #1 está
 abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
-Las fundaciones están al 100 %, Shopify al 75 %, pagos/tarifas al 80 %, WhatsApp al 90 % y operación
+Las fundaciones y la implementación local Shopify están al 100 %, pagos/tarifas al 80 %, WhatsApp al
+90 % y operación
 al 55 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
-Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
-los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
+Shopify simulado. El runtime Shopify live 2026-07, webhooks, pedidos, MARK/CANCEL y scheduler están
+implementados con pruebas contractuales locales; la ejecución contra una tienda development sigue
+bloqueada por credenciales. Los webhooks firmados producen pedidos normalizados durables y los pedidos
+se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
 ciclo operativo seguro, catálogo local versionado, envío transaccional durable, estados monotónicos
 y mensajes entrantes cifrados por webhooks sintéticos autenticados. La bandeja simulada ya ofrece
 listado/timeline y asignación versionada tenant-safe; todavía no existen conexiones, entregas ni
@@ -46,16 +49,21 @@ ventanas/filtros acotados, cursor estable y mínima exposición. Un dashboard Ne
 consume mediante BFF, cookies HttpOnly y protección CSRF sin exponer tokens ni IDs de recursos.
 Las alertas operativas internas materializan esa misma atención v1 con reglas versionadas, estado
 durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectura.
+Revocar una membresía ya libera transaccionalmente sus conversaciones y sesiones; las alertas técnicas
+reconstruyen el estado activo desde Alertmanager después de reiniciar la API y las incidencias Shopify
+tienen cursor keyset estable.
 
 ## Implementado
 
 - Monorepo pnpm/Turborepo con TypeScript strict, ESLint, Prettier y versiones fijadas.
 - Aplicación web Next.js y API NestJS compilables.
 - CI con formatter, lint, typecheck, pruebas, build y verificaciones de infraestructura.
+- Gate modular fail-closed sobre 123 fuentes/529 imports, con cinco colaboraciones exactas y fixtures.
 - PostgreSQL, Redis y MinIO locales autenticados, persistentes y limitados a localhost.
 - Logs JSON redactados, correlation ID, trazas W3C/OTLP y métricas Prometheus protegidas.
 - Liveness y readiness reales para PostgreSQL, Redis y MinIO.
 - Collector, Alertmanager y receptor local reproducibles, con fallo/recuperación y dedupe probados.
+- Hidratación Alertmanager v2 fail-closed: un reinicio conserva firing/resolved sin duplicarlos.
 - Pruebas de degradación y recuperación cuando Redis o el Collector se detienen.
 - Prisma 7.8.0 y migración inicial expand-only.
 - Tablas `organizations`, `stores`, `idempotency_keys` y `outbox_events`.
@@ -77,6 +85,8 @@ durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectu
 - Bootstrap local, concurrente y fail-closed del primer owner, sin argumentos ni secretos persistidos.
 - API owner/admin para listar membresías, cambiar roles y revocar acceso con locks, idempotencia,
   protección del último owner e invalidación transaccional de sesiones.
+- Revocación y asignación WhatsApp coordinadas por lock tenant: liberación total, versiones, historial,
+  outbox, auditoría agregada y sesiones dentro de una transacción.
 - Registro owner/admin de tiendas Shopify con dominio canónico, tenant isolation y snapshot idempotente.
 - Token Shopify cifrado con AES-256-GCM, AAD tenant+tienda, keyring versionado y rotación comprobada.
 - Mock contractual v1 para probar, activar y desactivar, marcado siempre como simulación y cerrado por flags.
@@ -113,6 +123,7 @@ durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectu
 - Dedupe por evento/mensaje, identidad tenant-safe, redacción, inmutabilidad y outbox inbound probados.
 - Bandeja WhatsApp simulada con cursores estables, filtros, timeline e historial tenant-safe.
 - Descifrado solo con RBAC y retención vigente; listado, auditoría y métricas sin PII.
+- Purga física de ciphertext/fingerprint inbound vencido con deadline, lock, trigger y auditoría.
 - Claim propio y reassign/unassign manager-only con membresías elegibles, versión y lock de carrera.
 - Asignación actual, historial inmutable, idempotencia, outbox, auditoría y métricas sin PII probados.
 - Cola operativa unificada de solo lectura con cinco tipos, atención v1, filtros, cursor keyset,
@@ -123,6 +134,8 @@ durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectu
   producción, CSRF/origen y dashboard accesible con filtros, cursor y estados seguros.
 - Alertas operativas v1 con scheduler por lotes, locks tenant, ciclos open/resolved durables, índice
   parcial de dedupe, API de reglas/listado, auditoría, métricas y controles fail-closed.
+- Cartera Wompi/COP simulada de solo lectura por estado, con dinero decimal exacto, ventana, RBAC,
+  tenant, auditoría y controles; no representa recaudo, costos ni rentabilidad.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
@@ -130,15 +143,16 @@ durable, dedupe concurrente, evaluación acotada y API tenant-safe de solo lectu
 ### Fundaciones pendientes
 
 - Persistencia/consulta productiva de trazas, routing de alertas y SLO se completarán en hardening.
-- Backups/restore, carga, TLS, secret manager y despliegue siguen pendientes antes de piloto.
+- Backup/restore, carga, seguridad, smoke y recovery locales ya pasan. TLS, secret manager,
+  infraestructura objetivo y despliegue siguen pendientes antes de piloto.
 
 ### Shopify
 
-- Conexión real y registro remoto de tiendas; la gestión simulada ya está implementada.
-- Registro remoto del webhook y rotación solapada de secretos; el ingreso simulado ya está implementado.
-- Conexión real para pedidos e inventario; la sincronización normalizada simulada ya está completa.
-- Scheduler de conciliación, paginación operativa y estados posteriores; el reproceso simulado ya existe.
-- Mock, fixtures, contrato, feature flag y kill switch mientras falten credenciales.
+- Implementación local completa: conexión GraphQL 2026-07, scopes de pedidos/inventario/ubicaciones,
+  registro remoto idempotente, rotación solapada, webhook dual, pedido paginado, MARK/CANCEL y scheduler.
+- Validar todo el ciclo en tienda development: scopes, suscripción visible, entrega HMAC, rate limits,
+  pedido/inventario real y mutaciones controladas. Estado `BLOQUEADO_POR_CREDENCIALES`.
+- Mantener mock, fixtures, contratos, feature flags y kill switches hasta completar esa evidencia.
 
 ### Pagos y WhatsApp
 
@@ -180,8 +194,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E6-H5A: búsqueda operativa global de solo lectura sobre el read model compartido. Antes de incluir
-detalle o exportaciones se debe fijar su contrato mínimo, límites, redacción y criterios de acceso.
+E0-H6B: evaluar una primitiva idempotente incremental para cerrar TD-021 sin alterar locks, scopes ni
+snapshots. Despliegue/TLS/infra objetivo y aprobación final siguen siendo acciones humanas no
+autorizadas.
 
 ## Dónde consultar más detalle
 

@@ -11,8 +11,10 @@ Casos cubiertos:
    solo outbox. La sincronización posterior crea el pedido y una nueva conciliación resuelve el caso.
 3. Detecta un webhook en dead letter y rearma únicamente el outbox de su organización con una
    versión de entrega nueva.
+4. Pagina por clave inmutable sin duplicados, excluye una inserción concurrente y rechaza cursor
+   inválido o ligado a otro filtro.
 
-La suite de base `pnpm database:verify` verifica además doce migraciones, constraints del checkpoint,
+La suite de base `pnpm database:verify` verifica además 33 migraciones, constraints del checkpoint,
 consistencia de resolución y exclusión mutua entre firma válida y evento interno.
 
 No se usa Shopify real ni PII. El pipeline Redis compartido ya está cubierto por

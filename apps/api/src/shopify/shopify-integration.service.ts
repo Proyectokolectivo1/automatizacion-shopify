@@ -56,7 +56,7 @@ interface LockedIdempotencyRow {
 
 export interface ShopifyStoreResult {
   readonly health: 'healthy' | 'unknown' | 'unhealthy';
-  readonly mode: 'simulation';
+  readonly mode: 'live' | 'simulation';
   readonly shopDomain: string;
   readonly status: 'active' | 'disabled' | 'error' | 'pending' | 'tested';
   readonly storeId: string;
@@ -114,7 +114,7 @@ export class ShopifyIntegrationService {
         });
         await transaction.integrationConnection.create({
           data: {
-            configJson: { fixtureVersion: 'v1', mode: 'simulation' },
+            configJson: { mode: this.mode },
             displayName: command.displayName,
             encryptedCredentialsJson: { ...encrypted },
             organizationId: command.organizationId,
@@ -159,9 +159,10 @@ export class ShopifyIntegrationService {
         await transaction.integrationConnection.update({
           data: {
             configJson: {
-              fixtureVersion: probe.fixtureVersion,
+              capabilities: probe.capabilities,
               mode: probe.mode,
               providerShopId: probe.providerShopId,
+              sourceVersion: probe.sourceVersion,
             },
             lastHealthCheckAt: new Date(),
             lastHealthStatus: health,
@@ -184,8 +185,39 @@ export class ShopifyIntegrationService {
         if (connection.lastHealthStatus !== 'HEALTHY') {
           throw new ConflictException('A healthy connection test is required before activation');
         }
+        let webhookSubscriptionId: string | undefined;
+        if (this.mode === 'live') {
+          if (connection.encryptedWebhookSecretJson === null) {
+            throw new ConflictException('A webhook signing secret is required before activation');
+          }
+          const callbackBaseUrl = this.environment.shopifyWebhooks.callbackBaseUrl;
+          if (callbackBaseUrl === undefined) {
+            throw new ServiceUnavailableException('Shopify webhook callback URL is not configured');
+          }
+          const registration = await this.provider.ensureOrdersCreateWebhook({
+            accessToken: this.cipher.decrypt(
+              connection.encryptedCredentialsJson,
+              command.organizationId,
+              command.storeId,
+            ),
+            callbackUrl: `${callbackBaseUrl.replace(/\/$/u, '')}/webhooks/shopify/${command.storeId}/orders-create`,
+            shopDomain: connection.store.shopifyShopDomain,
+          });
+          webhookSubscriptionId = registration.subscriptionId;
+        }
         await transaction.integrationConnection.update({
-          data: { status: 'ACTIVE' },
+          data: {
+            ...(webhookSubscriptionId === undefined
+              ? {}
+              : {
+                  configJson: {
+                    ...this.configObject(connection.configJson),
+                    mode: this.mode,
+                    webhookSubscriptionId,
+                  },
+                }),
+            status: 'ACTIVE',
+          },
           where: { id: connection.id },
         });
         await transaction.store.update({
@@ -275,13 +307,32 @@ export class ShopifyIntegrationService {
       },
       scope: WEBHOOK_SECRET_SCOPE,
       execute: async (transaction, connection) => {
-        const encrypted = this.cipher.encryptWebhookSecret(
+        const encrypted = this.cipher.rotateWebhookSecret(
           command.webhookSecret,
+          connection.encryptedWebhookSecretJson,
           command.organizationId,
           command.storeId,
+          new Date(Date.now() + this.environment.shopifyWebhooks.secretOverlapHours * 3_600_000),
         );
+        const encryptedJson: Prisma.InputJsonObject = {
+          authTag: encrypted.authTag,
+          ciphertext: encrypted.ciphertext,
+          iv: encrypted.iv,
+          version: encrypted.version,
+          ...(encrypted.previous === undefined
+            ? {}
+            : {
+                previous: {
+                  authTag: encrypted.previous.authTag,
+                  ciphertext: encrypted.previous.ciphertext,
+                  iv: encrypted.previous.iv,
+                  version: encrypted.previous.version,
+                },
+                previousValidUntil: encrypted.previousValidUntil ?? '',
+              }),
+        };
         await transaction.integrationConnection.update({
-          data: { encryptedWebhookSecretJson: { ...encrypted } },
+          data: { encryptedWebhookSecretJson: encryptedJson },
           where: { id: connection.id },
         });
         return this.result(
@@ -376,7 +427,7 @@ export class ShopifyIntegrationService {
                 action: options.action,
                 actorUserId: command.principal.userId,
                 correlationId: this.requestContext.correlationId ?? 'internal',
-                metadataJson: { mode: 'simulation' },
+                metadataJson: { mode: this.mode },
                 organizationId: command.organizationId,
                 outcome: 'SUCCESS',
                 resourceId: options.resourceId,
@@ -397,7 +448,7 @@ export class ShopifyIntegrationService {
       await this.audit.record({
         action: `${options.action}_failed`,
         actorUserId: command.principal.userId,
-        metadata: { mode: 'simulation' },
+        metadata: { mode: this.mode },
         organizationId: command.organizationId,
         outcome: 'FAILURE',
         resourceId: options.resourceId,
@@ -415,8 +466,8 @@ export class ShopifyIntegrationService {
 
   private assertEnabled(): void {
     const controls = this.environment.shopify;
-    if (!controls.enabled || controls.killSwitch || !controls.simulationMode) {
-      throw new ServiceUnavailableException('Shopify integration simulation is disabled');
+    if (!controls.enabled || controls.killSwitch) {
+      throw new ServiceUnavailableException('Shopify integration is disabled');
     }
   }
 
@@ -441,11 +492,19 @@ export class ShopifyIntegrationService {
   ): ShopifyStoreResult {
     return {
       health: health.toLowerCase() as ShopifyStoreResult['health'],
-      mode: 'simulation',
+      mode: this.mode,
       shopDomain,
       status: status.toLowerCase() as ShopifyStoreResult['status'],
       storeId,
     };
+  }
+
+  private get mode(): 'live' | 'simulation' {
+    return this.environment.shopify.simulationMode ? 'simulation' : 'live';
+  }
+
+  private configObject(value: Prisma.JsonValue): Prisma.InputJsonObject {
+    return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : {};
   }
 
   private async withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {

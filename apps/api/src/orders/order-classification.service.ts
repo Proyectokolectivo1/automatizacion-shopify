@@ -32,7 +32,7 @@ export class OrderClassificationService {
   public async classify(command: OrderClassificationCommand): Promise<OrderClassificationResult> {
     this.assertEnabled();
     try {
-      const result = await this.withSerializableRetry(() =>
+      const result = await this.withTransactionRetry(() =>
         this.prisma.$transaction(
           async (transaction): Promise<OrderClassificationResult> => {
             await transaction.$executeRaw`
@@ -172,7 +172,7 @@ export class OrderClassificationService {
               state,
             };
           },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+          { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
         ),
       );
       this.metrics.recordOrderClassification(result.outcome);
@@ -207,19 +207,19 @@ export class OrderClassificationService {
     }
   }
 
-  private async withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {
-    for (let retry = 0; retry < 3; retry += 1) {
+  private async withTransactionRetry<T>(operation: () => Promise<T>): Promise<T> {
+    for (let retry = 0; retry < 5; retry += 1) {
       try {
         return await operation();
       } catch (error) {
-        if (!this.isSerializationConflict(error) || retry === 2) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 25 * (retry + 1)));
+        if (!this.isTransactionConflict(error) || retry === 4) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** retry));
       }
     }
-    throw new Error('Serializable order classification retry limit reached');
+    throw new Error('Order classification transaction retry limit reached');
   }
 
-  private isSerializationConflict(error: unknown): boolean {
+  private isTransactionConflict(error: unknown): boolean {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
     if (error.code === 'P2002' || error.code === 'P2034') return true;
     const metadata = error.meta as { code?: string } | undefined;

@@ -6,8 +6,12 @@ export type Permission =
   | 'organization.manage'
   | 'organization.read'
   | 'operations.alerts.read'
+  | 'operations.detail.read'
+  | 'operations.export.read'
   | 'operations.queue.read'
+  | 'operations.search.read'
   | 'outbox.manage'
+  | 'finance.overview.read'
   | 'reconciliation.manage'
   | 'transport-rates.manage'
   | 'transport-rates.resolve'
@@ -24,8 +28,12 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'organization.manage',
     'organization.read',
     'operations.alerts.read',
+    'operations.detail.read',
+    'operations.export.read',
     'operations.queue.read',
+    'operations.search.read',
     'outbox.manage',
+    'finance.overview.read',
     'reconciliation.manage',
     'transport-rates.manage',
     'transport-rates.resolve',
@@ -35,12 +43,14 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'whatsapp-conversations.assign',
     'whatsapp-messages.dispatch',
   ]),
-  FINANCE: new Set(['organization.read']),
+  FINANCE: new Set(['organization.read', 'finance.overview.read']),
   LOGISTICS: new Set(['organization.read']),
   OPERATIONS: new Set([
     'organization.read',
     'operations.alerts.read',
+    'operations.detail.read',
     'operations.queue.read',
+    'operations.search.read',
     'reconciliation.manage',
     'transport-rates.resolve',
     'payment-intents.create',
@@ -55,8 +65,12 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'organization.manage',
     'organization.read',
     'operations.alerts.read',
+    'operations.detail.read',
+    'operations.export.read',
     'operations.queue.read',
+    'operations.search.read',
     'outbox.manage',
+    'finance.overview.read',
     'reconciliation.manage',
     'transport-rates.manage',
     'transport-rates.resolve',

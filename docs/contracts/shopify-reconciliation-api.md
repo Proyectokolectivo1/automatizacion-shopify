@@ -22,13 +22,15 @@ detectadas, creadas, repetidas y resueltas.
 
 ## Consultar incidencias
 
-`GET /issues?status=OPEN&limit=25`
+`GET /issues?status=OPEN&limit=25&cursor=...`
 
 - `status`: opcional; `OPEN`, `REPROCESSING` o `RESOLVED`.
 - `limit`: 1 a 100, 25 por defecto.
+- `cursor`: opaco, opcional y ligado al filtro `status`; no se puede reutilizar con otro filtro.
 
-La respuesta omite payloads, tokens y datos personales. Expone solo identificadores operativos,
-tipo, estado, referencias acotadas, conteos y timestamps.
+La respuesta contiene `items` y `nextCursor`. Ordena por `firstDetectedAt DESC, id DESC`, ambos
+inmutables para esta consulta. Omite payloads, tokens y datos personales; expone solo identificadores
+operativos, tipo, estado, referencias acotadas, conteos y timestamps.
 
 ## Reprocesar una incidencia
 
@@ -40,7 +42,7 @@ PostgreSQL. Solo se pueden reprocesar incidencias `OPEN`.
 
 ## Errores
 
-- 400: identificador, ventana, filtro o clave inválidos.
+- 400: identificador, ventana, filtro, cursor o clave inválidos.
 - 401/403: sesión o permiso insuficientes.
 - 404: tienda o incidencia fuera de la organización.
 - 409: ventana inválida o incidencia no reprocesable.

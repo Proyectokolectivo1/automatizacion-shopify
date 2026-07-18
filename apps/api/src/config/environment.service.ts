@@ -220,16 +220,20 @@ export class EnvironmentService {
   }
 
   public get shopifyWebhooks(): Readonly<{
+    callbackBaseUrl: string | undefined;
     enabled: boolean;
     killSwitch: boolean;
     maxBodyBytes: number;
     simulationMode: boolean;
+    secretOverlapHours: number;
   }> {
     return {
+      callbackBaseUrl: this.values.SHOPIFY_WEBHOOK_CALLBACK_BASE_URL,
       enabled: this.values.SHOPIFY_WEBHOOKS_ENABLED,
       killSwitch: this.values.SHOPIFY_WEBHOOKS_KILL_SWITCH,
       maxBodyBytes: this.values.SHOPIFY_WEBHOOKS_MAX_BODY_BYTES,
       simulationMode: this.values.SHOPIFY_WEBHOOKS_SIMULATION_MODE,
+      secretOverlapHours: this.values.SHOPIFY_WEBHOOK_SECRET_OVERLAP_HOURS,
     };
   }
 
@@ -242,6 +246,18 @@ export class EnvironmentService {
       enabled: this.values.SHOPIFY_ORDER_SYNC_ENABLED,
       killSwitch: this.values.SHOPIFY_ORDER_SYNC_KILL_SWITCH,
       simulationMode: this.values.SHOPIFY_ORDER_SYNC_SIMULATION_MODE,
+    };
+  }
+
+  public get shopifyOrderActions(): Readonly<{
+    cancelEnabled: boolean;
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      cancelEnabled: this.values.SHOPIFY_ORDER_CANCEL_ENABLED,
+      enabled: this.values.SHOPIFY_ORDER_ACTIONS_ENABLED,
+      killSwitch: this.values.SHOPIFY_ORDER_ACTIONS_KILL_SWITCH,
     };
   }
 
@@ -351,6 +367,16 @@ export class EnvironmentService {
     };
   }
 
+  public get financeOverview(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      enabled: this.values.FINANCE_OVERVIEW_ENABLED,
+      killSwitch: this.values.FINANCE_OVERVIEW_KILL_SWITCH,
+    };
+  }
+
   public get whatsapp(): Readonly<{
     credentialKeyVersion: string | undefined;
     credentialKeysJson: string | undefined;
@@ -431,6 +457,20 @@ export class EnvironmentService {
     };
   }
 
+  public get whatsappRetentionPurge(): Readonly<{
+    batchSize: number;
+    enabled: boolean;
+    killSwitch: boolean;
+    pollIntervalMs: number;
+  }> {
+    return {
+      batchSize: this.values.WHATSAPP_RETENTION_PURGE_BATCH_SIZE,
+      enabled: this.values.WHATSAPP_RETENTION_PURGE_ENABLED,
+      killSwitch: this.values.WHATSAPP_RETENTION_PURGE_KILL_SWITCH,
+      pollIntervalMs: this.values.WHATSAPP_RETENTION_PURGE_POLL_INTERVAL_MS,
+    };
+  }
+
   public get whatsappAssignments(): Readonly<{
     enabled: boolean;
     killSwitch: boolean;
@@ -453,6 +493,36 @@ export class EnvironmentService {
     };
   }
 
+  public get operationalDetail(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      enabled: this.values.OPERATIONAL_DETAIL_ENABLED,
+      killSwitch: this.values.OPERATIONAL_DETAIL_KILL_SWITCH,
+    };
+  }
+
+  public get operationalExport(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      enabled: this.values.OPERATIONAL_EXPORT_ENABLED,
+      killSwitch: this.values.OPERATIONAL_EXPORT_KILL_SWITCH,
+    };
+  }
+
+  public get operationalSearch(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      enabled: this.values.OPERATIONAL_SEARCH_ENABLED,
+      killSwitch: this.values.OPERATIONAL_SEARCH_KILL_SWITCH,
+    };
+  }
+
   public get operationalAlerts(): Readonly<{
     batchSize: number;
     enabled: boolean;
@@ -470,16 +540,26 @@ export class EnvironmentService {
   }
 
   public get shopifyReconciliation(): Readonly<{
+    batchSize: number;
     enabled: boolean;
+    intervalHours: number;
     killSwitch: boolean;
+    lookbackHours: number;
+    maxPages: number;
     maxWindowHours: number;
+    pollIntervalMs: number;
     simulationMode: boolean;
     stuckAfterMinutes: number;
   }> {
     return {
+      batchSize: this.values.SHOPIFY_RECONCILIATION_BATCH_SIZE,
       enabled: this.values.SHOPIFY_RECONCILIATION_ENABLED,
+      intervalHours: this.values.SHOPIFY_RECONCILIATION_INTERVAL_HOURS,
       killSwitch: this.values.SHOPIFY_RECONCILIATION_KILL_SWITCH,
+      lookbackHours: this.values.SHOPIFY_RECONCILIATION_LOOKBACK_HOURS,
+      maxPages: this.values.SHOPIFY_RECONCILIATION_MAX_PAGES,
       maxWindowHours: this.values.SHOPIFY_RECONCILIATION_MAX_WINDOW_HOURS,
+      pollIntervalMs: this.values.SHOPIFY_RECONCILIATION_POLL_INTERVAL_MS,
       simulationMode: this.values.SHOPIFY_RECONCILIATION_SIMULATION_MODE,
       stuckAfterMinutes: this.values.SHOPIFY_RECONCILIATION_STUCK_AFTER_MINUTES,
     };

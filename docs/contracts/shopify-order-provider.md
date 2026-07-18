@@ -1,6 +1,6 @@
 # Contrato de consulta y normalización de pedido Shopify
 
-Estado: `simulation/v1`.
+Estado: `simulation/v1` y `live/2026-07` implementados.
 
 ## Entrada del proveedor
 
@@ -33,14 +33,17 @@ solo IDs internos, tienda, proveedor, modo y versión del fixture.
 Errores de contrato, moneda, recurso inexistente o flags cerrados fallan el job, siguen el retry
 acotado existente y terminan en DLQ al agotar intentos.
 
-## Contrato oficial para el adaptador real pendiente
+## Adaptador real
 
-Estado: `BLOQUEADO_POR_CREDENCIALES`. El Admin GraphQL API usa un endpoint versionado y la cabecera
-`X-Shopify-Access-Token`; el adaptador solicitará los scopes mínimos y tratará `errors` GraphQL como
-fallo aunque HTTP responda 200. También aplicará presupuesto por costo y backoff según el estado de
-throttling. La consulta histórica de pedidos normalmente queda limitada a 60 días salvo aprobación
-de `read_all_orders`.
+El Admin GraphQL API usa endpoint `2026-07` y `X-Shopify-Access-Token`. El probe exige lectura efectiva
+de pedidos, inventario y ubicaciones. Los `errors` GraphQL fallan aunque HTTP sea 200; 429/5xx y
+`THROTTLED` usan retry/backoff acotado. Pedidos se listan por `updated_at` y cursor; line items se paginan
+de 250 hasta el máximo durable 500. El payload live usa `_source.mode=live` y nunca `_fixture`.
 
-Fuentes: [Admin GraphQL API 2026-01](https://shopify.dev/docs/api/admin-graphql/2026-01) y
+La consulta histórica normalmente queda limitada a 60 días salvo aprobación de `read_all_orders`.
+La implementación contractual está completa; su evidencia contra Shopify sigue
+`BLOQUEADO_POR_CREDENCIALES`.
+
+Fuentes: [Admin GraphQL API 2026-07](https://shopify.dev/docs/api/admin-graphql/2026-07) y
 [objeto Order](https://shopify.dev/docs/api/admin-graphql/latest/objects/order). La versión real debe
 fijarse y probarse antes de habilitar tráfico; `latest` no será una versión operativa implícita.

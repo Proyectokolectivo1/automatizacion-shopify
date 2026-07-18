@@ -248,3 +248,178 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - No hubo credenciales, tráfico real, notificaciones, autocorrecciones, exportaciones, despliegue,
   commit ni push. E6-H3A/E6-H4A permanecen locales hasta autorización explícita.
 - Siguiente vertical propuesta: E6-H5A, búsqueda operativa global de solo lectura.
+
+## 2026-07-18 — sesión actual: E6-H5A búsqueda operativa global
+
+- `token-optimizer` se ejecutó en modo Codex read-only: overhead 17.855 tokens (6,9 %), eficiencia
+  S/96 y cero desperdicio medible; no se instalaron hooks ni configuración global.
+- Se añadió búsqueda sobre el read model compartido limitada a ID interno exacto, tipo, estado y
+  motivo operativo; exige ventana `[from,to)` máxima de 31 días y límite máximo 50.
+- Ranking determinista y cursor con huella de consulta/filtros evitan paginación cruzada; RBAC,
+  organización en SQL, auditoría sin `q`, métrica acotada y kill switch independiente fallan cerrados.
+- El BFF deriva el tenant, valida upstream y elimina `itemId`/`matchKind`; el dashboard incorpora
+  término opcional sin exponer PII, tokens, IDs de tienda o relaciones.
+- Evidencia final: `pnpm validate` 82/82 (API 73/73, web 9/9, cobertura crítica 100 %),
+  `pnpm operations:verify` 9/9 y `pnpm web:verify` 9/9.
+- El primer cierre detectó únicamente `no-control-regex`; la validación se reescribió con code points
+  y el gate completo pasó. No hubo migración, credenciales, tráfico real, mutaciones ni despliegue.
+- El repositorio ya estaba publicado hasta E6-H4A en `3ed4dfc`; E6-H5A queda local hasta autorización.
+- Siguiente vertical propuesta: E6-H6A, detalle operativo mínimo de solo lectura; exports quedan E6-H7.
+
+## 2026-07-18 — sesión actual: E6-H6A detalle operativo mínimo
+
+- Se registró alcance/riesgos antes de editar y se construyó API tenant-safe para los cinco tipos con
+  allowlists, timeline máximo 25, RBAC específico, 404 uniforme, auditoría, métrica y kill switch.
+- El BFF cifra referencias con AES-256-GCM/AAD por 15 minutos y valida expiración/tenant; producción
+  exige `WEB_DETAIL_REFERENCE_KEY`. UUID, referencia y tenant no vuelven al navegador.
+- Dashboard añade “Ver detalle”, estados loading/error/close, campos por tipo y timeline accesible sin
+  mutaciones, cuerpos, PII, metadata libre, actores ni referencias externas.
+- Docker Desktop estaba detenido; se levantó para las pruebas. El teardown ahora tolera setup fallido.
+  Una expectativa concurrente se corrigió para usar timeline observable en vez de orden incidental.
+- Evidencia final: `pnpm validate` 84/84 (API 73/73 al 100 %, web 11/11),
+  `pnpm operations:verify` 11/11 y `pnpm database:verify` 16/16, 30/30 sin drift.
+- No hubo migración, credenciales externas, tráfico real, mutaciones operativas, despliegue, commit ni
+  push. Siguiente vertical: E6-H7A, export CSV operativo acotado y redactado.
+
+## 2026-07-18 — sesión actual: E6-H7A export operativo seguro
+
+- Se fijó antes de editar CSV de cinco columnas, ventana máxima 7 días, límite 1.000, owner/admin,
+  rate limit durable, auditoría y generación sin persistencia.
+- API devuelve JSON redactado/ordenado con `truncated`; BFF valida y genera BOM UTF-8, CRLF y comillas
+  RFC 4180. Fórmulas tras espacios, tab o retorno quedan neutralizadas.
+- Dashboard ofrece export del rango solo para owner/admin, lo deshabilita con búsqueda activa o rango
+  mayor de 7 días e informa conteo/truncado. No usa disco, MinIO, DB, jobs ni proveedores.
+- Evidencia focalizada: `operations:verify` 12/12, `web:verify` 13/13, `database:verify` 16/16 e
+  `infra:verify` verde. El primer validate encontró solo tres Markdown sin Prettier y se corrigieron.
+- Sin migración, PII, tráfico externo, despliegue, commit ni push. Fase E6-H1A..H7A completa localmente.
+- Siguiente vertical no bloqueada: E9-H1A backup/restore PostgreSQL local reproducible; objetivos
+  contractuales y almacenamiento externo permanecen bloqueados por decisión/proveedor.
+
+## 2026-07-18 — sesión actual: E9-H1A backup/restore PostgreSQL local
+
+- Se registró alcance antes de editar y se añadió `backup:verify` con `pg_dump` custom de PostgreSQL
+  17, archivo temporal `0600` ignorado y restore transaccional en una base aleatoria aislada.
+- La comparación cubre conteos exactos de 39 tablas, historial/estado de migraciones, constraints,
+  índices y secuencias. Los 31 registros históricos incluyen una migración revertida; 30 están vigentes.
+- Base y dump temporales se eliminan en `finally` y su ausencia se comprueba antes del éxito. El JSON
+  local persistente solo contiene conteos/tamaños/tiempos y queda fuera de Git.
+- Segunda medición: backup 360 ms, restore 890 ms, verificación 323 ms, total 3.523 ms.
+- Evidencia: `database:verify` 16/16 y `pnpm validate` 86/86, lint/tipos/builds verdes. CI incorpora el
+  gate después de migraciones. No se afirmó backup offsite ni RPO/RTO.
+- Siguiente vertical no bloqueada: E9-H2A carga local, ráfagas, acumulación y recuperación.
+
+## 2026-07-18 — sesión actual: E9-H2A carga local y recuperación
+
+- Se registraron dataset/umbrales antes de editar y se añadió un rango reservado de 500 fixtures,
+  suite aislada, comando `load:verify`, reporte agregado, CI y runbooks.
+- El gate envía 500 webhooks HTTP/HMAC con concurrencia 25, demuestra backlog de 500, recupera con
+  cuatro publicadores/worker 50 y repite 50 entregas sin duplicar.
+- La primera corrida agotó 120 s en 230 pedidos. La topología concurrente expuso 103 DLQ por `P2034`;
+  una corrida de 100 confirmó conflictos en sync y clasificación.
+- Ambos servicios ya tenían advisory lock por pedido; se sustituyó `SERIALIZABLE` por `READ COMMITTED`
+  y se conservaron atomicidad, locks y cinco reintentos exponenciales. Gates dedicados pasaron.
+- Evidencia final: ingreso 140,36 req/s/p95 251 ms; drain 7.843 ms/63,75 pedidos/s; 500 pedidos,
+  1.500 transiciones, 50 replays, cero errores/DLQ y cleanup de base/colas.
+- Regresión: outbox 4/4, webhook 5/5, sync 4/4, clasificación 4/4, database 16/16, carga 1/1 y
+  `pnpm validate` 87/87 con ambos builds. No se afirmó capacidad productiva.
+- Siguiente vertical no bloqueada: E9-H3A auditoría local automatizada de seguridad y supply chain.
+
+## 2026-07-18 — sesión actual: E9-H3A baseline local de seguridad
+
+- Se registró alcance antes de editar y se implementó `security:verify` fail-closed con reporte
+  agregado ignorado; CI lo ejecuta antes de generar el entorno local.
+- Siete patrones high-confidence se auto-prueban en memoria y auditan 443 archivos candidatos sin
+  imprimir valores. Cero secretos o artefactos prohibidos; `.env`/`.artifacts` siguen ignorados.
+- Tres manifests usan versiones exactas y ningún lifecycle script; frozen lockfile, permisos CI,
+  cuatro imágenes/bindings Compose, secretos obligatorios y headers/CSP pasan.
+- `pnpm audit --prod` revisó 402 dependencias y devolvió cero vulnerabilidades conocidas; checkout CI
+  ahora usa `persist-credentials: false`.
+- Evidencia: `security:verify`, web 13/13 y `pnpm validate` 87/87 verdes. Tags SHA, CSP inline,
+  SAST/DAST/pentest/TLS/secret manager/infra objetivo quedan abiertos y explícitos.
+- Siguiente vertical no bloqueada: E9-H4A smoke productivo local y rollback forward-compatible.
+
+## 2026-07-18 — sesión actual: E9-H4A smoke local de release
+
+- Se registró alcance antes de editar y se añadió `release:smoke` al root y CI.
+- El gate construye API/web, aplica migraciones dos veces, verifica 30/30 y arranca ambos artefactos
+  productivos directamente sobre puertos efímeros.
+- API pasó liveness/readiness y métricas 401/200; web pasó homepage, CSP sin `unsafe-eval`, cabeceras,
+  ausencia de `X-Powered-By` y BFF 401/`no-store`.
+- El primer intento reveló un `cwd` incorrecto para Next; se fijó `apps/web` y la repetición pasó.
+- Medición inicial verde: API 3.038 ms/web 1.048 ms. El cierre con 32 migraciones repitió verde en
+  3.278 ms/1.012 ms. SIGTERM cerró ambos listeners.
+- El reporte agregado está ignorado/redactado. Se documentó rollback expand/contract sin `down` y
+  restore únicamente para incidentes de datos autorizados.
+- No hubo despliegue, rollback real, TLS/proxy, commit ni push.
+- Siguiente vertical no bloqueada: E9-H5A drill local de observabilidad y recuperación con objetivos
+  medidos; backend/routing/SLO productivos continúan sujetos a infraestructura y decisión humana.
+
+## 2026-07-18 — sesión actual: E9-H5A, E3-H8A y E0-H4D
+
+- `observability:verify` ahora construye/inicia autónomamente, usa secretos/puerto efímeros, mide
+  presupuestos 15 s/30 s, restaura servicios y escribe reporte redactado.
+- Resultados: Redis down/readiness 697 ms, firing 978 ms, readiness up 6.322 ms, resolved 6.325 ms,
+  Collector 4.185 ms; API viva, lifecycle exacto y sin fugas.
+- Se priorizó TD-023/R-055: migración 31, scheduler fail-closed, lote/lock/`SKIP LOCKED`, trigger
+  irreversible y auditoría atómica purgan solo ciphertext/fingerprint vencidos.
+- `whatsapp:verify` pasó 26/26: vigente rechazado, vencido purgado, evidencia conservada, replay no-op,
+  timeline/métrica seguros. Política legal y Meta real siguen bloqueados.
+- Preflight TD-010 confirmó cero nulos/huérfanos; migración 32 validó seis constraints legacy.
+- Cierre: database 16/16/32 migraciones, security 458 archivos/402 deps, backup 39 tablas/32
+  migraciones, release smoke API 3.278 ms/web 1.012 ms y validate 87/87 con ambos builds.
+- No hubo tráfico real, despliegue, commit ni push.
+- Siguiente vertical local: E0-H5D, liberar asignaciones WhatsApp al revocar membresía.
+
+## 2026-07-18 — Shopify E1-H1B..H5B al 100 % local
+
+- Se fijó Admin GraphQL API 2026-07 con router simulation/live, timeout, tres intentos, backoff,
+  errores redactados y probe efectivo de pedidos, inventario y ubicaciones.
+- Pedidos por GID y listados por `updated_at` usan cursor; line items drenan páginas de 250 y fallan al
+  superar 500 en vez de truncar. Pedidos guest sin customer/address quedan soportados.
+- Activación live asegura `ORDERS_CREATE` consulta-before-create sobre callback HTTPS. El secreto HMAC
+  rota como activo+anterior cifrados con deadline 24 h y el ingreso distingue fixture/live.
+- El outbox consume `MARK` idempotente y `CANCEL` asíncrono sin refund; CANCEL requiere actions enabled,
+  kill switch abierto y flag destructivo explícito. Replay reconoce cancelación ya aplicada.
+- Scheduler multi-tienda retoma ventana/cursor, pagina hasta fin o safety limit y conserva endpoint
+  manual/RBAC.
+- Cinco gates Shopify verdes. `pnpm validate`: 99/99 (API 86, web 13), cobertura crítica 100 %, lint,
+  tipos y builds. Outbox 4/4; seguridad 474 archivos/402 deps; DB 32 migraciones actualizadas.
+- Arquitectura, seguridad, runbook, testing y registros maestros actualizados. No hubo credenciales,
+  Shopify real, despliegue, commit ni push.
+- Implementación E1 local: 100 %. Validación end-to-end en tienda development:
+  `BLOQUEADO_POR_CREDENCIALES`.
+
+## 2026-07-18 — E0-H5D, E0-H3C y E1-H5C
+
+- La revocación de membresías ahora comparte lock por organización con asignación WhatsApp y libera
+  todas las conversaciones dentro de la misma transacción que revoca membresía/sesiones.
+- Cada liberación incrementa versión y crea historial `UNASSIGN/MEMBERSHIP_REVOKED`, outbox y auditoría
+  agregada. Replay, carrera con claim, reparación legacy y tenant ajeno quedaron probados.
+- La migración 33 amplió el enum/constraint de razón sin relajar la forma válida de asignar/desasignar.
+- Alerting hidrata una sola vez desde Alertmanager v2 antes del baseline: adopta firing propio, evita
+  duplicarlo tras reinicio y emite resolved al recuperarse; contratos inválidos fallan cerrados.
+- El drill reinició API con Redis caído: down 692 ms, firing 972 ms, readiness up 6.265 ms, resolved
+  6.534 ms y Collector 3.693 ms, conservando exactamente un firing.
+- La inspección de incidencias Shopify añadió cursor keyset opaco ligado al filtro, `limit + 1` y
+  rechazo de cursor alterado/cross-filter; una inserción concurrente no duplica páginas existentes.
+- Evidencia: validate 105/105 (API 92/web 13), identity 5/5, WhatsApp 26/26, reconciliación 6/6,
+  database 16/16/33 migraciones, seguridad 478 archivos/402 deps, backup y release smoke verdes.
+- TD-016/024/025 y R-061/R-064 quedaron cerrados o mitigados. No hubo proveedor real, despliegue,
+  commit ni push. Siguiente vertical local propuesta: E0-H6A, fronteras modulares mínimas (TD-003).
+
+## 2026-07-18 — E0-H6A y E7-H1A
+
+- `architecture:verify` inspecciona 123 fuentes/529 imports y forma parte de `validate`/CI. Separa
+  composición, plataforma y diez dominios; cinco colaboraciones exactas deben seguir ejercidas.
+- Ocho fixtures demuestran permisos y rechazos. Módulo desconocido, escape de `src`, plataforma→dominio,
+  par no allowlisted o excepción obsoleta fallan cerrados, sin dependencias nuevas.
+- `DependencyStatus` pasó a foundation y eliminó el ciclo de tipos observability→health. TD-003 y R-084
+  quedaron resueltos/mitigados.
+- Se completó la base E7-H1A ya iniciada: cartera Wompi/COP simulada por estado, una consulta agregada,
+  ventana 31 días, RBAC owner/admin/finance, tenant, no-store, auditoría, métrica y controles.
+- BIGINT monetario ahora sale como decimal string. `finance:verify` 4/4 cubre un importe >MAX_SAFE,
+  vacío, límites, RBAC/tenant, metadata sin importes y kill switch.
+- Cierre: validate 105/105 y builds verdes; arquitectura verde; seguridad 486 archivos/402 deps;
+  release smoke API 2.065 ms/web 910 ms y shutdown limpio.
+- Costos, recaudo y rentabilidad siguen bloqueados por decisión/datos externos. No hubo proveedor real,
+  despliegue, commit ni push. Próximo hardening propuesto: E0-H6B sobre TD-021.

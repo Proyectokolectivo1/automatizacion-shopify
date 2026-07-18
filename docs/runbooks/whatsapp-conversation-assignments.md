@@ -17,7 +17,8 @@ El ingreso, la bandeja y la integración WhatsApp también deben estar disponibl
   idempotencia con un cuerpo distinto.
 - `404`: comprobar tenant y tienda sin intentar enumerar recursos ajenos.
 - `503`: revisar los cuatro grupos de controles antes de tocar datos.
-- Membresía revocada/inactiva ya asignada: usar un manager para `reassign` o `unassign`.
+- Membresía revocada/inactiva ya asignada: la revocación normal la libera atómicamente. Si aparece una
+  asignación legacy, repetir la revocación con una clave nueva repara la invariante; no editar SQL.
 
 La métrica `ecommerce_api_whatsapp_assignment_operations_total{action,outcome}` permite observar
 éxitos, replay, conflictos, denegaciones y fallos sin etiquetas de alta cardinalidad. Correlacionar

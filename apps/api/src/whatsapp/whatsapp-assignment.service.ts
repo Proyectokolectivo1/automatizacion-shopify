@@ -18,6 +18,7 @@ import {
   type WhatsAppConversationAssignmentReason,
 } from '../generated/prisma/client';
 import { requestHash } from '../foundation/request-hash';
+import { membershipTransactionLockKey } from '../identity/membership-transaction-lock';
 import { MetricsService } from '../observability/metrics.service';
 import { RequestContextService } from '../observability/request-context.service';
 
@@ -134,6 +135,12 @@ export class WhatsAppAssignmentService {
                 result: idempotency.response_snapshot_json as unknown as WhatsAppAssignmentResult,
               };
             }
+
+            await transaction.$executeRaw`
+              SELECT pg_advisory_xact_lock(
+                hashtextextended(${membershipTransactionLockKey(command.organizationId)}, 0)
+              )
+            `;
 
             const [conversation] = await transaction.$queryRaw<LockedConversationRow[]>`
               SELECT id, assigned_membership_id, assignment_version, assigned_at

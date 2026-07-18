@@ -141,6 +141,7 @@ export async function safeJson(response: Response): Promise<unknown> {
 export function upstreamError(response: Response): BffError {
   if (response.status === 401) return new BffError(401, 'Sesión o credenciales inválidas');
   if (response.status === 403) return new BffError(403, 'Acceso no autorizado');
+  if (response.status === 404) return new BffError(404, 'Elemento operativo no disponible');
   if (response.status === 429) return new BffError(429, 'Demasiados intentos; inténtalo más tarde');
   if (response.status === 503)
     return new BffError(503, 'La operación está temporalmente deshabilitada');

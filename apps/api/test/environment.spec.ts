@@ -39,6 +39,12 @@ describe('parseEnvironment', () => {
       OBSERVABILITY_ALERTS_KILL_SWITCH: true,
       OPERATIONAL_QUEUE_ENABLED: false,
       OPERATIONAL_QUEUE_KILL_SWITCH: true,
+      OPERATIONAL_DETAIL_ENABLED: false,
+      OPERATIONAL_DETAIL_KILL_SWITCH: true,
+      OPERATIONAL_EXPORT_ENABLED: false,
+      OPERATIONAL_EXPORT_KILL_SWITCH: true,
+      OPERATIONAL_SEARCH_ENABLED: false,
+      OPERATIONAL_SEARCH_KILL_SWITCH: true,
       OTEL_TRACE_SAMPLE_RATIO: 1,
       OTEL_TRACING_ENABLED: false,
       OTEL_TRACING_KILL_SWITCH: true,
@@ -48,6 +54,8 @@ describe('parseEnvironment', () => {
       PAYMENT_EXPIRATION_ENABLED: false,
       PAYMENT_EXPIRATION_KILL_SWITCH: true,
       PAYMENT_EXPIRATION_SIMULATION_MODE: true,
+      FINANCE_OVERVIEW_ENABLED: false,
+      FINANCE_OVERVIEW_KILL_SWITCH: true,
       WOMPI_RECONCILIATION_BATCH_SIZE: 25,
       WOMPI_RECONCILIATION_ENABLED: false,
       WOMPI_RECONCILIATION_INTERVAL_HOURS: 24,
@@ -118,6 +126,42 @@ describe('parseEnvironment', () => {
     expect(() =>
       parseEnvironment({ ...validEnvironment, PAYMENT_EXPIRATION_DEFAULT_ACTION: 'DELETE' }),
     ).toThrowError(/PAYMENT_EXPIRATION_DEFAULT_ACTION/u);
+  });
+
+  it('keeps active Shopify modes coherent and requires an HTTPS live callback', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_WEBHOOKS_ENABLED: 'true',
+        SHOPIFY_WEBHOOKS_SIMULATION_MODE: 'false',
+      }),
+    ).toThrowError(/active Shopify components/u);
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+      }),
+    ).toThrowError(/HTTPS callback/u);
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+        SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'http://api.example.test',
+      }),
+    ).toThrowError(/HTTPS callback/u);
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+        SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'https://api.example.test',
+      }),
+    ).toMatchObject({
+      SHOPIFY_SIMULATION_MODE: false,
+      SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'https://api.example.test',
+    });
   });
 
   it('requires technical metrics authentication in production', () => {

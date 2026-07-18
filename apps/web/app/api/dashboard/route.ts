@@ -6,6 +6,7 @@ import {
   organizationOptionsSchema,
   principalSchema,
   queueSchema,
+  searchSchema,
   summarySchema,
 } from '../../../lib/contracts';
 import {
@@ -16,12 +17,25 @@ import {
   upstreamError,
 } from '../../../lib/server/bff';
 import { errorResponse, jsonResponse } from '../../../lib/server/responses';
+import { createDetailReference } from '../../../lib/server/detail-reference';
 
-const ALLOWED_QUERY_KEYS = new Set(['cursor', 'from', 'to', 'type']);
+const ALLOWED_QUERY_KEYS = new Set(['cursor', 'from', 'q', 'to', 'type']);
+const hasControlCharacters = (value: string): boolean =>
+  [...value].some((character) => {
+    const code = character.codePointAt(0) ?? 0;
+    return code <= 31 || code === 127;
+  });
 const querySchema = z
   .object({
-    cursor: z.string().min(1).max(512).optional(),
+    cursor: z.string().min(1).max(768).optional(),
     from: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
+    q: z
+      .string()
+      .trim()
+      .min(2)
+      .max(80)
+      .refine((value) => !hasControlCharacters(value))
+      .optional(),
     to: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
     type: z.enum(OPERATIONAL_TYPES).optional(),
   })
@@ -39,6 +53,7 @@ export async function GET(request: NextRequest) {
     const parsed = querySchema.safeParse({
       cursor: request.nextUrl.searchParams.get('cursor') ?? undefined,
       from: request.nextUrl.searchParams.get('from') ?? undefined,
+      q: request.nextUrl.searchParams.get('q') ?? undefined,
       to: request.nextUrl.searchParams.get('to') ?? undefined,
       type: request.nextUrl.searchParams.get('type') ?? undefined,
     });
@@ -57,13 +72,20 @@ export async function GET(request: NextRequest) {
       queueQuery.set('type', parsed.data.type);
     }
     if (parsed.data.cursor !== undefined) queueQuery.set('cursor', parsed.data.cursor);
-    const prefix = `/operations/organizations/${principal.organizationId}/queue`;
-    const [optionsResponse, summaryResponse, queueResponse] = await Promise.all([
+    const queuePrefix = `/operations/organizations/${principal.organizationId}/queue`;
+    const operationsPath =
+      parsed.data.q === undefined
+        ? `${queuePrefix}?${queueQuery}`
+        : `/operations/organizations/${principal.organizationId}/search?${new URLSearchParams({
+            ...Object.fromEntries(queueQuery),
+            q: parsed.data.q,
+          })}`;
+    const [optionsResponse, summaryResponse, operationsResponse] = await Promise.all([
       apiRequest('/auth/organizations', {}, accessToken),
-      apiRequest(`${prefix}/summary?${summaryQuery}`, {}, accessToken),
-      apiRequest(`${prefix}?${queueQuery}`, {}, accessToken),
+      apiRequest(`${queuePrefix}/summary?${summaryQuery}`, {}, accessToken),
+      apiRequest(operationsPath, {}, accessToken),
     ]);
-    for (const response of [optionsResponse, summaryResponse, queueResponse]) {
+    for (const response of [optionsResponse, summaryResponse, operationsResponse]) {
       if (!response.ok) throw upstreamError(response);
     }
     const options = organizationOptionsSchema
@@ -74,14 +96,21 @@ export async function GET(request: NextRequest) {
     );
     if (currentOrganization === undefined) throw new BffError(403, 'Organización no autorizada');
     const summary = summarySchema.parse(await safeJson(summaryResponse));
-    const queue = queueSchema.parse(await safeJson(queueResponse));
+    const queue = (parsed.data.q === undefined ? queueSchema : searchSchema).parse(
+      await safeJson(operationsResponse),
+    );
     return jsonResponse({
       currentOrganization,
       nextCursor: queue.nextCursor,
       organizations: options,
       queue: queue.items.map(
-        ({ attentionReason, occurredAt, requiresAttention, status, type }) => ({
+        ({ attentionReason, itemId, occurredAt, requiresAttention, status, type }) => ({
           attentionReason,
+          detailReference: createDetailReference({
+            itemId,
+            organizationId: principal.organizationId,
+            type,
+          }),
           occurredAt,
           requiresAttention,
           status,

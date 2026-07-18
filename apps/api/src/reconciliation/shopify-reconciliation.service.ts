@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -30,9 +31,18 @@ export interface ReconciliationRunCommand extends BaseCommand {
   readonly windowStartedAt: Date;
 }
 
+export type ScheduledReconciliationRunCommand = Omit<ReconciliationRunCommand, 'principal'>;
+
 interface InspectCommand extends BaseCommand {
+  readonly cursor?: string | undefined;
   readonly limit: number;
   readonly status?: 'OPEN' | 'REPROCESSING' | 'RESOLVED' | undefined;
+}
+
+interface InspectCursor {
+  readonly firstDetectedAt: Date;
+  readonly id: string;
+  readonly status: 'OPEN' | 'REPROCESSING' | 'RESOLVED' | 'all';
 }
 
 interface ReprocessCommand extends BaseCommand {
@@ -75,7 +85,17 @@ export class ShopifyReconciliationService {
     @Inject(SHOPIFY_PROVIDER) private readonly provider: ShopifyProvider,
   ) {}
 
-  public async run(command: ReconciliationRunCommand) {
+  public run(command: ReconciliationRunCommand) {
+    return this.executeRun(command);
+  }
+
+  public runScheduled(command: ScheduledReconciliationRunCommand) {
+    return this.executeRun(command);
+  }
+
+  private async executeRun(
+    command: ScheduledReconciliationRunCommand & { readonly principal?: AuthPrincipal },
+  ) {
     this.assertEnabled();
     this.assertWindow(command.windowStartedAt, command.windowEndedAt);
     try {
@@ -149,8 +169,9 @@ export class ShopifyReconciliationService {
           .filter(({ id }) => !localIds.has(id))
           .map(({ id, updatedAt }) =>
             this.signal('MISSING_ORDER', command.storeId, id, {
-              fixtureVersion: listing.fixtureVersion,
+              mode: listing.mode,
               providerUpdatedAt: updatedAt.toISOString(),
+              sourceVersion: listing.sourceVersion,
             }),
           ),
         ...failedWebhooks.map((webhook) =>
@@ -249,7 +270,7 @@ export class ShopifyReconciliationService {
       });
       const result = {
         detectedCount: signals.length,
-        mode: 'simulation' as const,
+        mode: listing.mode,
         nextCursor: listing.nextCursor,
         resolvedCount: resolvedIds.length,
         storeId: command.storeId,
@@ -257,7 +278,7 @@ export class ShopifyReconciliationService {
       this.metrics.recordShopifyReconciliation('scan', 'success');
       await this.audit.record({
         action: 'shopify.reconciliation.completed',
-        actorUserId: command.principal.userId,
+        actorUserId: command.principal?.userId,
         metadata: { detectedCount: signals.length, resolvedCount: resolvedIds.length },
         organizationId: command.organizationId,
         outcome: 'SUCCESS',
@@ -269,7 +290,7 @@ export class ShopifyReconciliationService {
       this.metrics.recordShopifyReconciliation('scan', 'failure');
       await this.audit.record({
         action: 'shopify.reconciliation.failed',
-        actorUserId: command.principal.userId,
+        actorUserId: command.principal?.userId,
         organizationId: command.organizationId,
         outcome: 'FAILURE',
         resourceId: command.storeId,
@@ -281,8 +302,12 @@ export class ShopifyReconciliationService {
 
   public async inspect(command: InspectCommand) {
     this.assertEnabled();
+    const cursor =
+      command.cursor === undefined
+        ? undefined
+        : this.decodeInspectCursor(command.cursor, command.status);
     const items = await this.prisma.orderReconciliationIssue.findMany({
-      orderBy: [{ lastDetectedAt: 'desc' }, { id: 'desc' }],
+      orderBy: [{ firstDetectedAt: 'desc' }, { id: 'desc' }],
       select: {
         detectionCount: true,
         firstDetectedAt: true,
@@ -296,21 +321,77 @@ export class ShopifyReconciliationService {
         storeId: true,
         webhookEventId: true,
       },
-      take: command.limit,
+      take: command.limit + 1,
       where: {
         organizationId: command.organizationId,
         ...(command.status === undefined ? {} : { status: command.status }),
+        ...(cursor === undefined
+          ? {}
+          : {
+              OR: [
+                { firstDetectedAt: { lt: cursor.firstDetectedAt } },
+                { firstDetectedAt: cursor.firstDetectedAt, id: { lt: cursor.id } },
+              ],
+            }),
       },
     });
+    const hasMore = items.length > command.limit;
+    const page = items.slice(0, command.limit);
+    const last = page.at(-1);
     await this.audit.record({
       action: 'shopify.reconciliation.inspected',
       actorUserId: command.principal.userId,
-      metadata: { itemCount: items.length, status: command.status ?? 'all' },
+      metadata: { itemCount: page.length, status: command.status ?? 'all' },
       organizationId: command.organizationId,
       outcome: 'SUCCESS',
       resourceType: 'reconciliation_issue',
     });
-    return { items };
+    return {
+      items: page,
+      nextCursor:
+        hasMore && last !== undefined
+          ? this.encodeInspectCursor(last.firstDetectedAt, last.id, command.status)
+          : null,
+    };
+  }
+
+  private decodeInspectCursor(value: string, status: InspectCommand['status']): InspectCursor {
+    try {
+      const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as {
+        firstDetectedAt?: unknown;
+        id?: unknown;
+        status?: unknown;
+      };
+      const firstDetectedAt = new Date(
+        typeof parsed.firstDetectedAt === 'string' ? parsed.firstDetectedAt : '',
+      );
+      const id = typeof parsed.id === 'string' ? parsed.id : '';
+      const expectedStatus = status ?? 'all';
+      if (
+        !Number.isFinite(firstDetectedAt.getTime()) ||
+        !/^[0-9a-f-]{36}$/iu.test(id) ||
+        parsed.status !== expectedStatus
+      ) {
+        throw new Error('Invalid cursor');
+      }
+      return { firstDetectedAt, id, status: expectedStatus };
+    } catch {
+      throw new BadRequestException('Invalid reconciliation cursor');
+    }
+  }
+
+  private encodeInspectCursor(
+    firstDetectedAt: Date,
+    id: string,
+    status: InspectCommand['status'],
+  ): string {
+    return Buffer.from(
+      JSON.stringify({
+        firstDetectedAt: firstDetectedAt.toISOString(),
+        id,
+        status: status ?? 'all',
+      }),
+    ).toString('base64url');
   }
 
   public async reprocess(command: ReprocessCommand): Promise<ReconciliationReprocessResult> {
@@ -543,8 +624,8 @@ export class ShopifyReconciliationService {
 
   private assertEnabled(): void {
     const controls = this.environment.shopifyReconciliation;
-    if (!controls.enabled || controls.killSwitch || !controls.simulationMode) {
-      throw new ServiceUnavailableException('Shopify reconciliation simulation is disabled');
+    if (!controls.enabled || controls.killSwitch) {
+      throw new ServiceUnavailableException('Shopify reconciliation is disabled');
     }
   }
 

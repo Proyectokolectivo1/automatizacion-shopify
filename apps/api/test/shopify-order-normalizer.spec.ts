@@ -32,7 +32,7 @@ describe('ShopifyOrderNormalizer', () => {
       email: 'cliente.sintetico@example.test',
       phoneE164: '+573001112233',
     });
-    expect(order.address.normalizedAddress).toContain('Bogota');
+    expect(order.address?.normalizedAddress).toContain('Bogota');
     expect(order.items[0]).toMatchObject({
       quantity: 1,
       totalPriceAmount: 1_000_000n,

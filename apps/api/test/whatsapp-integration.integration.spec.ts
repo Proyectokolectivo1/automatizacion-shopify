@@ -14,6 +14,7 @@ import { PASSWORD_PARAMETERS, PasswordService } from '../src/auth/password.servi
 import { loadEnvironmentFiles } from '../src/config/load-environment';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { WhatsAppCredentialCipher } from '../src/whatsapp/whatsapp-credential-cipher';
+import { WhatsAppRetentionPurgeService } from '../src/whatsapp/whatsapp-retention-purge.service';
 
 loadEnvironmentFiles();
 
@@ -59,6 +60,10 @@ const environmentNames = [
   'WHATSAPP_INBOUND_KILL_SWITCH',
   'WHATSAPP_INBOUND_SIMULATION_MODE',
   'WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS',
+  'WHATSAPP_RETENTION_PURGE_ENABLED',
+  'WHATSAPP_RETENTION_PURGE_KILL_SWITCH',
+  'WHATSAPP_RETENTION_PURGE_POLL_INTERVAL_MS',
+  'WHATSAPP_RETENTION_PURGE_BATCH_SIZE',
   'WHATSAPP_INBOX_ENABLED',
   'WHATSAPP_INBOX_KILL_SWITCH',
   'WHATSAPP_INBOX_SIMULATION_MODE',
@@ -175,6 +180,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let orderId: string;
   let claimedConversationId: string;
   let racedConversationId: string;
+  let expiredInboundMessageId: string;
   let prisma: PrismaClient;
 
   beforeAll(async () => {
@@ -210,6 +216,10 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     process.env.WHATSAPP_INBOUND_KILL_SWITCH = 'false';
     process.env.WHATSAPP_INBOUND_SIMULATION_MODE = 'true';
     process.env.WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS = '30';
+    process.env.WHATSAPP_RETENTION_PURGE_ENABLED = 'true';
+    process.env.WHATSAPP_RETENTION_PURGE_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_RETENTION_PURGE_POLL_INTERVAL_MS = '300000';
+    process.env.WHATSAPP_RETENTION_PURGE_BATCH_SIZE = '100';
     process.env.WHATSAPP_INBOX_ENABLED = 'true';
     process.env.WHATSAPP_INBOX_KILL_SWITCH = 'false';
     process.env.WHATSAPP_INBOX_SIMULATION_MODE = 'true';
@@ -1324,6 +1334,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
       where: { customerId: null, organizationId, storeId },
     });
     const messageId = randomUUID();
+    expiredInboundMessageId = messageId;
     const expiredText = 'Expired synthetic inbound content';
     const cipher = app?.get(WhatsAppCredentialCipher);
     if (cipher === undefined) throw new Error('WhatsApp cipher is unavailable');
@@ -1357,6 +1368,69 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     const expired = timeline.items.find((item) => item.messageId === messageId);
     expect(expired).toMatchObject({ content: null, contentState: 'expired' });
     expect(JSON.stringify(timeline)).not.toContain(expiredText);
+  });
+
+  it('purges only expired inbound ciphertext once with aggregate audit evidence', async () => {
+    const service = app?.get(WhatsAppRetentionPurgeService);
+    if (service === undefined) throw new Error('WhatsApp retention purge service is unavailable');
+    const current = await prisma.whatsAppMessage.findFirstOrThrow({
+      where: {
+        direction: 'INBOUND',
+        contentPurgedAt: null,
+        retentionExpiresAt: { gt: new Date() },
+      },
+    });
+    await expect(
+      prisma.$executeRaw`
+        UPDATE whatsapp_messages
+        SET encrypted_body_json = NULL,
+            content_fingerprint = NULL,
+            content_purged_at = NOW()
+        WHERE id = ${current.id}::uuid
+      `,
+    ).rejects.toThrow();
+
+    const first = await service.runOnce(new Date());
+    expect(first).toEqual({ organizations: 1, purged: 1, skipped: false });
+    const [expired, retained] = await Promise.all([
+      prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: expiredInboundMessageId } }),
+      prisma.whatsAppMessage.findUniqueOrThrow({ where: { id: current.id } }),
+    ]);
+    expect(expired).toMatchObject({ encryptedBodyJson: null, contentFingerprint: null });
+    expect(expired.contentPurgedAt).toBeInstanceOf(Date);
+    expect(expired.senderHash).not.toBeNull();
+    expect(retained.encryptedBodyJson).not.toBeNull();
+    expect(retained.contentPurgedAt).toBeNull();
+    const audit = await prisma.auditLog.findMany({
+      where: { action: 'whatsapp.inbound_content.purged', organizationId },
+    });
+    expect(audit).toHaveLength(1);
+    expect(audit[0]?.metadataJson).toEqual({ mode: 'simulation', purgedCount: 1 });
+    expect(audit[0]?.resourceId).toBeNull();
+
+    await expect(
+      prisma.whatsAppMessage.update({
+        data: { contentPurgedAt: new Date() },
+        where: { id: current.id },
+      }),
+    ).rejects.toThrow();
+    expect(await service.runOnce(new Date())).toEqual({
+      organizations: 0,
+      purged: 0,
+      skipped: false,
+    });
+    expect(
+      await prisma.auditLog.count({
+        where: { action: 'whatsapp.inbound_content.purged', organizationId },
+      }),
+    ).toBe(1);
+    const metrics = await request(baseUrl).get('/metrics').expect(200);
+    expect(metrics.text).toContain(
+      'ecommerce_api_whatsapp_retention_purges_total{outcome="purged"} 1',
+    );
+    expect(metrics.text).toContain(
+      'ecommerce_api_whatsapp_retention_purges_total{outcome="noop"} 1',
+    );
   });
 
   it('keeps foreign conversations non-revealing and closes the inbox with its kill switch', async () => {

@@ -13,5 +13,6 @@ Actualizado: 2026-07-17
   externos.
 - Los controles de asignación tienen feature flag, kill switch y requisito de simulación propios.
 
-Revocar una membresía ya asignada no libera automáticamente la conversación. Hasta coordinar este
-ciclo con identidad, un manager debe reasignar o desasignar explícitamente; el riesgo queda abierto.
+Revocar una membresía libera automáticamente todas sus conversaciones dentro de la transacción de
+identidad. Un lock advisory compartido serializa revocación y claim/reassign; cada liberación registra
+`MEMBERSHIP_REVOKED`, versión e historial/outbox sin PII. El manager ya no necesita limpieza manual.

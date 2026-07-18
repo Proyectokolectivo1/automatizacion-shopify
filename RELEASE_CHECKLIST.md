@@ -9,17 +9,17 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Código, plan y controles publicados en el repositorio canónico de GitHub.
 - [ ] PAT expuesto en la conversación revocado por su propietario.
 - [ ] Formatter, lint, typecheck, unit, integración, E2E y build verdes para todo el MVP.
-- [ ] Migraciones expand/contract revisadas y probadas; falta validar checks legacy `NOT VALID`.
+- [x] Migraciones expand/contract locales revisadas y probadas; checks legacy validados y cero drift.
 - [ ] Idempotencia base, duplicados y respuesta perdida probados; faltan eventos funcionales tardíos.
 - [ ] Adaptadores reales contrastados con documentación oficial.
-- [ ] Credenciales gestionadas fuera de Git y secret scan limpio.
+- [ ] Secret manager productivo aprobado; exclusión Git y scan local ya están limpios.
 - [ ] Flags, simulación y kill switches de outbox/correo/identidad/Shopify verificados; faltan proveedores reales.
 - [ ] Alertas, métricas, dashboards técnicos y runbooks operativos completos.
-- [ ] Carga de 500 pedidos/día, ráfagas, acumulación y recuperación aprobadas.
-- [ ] Backups y restauración con evidencia y tiempos medidos.
+- [ ] Capacidad productiva aprobada; carga local de 500, ráfaga, backlog y recovery ya pasó.
+- [ ] Backups externos y restauración productiva con RPO/RTO aprobados; restore local ya medido.
 - [ ] Matriz de impresoras y piloto observado completados.
 - [ ] Revisión legal de datos, retención, pagos y conversaciones.
-- [ ] Rollback documentado y smoke tests exitosos.
+- [ ] Rollback productivo ejercitado; estrategia forward-compatible y smoke local ya están verdes.
 - [ ] Despliegue aprobado explícitamente por una persona autorizada.
 
 ## Evidencia de fundaciones
@@ -27,6 +27,12 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Monorepo, CI y quality gate reproducibles.
 - [x] PostgreSQL, Redis y almacenamiento S3-compatible locales con health checks.
 - [x] Persistencia local verificada después de recrear contenedores.
+- [x] Backup PostgreSQL local restaurado en base aislada, comparado y limpiado con tiempos medidos.
+- [x] Pipeline simulado local completó 500 pedidos, 50 replays y drain sin errores ni DLQ.
+- [x] Baseline local audita secretos, dependencias, CI, Compose y headers sin high/critical.
+- [x] Artefactos productivos locales pasan migración no-op, readiness, headers, BFF y shutdown limpio.
+- [x] Drill local mide Redis/Collector y reinicia la API sin duplicar el ciclo de alerta hidratado.
+- [x] Fronteras API se verifican en CI con módulos fail-closed y colaboraciones exactas.
 - [x] Secretos de desarrollo excluidos de Git y bindings limitados a localhost.
 - [x] Logs JSON redactados, correlation ID, errores seguros y métricas base.
 - [x] Readiness real de PostgreSQL, Redis y MinIO con recuperación Redis probada.
@@ -36,15 +42,18 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Login base, sesiones revocables, refresh rotativo, RBAC y tenant isolation probados.
 - [x] Invitación y recuperación seguras con replay, expiración y controles fail-closed probados.
 - [x] Administración de roles y bootstrap inicial seguros, idempotentes y auditados.
+- [x] Revocar una membresía libera asignaciones WhatsApp en la misma transacción y revoca sesiones.
 - [x] Registro Shopify simulado tenant-safe, cifrado, idempotente, auditable y fail-closed.
 - [x] Ingreso webhook Shopify simulado con HMAC sobre cuerpo crudo, replay y outbox probado.
 - [x] Límite de cuerpo, allowlist, secreto cifrado, flags, simulación y kill switch de webhook probados.
 - [ ] Registro remoto de webhook, rotación solapada de secreto y entregas reales verificados.
+- [x] Registro remoto idempotente y rotación solapada implementados/probados contractualmente.
 - [x] Pedido sintético normalizado con cliente, dirección, items, dinero entero y snapshot monotónico.
 - [x] Pipeline webhook/outbox/Redis/pedido y fallo final a DLQ probados.
 - [x] Clasificación prepago/COD versionada, default-deny, idempotente y con historial inmutable.
 - [x] Conciliación simulada detecta faltantes/fallidos/atascados y reprocesa vía outbox sin duplicar.
 - [x] Reconciliación protegida por RBAC, tenant, ventana, idempotencia, auditoría, flag y kill switch.
+- [x] Inspección de incidencias Shopify usa cursor keyset ligado al filtro y resiste inserciones concurrentes.
 - [x] Tarifa COD versionada, tenant-safe, fail-closed, idempotente, auditable y en simulación.
 - [ ] Aprobación comercial y consola de políticas de tarifa disponibles antes del piloto.
 - [ ] Wompi sandbox validado con llaves separadas, firma, webhooks, replay y kill switch.
@@ -54,12 +63,14 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Expiración y abandono simulados con política histórica, replay, tenant y carrera probados.
 - [x] Pago aprobado tardío no reescribe un terminal y abre revisión manual auditada.
 - [x] Conciliación Wompi simulada tiene checkpoint, reporte, dedupe, alertas y replay probados.
+- [x] Cartera Wompi simulada se agrega tenant-safe con dinero exacto, RBAC y controles fail-closed.
 - [x] Configuración WhatsApp simulada es tenant-safe, cifrada, idempotente, auditable y fail-closed.
 - [x] Identidad de número WhatsApp es única y el estado del canal no altera la tienda Shopify.
 - [x] Plantillas WhatsApp locales son versionadas, tenant-safe, idempotentes y explícitamente simuladas.
 - [x] Mensajes WhatsApp simulados son tipados, tenant-safe, idempotentes y no afirman entrega real.
 - [x] Estados y webhook saliente WhatsApp simulados son autenticados, monotónicos e idempotentes.
 - [x] Mensajes entrantes WhatsApp simulados son autenticados, cifrados, tenant-safe e idempotentes.
+- [x] Contenido inbound vencido se purga físicamente con deadline, trigger y auditoría agregada.
 - [x] Bandeja WhatsApp simulada pagina/lista timeline con RBAC, retención y tenant probados.
 - [x] Asignación de conversaciones WhatsApp simulada completa.
 - [x] Cola operativa unificada pagina y filtra cinco dominios con RBAC, tenant y mínima proyección.
@@ -70,11 +81,13 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
 - [ ] Scheduler, alertas y validación contra paginación/rate limits de Shopify real.
+- [x] Consumidor `MARK`/`CANCEL` y scheduler paginado implementados con gates locales fail-closed.
 - [ ] Gestión RBAC y aprobación de políticas comerciales de clasificación disponible.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.
 - [ ] Mecanismo UI cookie/CSRF y MFA definidos y probados.
 - [x] Inspección/reproceso manual de DLQ autenticado, aislado, idempotente y auditado.
 - [x] OpenTelemetry y alertas conectadas a un backend local verificable.
+- [x] La API reconstruye estado técnico activo desde Alertmanager después de reiniciarse.
 - [x] `/metrics` protegido por loopback local y Bearer técnico obligatorio en producción.
 - [ ] Backend productivo de trazas, routing de alertas, retención y SLO aprobados.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

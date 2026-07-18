@@ -7,28 +7,30 @@ Actualizado: 2026-07-18
 `EN_DESARROLLO` — desarrollo funcional en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene el avance publicado hasta E6-H2A en `770c5c5` y el PR borrador #1;
-E6-H3A/E6-H4A quedan implementadas y validadas localmente, pendientes de publicación autorizada.
+`codex/foundations-e0-h2` contiene el avance publicado hasta E6-H4A en `3ed4dfc` y el PR borrador #1.
+E6-H5A..H7A, E9-H1A..H5A, E3-H8A, E0-H3C/H4D/H5D/H6A, E1-H1B..H5C y E7-H1A quedan
+implementadas y validadas localmente, pendientes de publicación autorizada.
 
 ## Fase actual
 
-Fase 6 — operación interna. E6-H1A..H4A completaron cola, resumen, dashboard seguro y alertas
-durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo lectura.
+Fase 8 — hardening local avanzado. Backup/restore, carga, seguridad, smoke y recuperación observada
+ya están demostrados localmente. Monitoreo/infra productivos, piloto y release siguen bloqueados por
+decisiones, proveedores, credenciales y aprobación humana.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                           |
-| ------------------------ | -----: | --------------------------------------------------- |
-| E0 Fundaciones           |  100 % | identidad, DLQ y observabilidad conectada completas |
-| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso       |
-| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria   |
-| E3 WhatsApp              |   90 % | ciclo simulado hasta asignación tenant-safe         |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                  |
-| E6 Operación y dashboard |   55 % | cola, resumen, dashboard y alertas completados      |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                      |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución   |
-| E9 Producción            |    0 % | no autorizada                                       |
+| Épica                    | Avance | Evidencia                                                     |
+| ------------------------ | -----: | ------------------------------------------------------------- |
+| E0 Fundaciones           |  100 % | identidad, DLQ y observabilidad conectada completas           |
+| E1 Shopify               |  100 % | implementación local live; verificación remota bloqueada      |
+| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria             |
+| E3 WhatsApp              |   90 % | ciclo simulado hasta asignación tenant-safe                   |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                          |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                            |
+| E6 Operación y dashboard |  100 % | cola, resumen, dashboard, alertas, búsqueda, detalle y export |
+| E7 Finanzas              |   20 % | cartera simulada exacta; costos/rentabilidad bloqueados       |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución             |
+| E9 Producción            |    0 % | no autorizada                                                 |
 
 ## Diagnóstico inicial
 
@@ -58,6 +60,10 @@ durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo
 - Auditoría, métricas, flag y kill switch de operaciones cerrados por defecto.
 - E0-H5C: bootstrap local del primer owner y administración tenant-safe de membresías/roles.
 - Locks serializables, idempotencia, último owner, jerarquía y revocación de sesiones probados.
+- E0-H5D: revocar una membresía libera todas sus conversaciones WhatsApp en la misma transacción,
+  incrementa versiones y conserva historial, outbox, auditoría y revocación de sesiones.
+- El lock compartido por organización serializa revocación y asignación; replay, carrera y tenant
+  ajeno están probados, incluso para sanar asignaciones legacy de una membresía ya revocada.
 - E1-H1A: registro tenant-safe, mock Shopify v1, cifrado AES-256-GCM y ciclo de vida de tiendas.
 - Rotación versionada, SSRF, duplicados, replay, RBAC, auditoría, métricas, flags y kill switch probados.
 - E1-H2A: webhook `orders/create` sobre cuerpo crudo, HMAC constante, límite de tamaño y allowlist.
@@ -76,6 +82,17 @@ durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo
 - E1-H5A: checkpoint por tienda, detección de faltantes/fallidos/atascados e incidencias deduplicadas.
 - Inspección y reproceso tenant-safe con RBAC, idempotencia, outbox, auditoría, métricas y kill switch.
 - Evento interno explícito sin HMAC fingido, replay concurrente y resolución posterior probados.
+- E1-H1B/H3B: router simulation/live y Admin GraphQL 2026-07 con health de pedidos/inventario/
+  ubicaciones, timeout, retry, redacción, pedidos/line items/listados paginados y límites explícitos.
+- E1-H2B: webhook live sobre body crudo, secreto activo/anterior cifrado con overlap y suscripción
+  `ORDERS_CREATE` idempotente consulta-before-create al activar.
+- E1-H4B: consumidor outbox `MARK`/`CANCEL`, tenant/política/estado validados, cancelación asíncrona sin
+  refund y doble gate destructivo cerrado por defecto.
+- E1-H5B: scheduler multi-tienda, ventana/cursor durable, reanudación y safety limit de páginas.
+- E1-H5C: inspección de incidencias con cursor keyset opaco ligado al filtro; inserciones concurrentes,
+  cursores alterados y cambio de filtro están cubiertos sin duplicar resultados.
+- Todos los contratos y gates locales Shopify pasan. Scopes, entrega, throttle y mutaciones contra una
+  tienda development permanecen `BLOQUEADO_POR_CREDENCIALES`; no se presentan como evidencia real.
 - E2-H1A: políticas de tarifa globales/por tienda, versionadas y activables, con vigencia y moneda COP.
 - Resolución determinista/fail-closed, preview, RBAC, tenant, idempotencia, decisión durable, outbox,
   auditoría, métricas, modo simulación y kill switch probados.
@@ -136,17 +153,56 @@ durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo
   evaluación por lotes con locks tenant y una sola lectura agregada por lote.
 - API pública de alertas exclusivamente de lectura para owner/admin/operations, con reglas, filtros,
   cursor, proyección sin PII, auditoría, métrica, flag y kill switch fail-closed.
+- E6-H5A: búsqueda global de solo lectura sobre ID interno exacto, tipo, estado y motivo operativo;
+  ventana `[from,to)` obligatoria de máximo 31 días, límite 50 y ranking determinista.
+- Cursor ligado criptográficamente a término/filtros, RBAC owner/admin/operations, aislamiento tenant,
+  auditoría sin `q`, métrica acotada, flag/kill switch y BFF que elimina IDs/metadatos probados.
+- E6-H6A: detalle discriminado para cinco tipos con allowlists, timeline seguro máximo 25 y lookup
+  tenant-safe/404 uniforme; no selecciona JSON libre, PII, actores ni referencias externas.
+- BFF cifra referencias AES-256-GCM por 15 minutos, ligadas a organización, y el dashboard resuelve el
+  detalle sin recibir UUID; clave productiva, RBAC, auditoría, métrica y kill switch probados.
+- E6-H7A: export JSON interno/CSV BFF limitado a 7 días y 1.000 filas, cinco campos sin IDs/PII,
+  owner/admin, orden/truncado, rate limit durable y generación exclusivamente en memoria.
+- CSV usa BOM/CRLF/RFC 4180 y neutraliza fórmulas tras espacios; no persiste ni entrega a proveedores.
+- E7-H1A: resumen read-only de cartera Wompi/COP simulada por estado y ventana máxima 31 días.
+- RBAC owner/admin/finance, tenant, no-store, flag/kill switch, auditoría y métricas acotadas; BIGINT
+  se serializa como decimal string exacto y no se presenta como recaudo, costo o utilidad.
+- E9-H1A: dump custom local, restore transaccional en base aleatoria y comparación exacta de filas por
+  tabla, migraciones, constraints, índices y secuencias; cleanup de base/dump verificado.
+- Segunda medición: backup 360 ms, restore 890 ms, verificación 323 ms y 3.523 ms total para 39 tablas;
+  el reporte ignorado no contiene filas ni credenciales. No constituye backup externo ni RPO/RTO.
+- E9-H2A: 500 webhooks HTTP/HMAC, concurrencia 25 y backlog durable completo; cuatro publicadores y
+  worker 50 drenaron 500 pedidos/1.500 transiciones con 50 replays y cero error/DLQ.
+- Medición final: ingreso 140,36 req/s, p95 251 ms; drain 7.843 ms a 63,75 pedidos/s. El gate corrigió
+  conflictos `P2034` entre agregados sin perder lock por pedido, atomicidad ni reintentos.
+- E9-H3A: siete detectores con self-test, 458 archivos, tres manifests, CI/Compose/CSP y 402
+  dependencias productivas auditados; cero secretos high-confidence o high/critical.
+- Checkout CI ya no persiste credenciales. CSP inline, tags Actions, SAST/DAST/pentest/TLS/infra
+  productiva permanecen riesgos explícitos, no afirmaciones completadas.
+- E9-H4A: build/migración no-op/startup productivos locales, health/readiness, métricas Bearer,
+  headers/BFF y shutdown/puertos cerrados pasan; rollback forward-compatible documentado.
+- Último smoke: API 2.065 ms y web 910 ms. No hubo deploy, TLS/proxy ni rollback real.
+- E9-H5A/E0-H3C: drill autónomo detecta Redis down en 692 ms y `firing` en 972 ms, reinicia la API
+  sin duplicar el firing, hidrata estado desde Alertmanager y resuelve tras recuperar Redis en
+  6.534 ms; readiness vuelve en 6.265 ms y OTLP en 3.693 ms.
+- E3-H8A: scheduler fail-closed purga ciphertext/fingerprint inbound vencido con deadline, lock,
+  `SKIP LOCKED`, trigger irreversible, auditoría agregada y métricas; WhatsApp pasa 26/26.
+- E0-H4D: preflight y migración 32 validan las seis constraints legacy de ownership/outbox; el gate
+  exige cero constraints no validadas.
+- La migración 33 añade `MEMBERSHIP_REVOKED` como causa acotada de desasignación WhatsApp.
+- E0-H6A: gate sin dependencias revisa 123 archivos/529 imports, separa composición/plataforma/dominios,
+  permite cinco colaboraciones exactas y prueba ocho fixtures allow/deny dentro de `validate`/CI.
 
 ## Siguiente vertical
 
-- E6-H5A: búsqueda operativa global de solo lectura; contrato, límites, orden, redacción y RBAC deben
-  quedar definidos antes de abordar detalle sensible o exportaciones.
+- E0-H6B: evaluar y extraer de forma incremental el protocolo idempotente repetido (TD-021), solo si
+  las pruebas de carrera/replay demuestran equivalencia y sin crear una abstracción de alcance global.
 
 ## Pendiente
 
 - Backend productivo de traces, routing real de alertas y SLO antes de un despliegue real.
-- Estados operativos Shopify posteriores y conexión real mientras falten credenciales.
-- Backups, restore, carga, seguridad, piloto y producción.
+- Validación end-to-end de Shopify live en tienda development mientras falten credenciales.
+- Backup externo, validación de carga productiva, seguridad, piloto y producción.
 
 ## Bloqueos
 
@@ -164,41 +220,48 @@ durables; la siguiente vertical propuesta es E6-H5A, búsqueda operativa de solo
 
 ## Pruebas
 
-- `pnpm test`: 81 pruebas (73 API/unitarias + 8 BFF web), 100 % en la lógica crítica incluida.
+- `pnpm test`: 105 pruebas (92 API/unitarias + 13 BFF web), 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
-- `pnpm observability:verify`: W3C/OTLP, Bearer de métricas, alertas, redacción y fallos Redis/Collector.
-- `pnpm database:verify`: 16 pruebas sobre PostgreSQL real, 30 migraciones, constraints y cero drift.
+- `pnpm observability:verify`: drill medido W3C/OTLP, Bearer, alertas, reinicio API y recovery.
+- `pnpm release:smoke`: migraciones no-op, API/web productivos, readiness/headers/BFF y shutdown.
+- `pnpm database:verify`: 16 pruebas sobre PostgreSQL real, 33 migraciones, constraints y cero drift.
+- `pnpm backup:verify`: restore aislado de 39 tablas/33 migraciones y cleanup verificado.
+- `pnpm load:verify`: 500 pedidos, backlog/drain, 50 replays y cero errores/DLQ.
+- `pnpm security:verify`: 486 archivos/config/supply-chain y 402 dependencias sin high/critical.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 16 pruebas HTTP/PostgreSQL de sesiones, RBAC, cuenta y switch tenant.
 - `pnpm identity:verify`: 5 pruebas PostgreSQL/HTTP de bootstrap, RBAC, tenant, replay y sesiones.
-- `pnpm shopify:verify`: 4 pruebas PostgreSQL/HTTP de registro, cifrado, tenant y ciclo de vida.
+- `pnpm finance:verify`: 4 pruebas PostgreSQL/HTTP de RBAC, tenant, exactitud, límites y kill switch.
+- `pnpm shopify:verify`: 13 pruebas de registro y contratos live/actions, incluidas 4 PostgreSQL/HTTP.
 - `pnpm shopify:webhooks:verify`: 5 pruebas PostgreSQL/Redis/HTTP de HMAC, sync, recovery y DLQ.
+- `pnpm shopify:reconciliation:verify`: 6 pruebas de cursor/RBAC/reproceso y scheduler paginado.
 - `pnpm shopify:orders:verify`: 4 pruebas PostgreSQL de carrera, actualización, tardíos y fail-closed.
 - `pnpm orders:classification:verify`: 4 pruebas PostgreSQL de prepago, COD, replay, carrera y fail-closed.
-- `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
-- `pnpm whatsapp:verify`: 25 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
-- `pnpm operations:verify`: 7 pruebas HTTP/PostgreSQL de cola/resumen, cursor, ventanas, filtros,
-  RBAC, tenant, redacción, auditoría, métrica y kill switch.
+- `pnpm whatsapp:verify`: 26 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
+- `pnpm operations:verify`: 12 pruebas HTTP/PostgreSQL de cola/resumen/búsqueda/detalle/export,
+  ranking, cursor/referencias, CSV source, rate limit, RBAC, tenant, auditoría y kill switches.
 - `pnpm alerts:verify`: 7 pruebas PostgreSQL/HTTP de scheduler, creación, carrera/replay, reinicio,
   resolución/recuperación, cursor, RBAC, tenant, redacción, métrica y kill switch.
-- `pnpm web:verify`: 8 pruebas de cookies, CSRF, sesión, tenant derivado y proyección mínima.
+- `pnpm web:verify`: 13 pruebas de sesión, tenant, detalle y export CSV seguro sin persistencia.
 - GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H5A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` volvió a responder normalmente y reportó cero vulnerabilidades conocidas.
-- Las migraciones 24 a 30 fueron aplicadas a la base local persistente; `database:status` confirma
-  30/30 y esquema actualizado.
+- Las migraciones 24 a 33 fueron aplicadas a la base local persistente; `database:status` confirma
+  33/33 y esquema actualizado.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
+- `pnpm architecture:verify`: 123 archivos, 529 imports, cinco colaboraciones y ocho fixtures verdes.
 
 ## Errores conocidos
 
-- No hay defectos abiertos en E0-H1 a E0-H5C ni E0-H4C.
+- No hay defectos abiertos en E0-H1 a E0-H6A ni E0-H4C.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Treinta migraciones reproducibles están verificadas desde vacío; la 30 reconstruye solo índices.
+- Treinta y tres migraciones reproducibles están verificadas desde vacío; la 33 amplía una causa de
+  historial y mantiene su constraint de forma explícita.
 
 ## Deuda técnica
 
@@ -207,6 +270,5 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Definir e implementar E6-H5A como búsqueda operativa global de solo lectura, reutilizando el read
-model y sus límites tenant-safe. No añadir detalle sensible ni exportaciones hasta fijar contrato,
-redacción, volumen y autorización específicos.
+Evaluar E0-H6B sobre el protocolo idempotente común sin ampliar scopes ni transacciones; no desplegar
+ni autorizar release.

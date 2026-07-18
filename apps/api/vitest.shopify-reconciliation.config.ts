@@ -5,7 +5,10 @@ export default defineConfig({
     environment: 'node',
     fileParallelism: false,
     hookTimeout: 90_000,
-    include: ['test/shopify-reconciliation.integration.spec.ts'],
+    include: [
+      'test/shopify-reconciliation.integration.spec.ts',
+      'test/shopify-reconciliation-scheduler.spec.ts',
+    ],
     testTimeout: 60_000,
   },
 });

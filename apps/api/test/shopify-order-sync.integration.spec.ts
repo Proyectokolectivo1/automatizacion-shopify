@@ -16,9 +16,11 @@ import { ShopifyOrderNormalizer } from '../src/shopify/shopify-order-normalizer'
 import { ShopifyOrderSyncService } from '../src/shopify/shopify-order-sync.service';
 import type {
   ShopifyConnectionResult,
+  ShopifyOrderActionResult,
   ShopifyOrderListResult,
   ShopifyOrderQuery,
   ShopifyProvider,
+  ShopifyWebhookRegistrationResult,
 } from '../src/shopify/shopify-provider';
 
 loadEnvironmentFiles();
@@ -56,23 +58,45 @@ const previousEnvironment = new Map(
 class MutableShopifyProvider implements ShopifyProvider {
   public payload: Record<string, unknown> = structuredClone(orderFixture);
 
+  public applyOrderAction(): Promise<ShopifyOrderActionResult> {
+    return Promise.resolve({
+      alreadyApplied: false,
+      mode: 'simulation',
+      remoteJobId: null,
+    });
+  }
+
+  public ensureOrdersCreateWebhook(): Promise<ShopifyWebhookRegistrationResult> {
+    return Promise.resolve({
+      created: false,
+      mode: 'simulation',
+      subscriptionId: 'test-webhook',
+    });
+  }
+
   public fetchOrder(query: ShopifyOrderQuery): Promise<unknown> {
     if (String(this.payload.id) !== query.orderId) throw new Error('Synthetic order not found');
     return Promise.resolve(structuredClone(this.payload));
   }
 
   public listOrders(): Promise<ShopifyOrderListResult> {
-    return Promise.resolve({ fixtureVersion: 'v1', nextCursor: null, orders: [] });
+    return Promise.resolve({
+      mode: 'simulation',
+      nextCursor: null,
+      orders: [],
+      sourceVersion: 'v1',
+    });
   }
 
   public testConnection(): Promise<ShopifyConnectionResult> {
     return Promise.resolve({
+      capabilities: { inventory: true, locations: true, orders: true },
       currency: 'COP',
-      fixtureVersion: 'v1',
       healthy: true,
       mode: 'simulation',
       providerShopId: 'test-shop',
       shopName: 'Test shop',
+      sourceVersion: 'v1',
       timezone: 'America/Bogota',
     });
   }
@@ -284,7 +308,7 @@ describe('Shopify normalized order synchronization in simulation mode', () => {
         organizationId,
         webhookEventId: webhook.id,
       }),
-    ).rejects.toThrow('synchronization simulation is disabled');
+    ).rejects.toThrow('synchronization is disabled');
     process.env.SHOPIFY_ORDER_SYNC_KILL_SWITCH = 'false';
   });
 });

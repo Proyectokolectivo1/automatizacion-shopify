@@ -26,6 +26,7 @@ const runBody = z.object({
   windowStartedAt: z.iso.datetime({ offset: true }).transform((value) => new Date(value)),
 });
 const inspectQuery = z.object({
+  cursor: z.string().trim().min(1).max(512).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
   status: z.enum(['OPEN', 'REPROCESSING', 'RESOLVED']).optional(),
 });

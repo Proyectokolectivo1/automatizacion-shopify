@@ -75,7 +75,7 @@ export class ShopifyOrderSyncService {
         throw new Error('Shopify order currency does not match its store');
       }
 
-      const result = await this.withSerializableRetry(() =>
+      const result = await this.withTransactionRetry(() =>
         this.prisma.$transaction(
           async (transaction) => {
             await transaction.$executeRaw`
@@ -104,73 +104,79 @@ export class ShopifyOrderSyncService {
               return { orderId: existing.id, outcome: 'ignored_stale' } as const;
             }
 
-            const customer = await transaction.customer.upsert({
-              create: {
-                dataProcessingConsent: false,
-                email: snapshot.customer.email,
-                firstName: snapshot.customer.firstName,
-                lastName: snapshot.customer.lastName,
-                marketingConsent: snapshot.customer.acceptsMarketing,
-                organizationId: command.organizationId,
-                phoneE164: snapshot.customer.phoneE164,
-                shopifyCustomerId: snapshot.customer.id,
-                storeId: webhook.storeId,
-              },
-              update: {
-                email: snapshot.customer.email,
-                firstName: snapshot.customer.firstName,
-                lastName: snapshot.customer.lastName,
-                marketingConsent: snapshot.customer.acceptsMarketing,
-                phoneE164: snapshot.customer.phoneE164,
-              },
-              where: {
-                storeId_shopifyCustomerId: {
-                  shopifyCustomerId: snapshot.customer.id,
-                  storeId: webhook.storeId,
-                },
-              },
-            });
-            const address = await transaction.customerAddress.upsert({
-              create: {
-                address1: snapshot.address.address1,
-                address2: snapshot.address.address2,
-                city: snapshot.address.city,
-                countryCode: snapshot.address.countryCode,
-                customerId: customer.id,
-                department: snapshot.address.department,
-                normalizedAddress: snapshot.address.normalizedAddress,
-                organizationId: command.organizationId,
-                postalCode: snapshot.address.postalCode,
-                shopifyAddressId: snapshot.address.id,
-                storeId: webhook.storeId,
-                validationDetailsJson: {
-                  fixtureVersion: snapshot.fixtureVersion,
-                  mode: 'simulation',
-                },
-              },
-              update: {
-                address1: snapshot.address.address1,
-                address2: snapshot.address.address2,
-                city: snapshot.address.city,
-                countryCode: snapshot.address.countryCode,
-                department: snapshot.address.department,
-                normalizedAddress: snapshot.address.normalizedAddress,
-                postalCode: snapshot.address.postalCode,
-              },
-              where: {
-                customerId_shopifyAddressId: {
-                  customerId: customer.id,
-                  shopifyAddressId: snapshot.address.id,
-                },
-              },
-            });
+            const customer =
+              snapshot.customer === null
+                ? null
+                : await transaction.customer.upsert({
+                    create: {
+                      dataProcessingConsent: false,
+                      email: snapshot.customer.email,
+                      firstName: snapshot.customer.firstName,
+                      lastName: snapshot.customer.lastName,
+                      marketingConsent: snapshot.customer.acceptsMarketing,
+                      organizationId: command.organizationId,
+                      phoneE164: snapshot.customer.phoneE164,
+                      shopifyCustomerId: snapshot.customer.id,
+                      storeId: webhook.storeId,
+                    },
+                    update: {
+                      email: snapshot.customer.email,
+                      firstName: snapshot.customer.firstName,
+                      lastName: snapshot.customer.lastName,
+                      marketingConsent: snapshot.customer.acceptsMarketing,
+                      phoneE164: snapshot.customer.phoneE164,
+                    },
+                    where: {
+                      storeId_shopifyCustomerId: {
+                        shopifyCustomerId: snapshot.customer.id,
+                        storeId: webhook.storeId,
+                      },
+                    },
+                  });
+            const address =
+              customer === null || snapshot.address === null
+                ? null
+                : await transaction.customerAddress.upsert({
+                    create: {
+                      address1: snapshot.address.address1,
+                      address2: snapshot.address.address2,
+                      city: snapshot.address.city,
+                      countryCode: snapshot.address.countryCode,
+                      customerId: customer.id,
+                      department: snapshot.address.department,
+                      normalizedAddress: snapshot.address.normalizedAddress,
+                      organizationId: command.organizationId,
+                      postalCode: snapshot.address.postalCode,
+                      shopifyAddressId: snapshot.address.id,
+                      storeId: webhook.storeId,
+                      validationDetailsJson: {
+                        mode: snapshot.mode,
+                        sourceVersion: snapshot.sourceVersion,
+                      },
+                    },
+                    update: {
+                      address1: snapshot.address.address1,
+                      address2: snapshot.address.address2,
+                      city: snapshot.address.city,
+                      countryCode: snapshot.address.countryCode,
+                      department: snapshot.address.department,
+                      normalizedAddress: snapshot.address.normalizedAddress,
+                      postalCode: snapshot.address.postalCode,
+                    },
+                    where: {
+                      customerId_shopifyAddressId: {
+                        customerId: customer.id,
+                        shopifyAddressId: snapshot.address.id,
+                      },
+                    },
+                  });
             const orderId = existing?.id ?? randomUUID();
             const orderData = {
               currency: snapshot.currency,
-              customerId: customer.id,
+              customerId: customer?.id ?? null,
               discountAmount: snapshot.discountAmount,
               rawSnapshotJson: snapshot.rawSnapshot as Prisma.InputJsonValue,
-              shippingAddressId: address.id,
+              shippingAddressId: address?.id ?? null,
               shopifyCheckoutId: snapshot.checkoutId,
               shopifyOrderName: snapshot.name,
               sourceCreatedAt: snapshot.sourceCreatedAt,
@@ -248,10 +254,10 @@ export class ShopifyOrderSyncService {
                 eventVersion: 1,
                 organizationId: command.organizationId,
                 payloadJson: {
-                  fixtureVersion: snapshot.fixtureVersion,
-                  mode: 'simulation',
+                  mode: snapshot.mode,
                   orderId,
                   provider: 'shopify',
+                  sourceVersion: snapshot.sourceVersion,
                   storeId: webhook.storeId,
                 },
               },
@@ -259,7 +265,7 @@ export class ShopifyOrderSyncService {
             await this.writeAudit(transaction, command, orderId, 'shopify.order.synchronized');
             return { orderId, outcome: existing === null ? 'created' : 'updated' } as const;
           },
-          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+          { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
         ),
       );
       this.metrics.recordShopifyOrderSync(result.outcome);
@@ -270,7 +276,7 @@ export class ShopifyOrderSyncService {
         data: {
           action: 'shopify.order.sync_failed',
           correlationId: command.correlationId,
-          metadataJson: { mode: 'simulation' },
+          metadataJson: { mode: this.mode },
           organizationId: command.organizationId,
           outcome: 'FAILURE',
           resourceId: command.webhookEventId,
@@ -283,8 +289,8 @@ export class ShopifyOrderSyncService {
 
   private assertEnabled(): void {
     const controls = this.environment.shopifyOrderSync;
-    if (!controls.enabled || controls.killSwitch || !controls.simulationMode) {
-      throw new Error('Shopify order synchronization simulation is disabled');
+    if (!controls.enabled || controls.killSwitch) {
+      throw new Error('Shopify order synchronization is disabled');
     }
   }
 
@@ -298,7 +304,7 @@ export class ShopifyOrderSyncService {
       data: {
         action,
         correlationId: command.correlationId,
-        metadataJson: { mode: 'simulation' },
+        metadataJson: { mode: this.mode },
         organizationId: command.organizationId,
         outcome: 'SUCCESS',
         resourceId: orderId,
@@ -307,19 +313,23 @@ export class ShopifyOrderSyncService {
     });
   }
 
-  private async withSerializableRetry<T>(operation: () => Promise<T>): Promise<T> {
-    for (let retry = 0; retry < 3; retry += 1) {
+  private get mode(): 'live' | 'simulation' {
+    return this.environment.shopify.simulationMode ? 'simulation' : 'live';
+  }
+
+  private async withTransactionRetry<T>(operation: () => Promise<T>): Promise<T> {
+    for (let retry = 0; retry < 5; retry += 1) {
       try {
         return await operation();
       } catch (error) {
-        if (!this.isSerializationConflict(error) || retry === 2) throw error;
-        await new Promise((resolve) => setTimeout(resolve, 25 * (retry + 1)));
+        if (!this.isTransactionConflict(error) || retry === 4) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 25 * 2 ** retry));
       }
     }
-    throw new Error('Serializable Shopify order sync retry limit reached');
+    throw new Error('Shopify order sync transaction retry limit reached');
   }
 
-  private isSerializationConflict(error: unknown): boolean {
+  private isTransactionConflict(error: unknown): boolean {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) return false;
     if (error.code === 'P2034') return true;
     const metadata = error.meta as { code?: string } | undefined;

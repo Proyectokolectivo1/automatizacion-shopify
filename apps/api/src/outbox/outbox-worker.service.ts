@@ -6,6 +6,7 @@ import { PrismaService } from '../database/prisma.service';
 import { Prisma } from '../generated/prisma/client';
 import { OrderClassificationService } from '../orders/order-classification.service';
 import { ShopifyOrderSyncService } from '../shopify/shopify-order-sync.service';
+import { ShopifyOrderActionService } from '../shopify/shopify-order-action.service';
 import type { OutboxJobData } from './outbox.types';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly shopifyOrderSync?: ShopifyOrderSyncService,
     private readonly orderClassification?: OrderClassificationService,
+    private readonly shopifyOrderAction?: ShopifyOrderActionService,
   ) {}
 
   public onModuleInit(): void {
@@ -49,9 +51,6 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
   private async process(job: Job<OutboxJobData>): Promise<void> {
     await this.markActive(job);
     try {
-      if (!this.environment.outbox.simulationMode) {
-        throw new Error('No external event adapter is enabled');
-      }
       const payload = job.data.payload;
       if (
         payload !== null &&
@@ -79,6 +78,16 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
           correlationId: job.data.correlationId,
           eventId: job.data.eventId,
           orderId: job.data.aggregateId,
+          organizationId: job.data.organizationId,
+        });
+      }
+      if (this.isShopifyOrderAction(job)) {
+        if (this.shopifyOrderAction === undefined) {
+          throw new Error('Shopify order action consumer is not configured');
+        }
+        await this.shopifyOrderAction.apply({
+          correlationId: job.data.correlationId,
+          eventId: job.data.eventId,
           organizationId: job.data.organizationId,
         });
       }
@@ -213,5 +222,9 @@ export class OutboxWorkerService implements OnModuleDestroy, OnModuleInit {
 
   private isOrderSynchronized(job: Job<OutboxJobData>): boolean {
     return job.name === 'shopify.order.synchronized.v1';
+  }
+
+  private isShopifyOrderAction(job: Job<OutboxJobData>): boolean {
+    return job.name === 'shopify.order.abandonment-action.requested.v1';
   }
 }

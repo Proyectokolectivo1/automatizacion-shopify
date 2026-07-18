@@ -238,6 +238,12 @@ legend {
   color: #8e2f1d;
 }
 
+.notice.success {
+  border: 1px solid #b8d7c2;
+  background: #edf8f0;
+  color: #246247;
+}
+
 .dashboard-shell {
   min-height: 100vh;
   padding: clamp(1rem, 3vw, 2.5rem);
@@ -282,6 +288,10 @@ legend {
 
 .filters label {
   min-width: 10rem;
+}
+
+.filters .search-field {
+  min-width: 16rem;
 }
 
 .summary-grid {
@@ -352,11 +362,71 @@ legend {
 
 .queue-list li {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto 1fr auto auto;
   align-items: center;
   gap: 0.9rem;
   border-top: 1px solid #edf0ec;
   padding: 1rem 0;
+}
+
+.detail-button {
+  white-space: nowrap;
+}
+
+.detail-loading {
+  margin: 1rem 0 0;
+  color: #637068;
+}
+
+.detail-panel {
+  margin-top: 1.25rem;
+  border: 1px solid #d9dfd9;
+  border-radius: 0.9rem;
+  background: #f9fbf9;
+  padding: 1.1rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.detail-grid div {
+  border-radius: 0.65rem;
+  background: #fff;
+  padding: 0.75rem;
+}
+
+.detail-grid dt {
+  color: #637068;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.detail-grid dd {
+  margin: 0.3rem 0 0;
+  text-transform: capitalize;
+}
+
+.detail-timeline {
+  display: grid;
+  gap: 0.55rem;
+  margin: 1rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.detail-timeline li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #39463e;
+}
+
+.detail-timeline time {
+  color: #77827a;
+  font-size: 0.82rem;
 }
 
 .status-mark {
@@ -471,8 +541,15 @@ legend {
     grid-template-columns: auto 1fr;
   }
 
-  .queue-list time {
+  .queue-list time,
+  .detail-button {
     grid-column: 2;
+  }
+
+  .detail-timeline li {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0.2rem;
   }
 }
 

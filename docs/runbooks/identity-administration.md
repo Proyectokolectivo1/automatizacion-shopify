@@ -27,7 +27,8 @@ advisory y transacción serializable: ejecuciones concurrentes producen un únic
 2. Configure `IDENTITY_ADMIN_ENABLED=true` y `IDENTITY_ADMIN_KILL_SWITCH=false`.
 3. Reinicie la API y compruebe `/health/ready`.
 4. Realice cambios con una `Idempotency-Key` nueva por intención y conserve el correlation ID.
-5. Confirme membresía, sesiones revocadas, auditoría `identity.*` y métrica
+5. Confirme membresía, sesiones revocadas, `releasedConversationCount`, versiones/historial de
+   conversaciones, auditoría `identity.*` y métrica
    `ecommerce_api_identity_operations_total`.
 6. Ante actividad inesperada, active `IDENTITY_ADMIN_KILL_SWITCH=true` y reinicie la API.
 

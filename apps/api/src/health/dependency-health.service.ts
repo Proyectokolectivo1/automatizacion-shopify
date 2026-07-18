@@ -3,15 +3,10 @@ import { createClient, type RedisClientType } from 'redis';
 
 import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
+import type { DependencyStatus } from '../foundation/dependency-status';
 import { AppLoggerService } from '../observability/app-logger.service';
 import { MetricsService } from '../observability/metrics.service';
 import { AlertingService } from '../observability/alerting.service';
-
-export interface DependencyStatus {
-  readonly latencyMs: number;
-  readonly name: 'minio' | 'postgres' | 'redis';
-  readonly status: 'down' | 'up';
-}
 
 export interface ReadinessStatus {
   readonly dependencies: readonly DependencyStatus[];

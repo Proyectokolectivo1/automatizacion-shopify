@@ -62,6 +62,11 @@ interface Tokens {
   readonly accessToken: string;
 }
 
+interface InspectionResponse {
+  readonly items: readonly { readonly id: string }[];
+  readonly nextCursor: string | null;
+}
+
 describe('Shopify reconciliation operations in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
@@ -318,5 +323,47 @@ describe('Shopify reconciliation operations in simulation mode', () => {
       deliveryVersion: 2,
       status: 'PENDING',
     });
+  });
+
+  it('paginates issues by immutable keyset and binds the cursor to its status filter', async () => {
+    const endpoint = `/operations/organizations/${organizationId}/shopify/reconciliation/issues`;
+    const first = await request(baseUrl)
+      .get(`${endpoint}?limit=1`)
+      .set('authorization', `Bearer ${operationsToken}`)
+      .expect(200);
+    const firstPage = first.body as InspectionResponse;
+    expect(firstPage.items).toHaveLength(1);
+    expect(firstPage.nextCursor).toEqual(expect.any(String));
+
+    const concurrent = await prisma.orderReconciliationIssue.create({
+      data: {
+        evidenceJson: { state: 'received' },
+        fingerprint: randomBytes(32).toString('hex'),
+        issueType: 'STUCK_ORDER',
+        organizationId,
+        provider: 'SHOPIFY',
+        providerResourceId: `concurrent-${randomUUID()}`,
+        storeId,
+      },
+    });
+    const second = await request(baseUrl)
+      .get(`${endpoint}?limit=1&cursor=${encodeURIComponent(firstPage.nextCursor ?? '')}`)
+      .set('authorization', `Bearer ${operationsToken}`)
+      .expect(200);
+    const secondPage = second.body as InspectionResponse;
+    expect(secondPage.items).toHaveLength(1);
+    expect(secondPage.items[0]?.id).not.toBe(firstPage.items[0]?.id);
+    expect(secondPage.items[0]?.id).not.toBe(concurrent.id);
+
+    await request(baseUrl)
+      .get(
+        `${endpoint}?limit=1&status=OPEN&cursor=${encodeURIComponent(firstPage.nextCursor ?? '')}`,
+      )
+      .set('authorization', `Bearer ${operationsToken}`)
+      .expect(400);
+    await request(baseUrl)
+      .get(`${endpoint}?cursor=invalid`)
+      .set('authorization', `Bearer ${operationsToken}`)
+      .expect(400);
   });
 });

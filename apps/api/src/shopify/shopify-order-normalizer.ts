@@ -7,26 +7,52 @@ const externalId = z
 const money = z.string().regex(/^\d+(?:\.\d{1,2})?$/u);
 const optionalText = (maximum: number) => z.string().trim().max(maximum).nullable().optional();
 
+const customerSchema = z.object({
+  accepts_marketing: z.boolean().default(false),
+  email: z
+    .email()
+    .max(320)
+    .transform((value) => value.toLowerCase())
+    .nullable(),
+  first_name: optionalText(120),
+  id: externalId,
+  last_name: optionalText(120),
+  phone: z
+    .string()
+    .regex(/^\+[1-9][0-9]{7,14}$/u)
+    .nullable(),
+});
+
+const addressSchema = z.object({
+  address1: z.string().trim().min(1).max(255).nullable(),
+  address2: optionalText(255),
+  city: z.string().trim().min(1).max(120).nullable(),
+  country_code: z
+    .string()
+    .regex(/^[A-Z]{2}$/u)
+    .nullable(),
+  id: externalId.nullable(),
+  phone: z
+    .string()
+    .regex(/^\+[1-9][0-9]{7,14}$/u)
+    .nullable(),
+  province: optionalText(120),
+  zip: optionalText(32),
+});
+
 const orderPayloadSchema = z
   .object({
-    _fixture: z.object({ synthetic: z.literal(true), version: z.literal('v1') }),
+    _fixture: z.object({ synthetic: z.literal(true), version: z.literal('v1') }).optional(),
+    _source: z
+      .object({ mode: z.literal('live'), version: z.string().regex(/^20[0-9]{2}-[01][0-9]$/u) })
+      .optional(),
     checkout_id: externalId.nullable().optional(),
     created_at: z.iso.datetime({ offset: true }),
     currency: z.string().regex(/^[A-Z]{3}$/u),
     financial_status: z.string().trim().min(1).max(40),
     payment_gateway_names: z.array(z.string().trim().min(1).max(120)).max(40).default([]),
     tags: z.union([z.string().max(2_000), z.array(z.string().max(120)).max(100)]).default([]),
-    customer: z.object({
-      accepts_marketing: z.boolean().default(false),
-      email: z
-        .email()
-        .max(320)
-        .transform((value) => value.toLowerCase()),
-      first_name: optionalText(120),
-      id: externalId,
-      last_name: optionalText(120),
-      phone: z.string().regex(/^\+[1-9][0-9]{7,14}$/u),
-    }),
+    customer: customerSchema.nullable(),
     id: externalId,
     line_items: z
       .array(
@@ -44,36 +70,50 @@ const orderPayloadSchema = z
       .min(1)
       .max(500),
     name: z.string().trim().min(1).max(80),
-    shipping_address: z.object({
-      address1: z.string().trim().min(1).max(255),
-      address2: optionalText(255),
-      city: z.string().trim().min(1).max(120),
-      country_code: z.string().regex(/^[A-Z]{2}$/u),
-      id: externalId,
-      phone: z.string().regex(/^\+[1-9][0-9]{7,14}$/u),
-      province: optionalText(120),
-      zip: optionalText(32),
-    }),
+    shipping_address: addressSchema.nullable(),
     shipping_lines: z
       .array(z.object({ price: money, title: z.string().trim().min(1).max(255) }))
       .max(20),
-    source_name: z.literal('synthetic_fixture'),
+    source_name: z.enum(['shopify_graphql', 'synthetic_fixture']),
     subtotal_price: money,
-    test: z.literal(true),
+    test: z.boolean(),
     total_discounts: money,
     total_price: money,
     total_tax: money,
     updated_at: z.iso.datetime({ offset: true }),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    const simulated = value._fixture !== undefined;
+    const live = value._source !== undefined;
+    if (simulated === live) {
+      context.addIssue({ code: 'custom', message: 'Exactly one Shopify source is required' });
+      return;
+    }
+    if (
+      simulated &&
+      (value.test !== true ||
+        value.source_name !== 'synthetic_fixture' ||
+        value.customer === null ||
+        value.shipping_address === null)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Synthetic Shopify fixture contract is invalid',
+      });
+    }
+    if (live && value.source_name !== 'shopify_graphql') {
+      context.addIssue({ code: 'custom', message: 'Live Shopify source contract is invalid' });
+    }
+  });
 
 export interface NormalizedShopifyCustomer {
   readonly acceptsMarketing: boolean;
-  readonly email: string;
+  readonly email: string | null;
   readonly firstName: string | null;
   readonly id: string;
   readonly lastName: string | null;
-  readonly phoneE164: string;
+  readonly phoneE164: string | null;
 }
 
 export interface NormalizedShopifyAddress {
@@ -84,7 +124,7 @@ export interface NormalizedShopifyAddress {
   readonly department: string | null;
   readonly id: string;
   readonly normalizedAddress: string;
-  readonly phoneE164: string;
+  readonly phoneE164: string | null;
   readonly postalCode: string | null;
 }
 
@@ -102,17 +142,18 @@ export interface NormalizedShopifyOrderItem {
 }
 
 export interface NormalizedShopifyOrder {
-  readonly address: NormalizedShopifyAddress;
+  readonly address: NormalizedShopifyAddress | null;
   readonly checkoutId: string | null;
   readonly currency: string;
-  readonly customer: NormalizedShopifyCustomer;
+  readonly customer: NormalizedShopifyCustomer | null;
   readonly discountAmount: bigint;
-  readonly fixtureVersion: 'v1';
   readonly id: string;
   readonly items: readonly NormalizedShopifyOrderItem[];
+  readonly mode: 'live' | 'simulation';
   readonly name: string;
   readonly rawSnapshot: Readonly<Record<string, unknown>>;
   readonly sourceCreatedAt: Date;
+  readonly sourceVersion: string;
   readonly sourceUpdatedAt: Date;
   readonly subtotalAmount: bigint;
   readonly taxAmount: bigint;
@@ -124,6 +165,9 @@ export interface NormalizedShopifyOrder {
 export class ShopifyOrderNormalizer {
   public normalize(input: unknown): NormalizedShopifyOrder {
     const parsed = orderPayloadSchema.parse(input);
+    const mode = parsed._fixture === undefined ? 'live' : 'simulation';
+    const sourceVersion = parsed._fixture?.version ?? parsed._source?.version;
+    if (sourceVersion === undefined) throw new Error('Shopify source version is missing');
     const sourceCreatedAt = new Date(parsed.created_at);
     const sourceUpdatedAt = new Date(parsed.updated_at);
     if (sourceUpdatedAt < sourceCreatedAt) {
@@ -142,39 +186,24 @@ export class ShopifyOrderNormalizer {
       throw new Error('Shopify order totals are inconsistent');
     }
 
-    const addressParts = [
-      parsed.shipping_address.address1,
-      parsed.shipping_address.address2,
-      parsed.shipping_address.city,
-      parsed.shipping_address.province,
-      parsed.shipping_address.zip,
-      parsed.shipping_address.country_code,
-    ].filter((value): value is string => value !== null && value !== undefined && value !== '');
+    const address = this.normalizeAddress(parsed.shipping_address);
 
     return {
-      address: {
-        address1: parsed.shipping_address.address1,
-        address2: parsed.shipping_address.address2 ?? null,
-        city: parsed.shipping_address.city,
-        countryCode: parsed.shipping_address.country_code,
-        department: parsed.shipping_address.province ?? null,
-        id: parsed.shipping_address.id,
-        normalizedAddress: addressParts.join(', '),
-        phoneE164: parsed.shipping_address.phone,
-        postalCode: parsed.shipping_address.zip ?? null,
-      },
+      address,
       checkoutId: parsed.checkout_id ?? null,
       currency: parsed.currency,
-      customer: {
-        acceptsMarketing: parsed.customer.accepts_marketing,
-        email: parsed.customer.email,
-        firstName: parsed.customer.first_name ?? null,
-        id: parsed.customer.id,
-        lastName: parsed.customer.last_name ?? null,
-        phoneE164: parsed.customer.phone,
-      },
+      customer:
+        parsed.customer === null
+          ? null
+          : {
+              acceptsMarketing: parsed.customer.accepts_marketing,
+              email: parsed.customer.email,
+              firstName: parsed.customer.first_name ?? null,
+              id: parsed.customer.id,
+              lastName: parsed.customer.last_name ?? null,
+              phoneE164: parsed.customer.phone,
+            },
       discountAmount,
-      fixtureVersion: parsed._fixture.version,
       id: parsed.id,
       items: parsed.line_items.map((item) => {
         const unitPriceAmount = this.toMinorUnits(item.price);
@@ -185,11 +214,12 @@ export class ShopifyOrderNormalizer {
           quantity: item.quantity,
           sku: item.sku ?? null,
           snapshot: {
-            fixtureVersion: parsed._fixture.version,
+            mode,
             productId: item.product_id ?? null,
             quantity: item.quantity,
             sku: item.sku ?? null,
-            synthetic: true,
+            sourceVersion,
+            synthetic: mode === 'simulation',
             variantId: item.variant_id ?? null,
           },
           totalPriceAmount: unitPriceAmount * BigInt(item.quantity),
@@ -199,13 +229,48 @@ export class ShopifyOrderNormalizer {
         };
       }),
       name: parsed.name,
+      mode,
       rawSnapshot: parsed,
       sourceCreatedAt,
+      sourceVersion,
       sourceUpdatedAt,
       subtotalAmount,
       taxAmount,
       totalAmount,
       transportChargeAmount,
+    };
+  }
+
+  private normalizeAddress(
+    address: z.infer<typeof addressSchema> | null,
+  ): NormalizedShopifyAddress | null {
+    if (
+      address === null ||
+      address.address1 === null ||
+      address.city === null ||
+      address.country_code === null ||
+      address.id === null
+    ) {
+      return null;
+    }
+    const addressParts = [
+      address.address1,
+      address.address2,
+      address.city,
+      address.province,
+      address.zip,
+      address.country_code,
+    ].filter((value): value is string => value !== null && value !== undefined && value !== '');
+    return {
+      address1: address.address1,
+      address2: address.address2 ?? null,
+      city: address.city,
+      countryCode: address.country_code,
+      department: address.province ?? null,
+      id: address.id,
+      normalizedAddress: addressParts.join(', '),
+      phoneE164: address.phone,
+      postalCode: address.zip ?? null,
     };
   }
 

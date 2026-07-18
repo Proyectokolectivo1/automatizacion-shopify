@@ -61,4 +61,54 @@ describe('Shopify webhook cryptographic boundary', () => {
       }
     }
   });
+
+  it('accepts the previous webhook secret only during the configured overlap', () => {
+    const names = Object.keys(environmentBase).concat(
+      'SHOPIFY_CREDENTIAL_KEYS_JSON',
+      'SHOPIFY_CREDENTIAL_KEY_VERSION',
+    );
+    const previousEnvironment = new Map(names.map((name) => [name, process.env[name]] as const));
+    Object.assign(process.env, environmentBase, {
+      SHOPIFY_CREDENTIAL_KEYS_JSON: JSON.stringify({
+        v1: randomBytes(32).toString('base64url'),
+      }),
+      SHOPIFY_CREDENTIAL_KEY_VERSION: 'v1',
+    });
+    try {
+      const cipher = new ShopifyCredentialCipher(new EnvironmentService());
+      const organizationId = randomUUID();
+      const storeId = randomUUID();
+      const oldSecret = 'old-webhook-secret-with-adequate-length';
+      const newSecret = 'new-webhook-secret-with-adequate-length';
+      const oldEnvelope = cipher.encryptWebhookSecret(oldSecret, organizationId, storeId);
+      const rotated = cipher.rotateWebhookSecret(
+        newSecret,
+        oldEnvelope,
+        organizationId,
+        storeId,
+        new Date('2026-07-19T00:00:00Z'),
+      );
+      expect(
+        cipher.decryptWebhookSecrets(
+          rotated,
+          organizationId,
+          storeId,
+          new Date('2026-07-18T00:00:00Z'),
+        ),
+      ).toEqual([newSecret, oldSecret]);
+      expect(
+        cipher.decryptWebhookSecrets(
+          rotated,
+          organizationId,
+          storeId,
+          new Date('2026-07-20T00:00:00Z'),
+        ),
+      ).toEqual([newSecret]);
+    } finally {
+      for (const [name, value] of previousEnvironment) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    }
+  });
 });

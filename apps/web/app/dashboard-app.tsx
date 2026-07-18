@@ -6,8 +6,10 @@ import { z } from 'zod';
 import {
   dashboardPayloadSchema,
   OPERATIONAL_TYPES,
+  operationalDetailSchema,
   organizationOptionsSchema,
   type DashboardPayload,
+  type OperationalDetail,
   type OperationalType,
   type OrganizationOption,
 } from '../lib/contracts';
@@ -24,9 +26,33 @@ const TYPE_LABELS: Readonly<Record<OperationalType, string>> = {
   whatsapp_conversation: 'Conversaciones WhatsApp',
   wompi_reconciliation_issue: 'Conciliación Wompi',
 };
+const DETAIL_LABELS: Readonly<Record<string, string>> = {
+  acceptedEventStatus: 'Estado del último evento aceptado',
+  amount: 'Monto (unidades menores)',
+  assigned: 'Tiene agente asignado',
+  assignmentVersion: 'Versión de asignación',
+  attemptNumber: 'Número de intento',
+  authoritativeStatus: 'Estado consultado al proveedor',
+  codCollectAmount: 'Cobro contraentrega (unidades menores)',
+  currency: 'Moneda',
+  detectionCount: 'Detecciones',
+  expiredAt: 'Vencido en',
+  expiresAt: 'Vence en',
+  issueType: 'Tipo de incidencia',
+  lastDetectedAt: 'Última detección',
+  lastMessageAt: 'Último mensaje',
+  localStatus: 'Estado local',
+  paymentMode: 'Modo de pago',
+  reprocessStartedAt: 'Reproceso iniciado',
+  resolvedAt: 'Resuelto en',
+  totalAmount: 'Total (unidades menores)',
+  transportChargeAmount: 'Transporte (unidades menores)',
+  version: 'Versión',
+};
 
 interface Filters {
   readonly from: string;
+  readonly q: string;
   readonly to: string;
   readonly type: '' | OperationalType;
 }
@@ -39,7 +65,23 @@ function localDateTime(date: Date): string {
 function initialFilters(): Filters {
   const to = new Date();
   const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
-  return { from: localDateTime(from), to: localDateTime(to), type: '' };
+  return { from: localDateTime(from), q: '', to: localDateTime(to), type: '' };
+}
+
+function formatDetailValue(key: string, value: boolean | number | string | null): string {
+  if (value === null) return 'No disponible';
+  if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (typeof value === 'number') return new Intl.NumberFormat('es-CO').format(value);
+  if (key === 'at' || key.endsWith('At')) {
+    return new Intl.DateTimeFormat('es-CO', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(new Date(value));
+  }
+  if (key === 'amount' || key.endsWith('Amount')) {
+    return new Intl.NumberFormat('es-CO').format(BigInt(value));
+  }
+  return value.replaceAll('_', ' ');
 }
 
 function csrfToken(): string | undefined {
@@ -74,9 +116,15 @@ async function sessionMutation(path: string, body?: unknown): Promise<Response> 
 export function DashboardApp() {
   const [appliedFilters, setAppliedFilters] = useState<Filters>(initialFilters);
   const [dashboard, setDashboard] = useState<DashboardPayload>();
+  const [detail, setDetail] = useState<OperationalDetail>();
+  const [detailError, setDetailError] = useState<string>();
+  const [detailLoading, setDetailLoading] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(initialFilters);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string>();
+  const [exportError, setExportError] = useState<string>();
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [loginOptions, setLoginOptions] = useState<readonly OrganizationOption[]>([]);
   const [password, setPassword] = useState('');
@@ -95,6 +143,7 @@ export function DashboardApp() {
         to: new Date(appliedFilters.to).toISOString(),
       });
       if (appliedFilters.type !== '') query.set('type', appliedFilters.type);
+      if (appliedFilters.q.trim() !== '') query.set('q', appliedFilters.q.trim());
       if (cursor !== undefined) query.set('cursor', cursor);
       const response = await fetch(`/api/dashboard?${query}`, {
         cache: 'no-store',
@@ -197,12 +246,89 @@ export function DashboardApp() {
       setLoading(false);
       return;
     }
+    setDetail(undefined);
     await loadDashboard();
+  }
+
+  async function loadDetail(reference: string, allowRefresh = true): Promise<void> {
+    setDetailLoading(true);
+    setDetailError(undefined);
+    const response = await fetch(`/api/operations/detail?${new URLSearchParams({ reference })}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    if (response.status === 401 && allowRefresh && csrfToken() !== undefined) {
+      const refreshed = await sessionMutation('/api/session/refresh');
+      if (refreshed.ok) {
+        await loadDetail(reference, false);
+        return;
+      }
+    }
+    if (!response.ok) {
+      setDetail(undefined);
+      setDetailError(await readError(response));
+      setDetailLoading(false);
+      return;
+    }
+    const parsed = operationalDetailSchema.safeParse(await response.json());
+    if (!parsed.success) {
+      setDetail(undefined);
+      setDetailError('El detalle recibió una respuesta inválida');
+      setDetailLoading(false);
+      return;
+    }
+    setDetail(parsed.data);
+    setDetailLoading(false);
+  }
+
+  async function downloadExport(allowRefresh = true): Promise<void> {
+    setExportLoading(true);
+    setExportError(undefined);
+    setExportNotice(undefined);
+    const query = new URLSearchParams({
+      from: new Date(appliedFilters.from).toISOString(),
+      limit: '1000',
+      to: new Date(appliedFilters.to).toISOString(),
+    });
+    if (appliedFilters.type !== '') query.set('type', appliedFilters.type);
+    const response = await fetch(`/api/operations/export?${query}`, {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    });
+    if (response.status === 401 && allowRefresh && csrfToken() !== undefined) {
+      const refreshed = await sessionMutation('/api/session/refresh');
+      if (refreshed.ok) {
+        await downloadExport(false);
+        return;
+      }
+    }
+    if (!response.ok) {
+      setExportError(await readError(response));
+      setExportLoading(false);
+      return;
+    }
+    const blob = await response.blob();
+    const downloadUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = downloadUrl;
+    anchor.download = `operaciones-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(downloadUrl);
+    const rowCount = response.headers.get('x-export-row-count') ?? '0';
+    const truncated = response.headers.get('x-export-truncated') === 'true';
+    setExportNotice(
+      truncated
+        ? `Se descargaron ${rowCount} filas; el resultado alcanzó el límite de 1.000.`
+        : `Se descargaron ${rowCount} filas operativas.`,
+    );
+    setExportLoading(false);
   }
 
   function applyFilters(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
-    setAppliedFilters(draftFilters);
+    setAppliedFilters({ ...draftFilters, q: draftFilters.q.trim() });
   }
 
   if (sessionState !== 'ready' || dashboard === undefined) {
@@ -332,6 +458,17 @@ export function DashboardApp() {
           <h2 id="dashboard-title">Qué requiere atención ahora</h2>
         </div>
         <form className="filters" onSubmit={applyFilters}>
+          <label className="search-field">
+            Buscar
+            <input
+              maxLength={80}
+              minLength={2}
+              onChange={(event) => setDraftFilters({ ...draftFilters, q: event.target.value })}
+              placeholder="Ej. manual review, error, order"
+              type="search"
+              value={draftFilters.q}
+            />
+          </label>
           <label>
             Desde
             <input
@@ -371,6 +508,27 @@ export function DashboardApp() {
           <button className="secondary-button" disabled={loading} type="submit">
             Aplicar
           </button>
+          {['ADMIN', 'OWNER'].includes(dashboard.currentOrganization.role) ? (
+            <button
+              className="secondary-button"
+              disabled={
+                loading ||
+                exportLoading ||
+                appliedFilters.q !== '' ||
+                new Date(appliedFilters.to).getTime() - new Date(appliedFilters.from).getTime() >
+                  7 * 24 * 60 * 60 * 1000
+              }
+              onClick={() => void downloadExport()}
+              title={
+                appliedFilters.q !== ''
+                  ? 'Limpia la búsqueda para exportar el rango completo'
+                  : 'Disponible para rangos de hasta 7 días'
+              }
+              type="button"
+            >
+              {exportLoading ? 'Exportando…' : 'Exportar CSV'}
+            </button>
+          ) : null}
         </form>
       </section>
 
@@ -379,6 +537,16 @@ export function DashboardApp() {
           {error}
         </p>
       ) : null}
+      {exportError === undefined ? null : (
+        <p className="notice error" role="alert">
+          {exportError}
+        </p>
+      )}
+      {exportNotice === undefined ? null : (
+        <p className="notice success" role="status">
+          {exportNotice}
+        </p>
+      )}
       <div aria-live="polite" className="sr-only">
         {loading ? 'Actualizando datos operativos' : 'Datos operativos actualizados'}
       </div>
@@ -401,8 +569,12 @@ export function DashboardApp() {
       <section className="queue-panel" aria-labelledby="queue-title">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Cola priorizada</p>
-            <h2 id="queue-title">Elementos operativos</h2>
+            <p className="eyebrow">
+              {appliedFilters.q === '' ? 'Cola priorizada' : 'Búsqueda operativa'}
+            </p>
+            <h2 id="queue-title">
+              {appliedFilters.q === '' ? 'Elementos operativos' : 'Resultados operativos'}
+            </h2>
           </div>
           <span className="updated-label">Datos de solo lectura</span>
         </div>
@@ -430,9 +602,76 @@ export function DashboardApp() {
                     timeStyle: 'short',
                   }).format(new Date(item.occurredAt))}
                 </time>
+                <button
+                  className="text-button detail-button"
+                  disabled={detailLoading}
+                  onClick={() => void loadDetail(item.detailReference)}
+                  type="button"
+                >
+                  Ver detalle
+                </button>
               </li>
             ))}
           </ul>
+        )}
+        {detailLoading ? (
+          <p className="detail-loading" role="status">
+            Cargando detalle operativo…
+          </p>
+        ) : null}
+        {detailError === undefined ? null : (
+          <p className="notice error" role="alert">
+            {detailError}
+          </p>
+        )}
+        {detail === undefined ? null : (
+          <section className="detail-panel" aria-labelledby="detail-title">
+            <div className="panel-heading">
+              <div>
+                <p className="eyebrow">Detalle mínimo · solo lectura</p>
+                <h3 id="detail-title">{TYPE_LABELS[detail.item.type]}</h3>
+              </div>
+              <button className="text-button" onClick={() => setDetail(undefined)} type="button">
+                Cerrar
+              </button>
+            </div>
+            <dl className="detail-grid">
+              <div>
+                <dt>Estado</dt>
+                <dd>{detail.item.status.replaceAll('_', ' ')}</dd>
+              </div>
+              <div>
+                <dt>Ocurrencia</dt>
+                <dd>{formatDetailValue('occurredAt', detail.item.occurredAt)}</dd>
+              </div>
+              {Object.entries(detail.item.details).flatMap(([key, value]) =>
+                key === 'kind'
+                  ? []
+                  : [
+                      <div key={key}>
+                        <dt>{DETAIL_LABELS[key] ?? key}</dt>
+                        <dd>{formatDetailValue(key, value)}</dd>
+                      </div>,
+                    ],
+              )}
+            </dl>
+            {detail.timeline.length === 0 ? (
+              <p className="muted">Este tipo no tiene eventos seguros adicionales para mostrar.</p>
+            ) : (
+              <ol className="detail-timeline">
+                {detail.timeline.map((event, index) => (
+                  <li key={`${event.at}-${index}`}>
+                    <strong>
+                      {event.event === 'state_transition'
+                        ? `${event.fromStatus.replaceAll('_', ' ')} → ${event.toStatus.replaceAll('_', ' ')}`
+                        : `Asignación: ${event.action.replaceAll('_', ' ')}`}
+                    </strong>
+                    <time dateTime={event.at}>{formatDetailValue('at', event.at)}</time>
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
         )}
         {dashboard.nextCursor === null ? null : (
           <button

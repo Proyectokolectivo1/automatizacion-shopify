@@ -12,6 +12,7 @@ Actualizado: 2026-07-17
 - CSP, `frame-ancestors 'none'`, nosniff, no-referrer, COOP y Permissions-Policy reducen superficie.
 - `unsafe-eval` se habilita únicamente en desarrollo para React Refresh; el build productivo no lo usa.
 - Cola web elimina IDs internos/externos, relaciones, email y contenido; los cursores siguen opacos.
+- Detalle usa referencias AES-256-GCM de 15 minutos ligadas al tenant; producción exige clave propia.
 - Timeout/errores fallan cerrados y nunca copian cuerpos upstream al cliente.
 
 Pendiente antes de piloto: HTTPS/TLS real, proxy confiable, MFA, secret manager y pruebas de carga.

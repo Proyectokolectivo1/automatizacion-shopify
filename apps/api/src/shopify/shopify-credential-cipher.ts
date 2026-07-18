@@ -11,12 +11,21 @@ const envelopeSchema = z.object({
   iv: z.string().min(1),
   version: z.string().regex(/^v[1-9][0-9]*$/u),
 });
+const webhookSecretBundleSchema = envelopeSchema.extend({
+  previous: envelopeSchema.optional(),
+  previousValidUntil: z.iso.datetime({ offset: true }).optional(),
+});
 
 export interface CredentialEnvelope {
   readonly authTag: string;
   readonly ciphertext: string;
   readonly iv: string;
   readonly version: string;
+}
+
+export interface WebhookSecretBundle extends CredentialEnvelope {
+  readonly previous?: CredentialEnvelope | undefined;
+  readonly previousValidUntil?: string | undefined;
 }
 
 @Injectable()
@@ -41,6 +50,43 @@ export class ShopifyCredentialCipher {
 
   public decryptWebhookSecret(value: unknown, organizationId: string, storeId: string): string {
     return this.decryptValue(value, organizationId, storeId, 'webhook-secret');
+  }
+
+  public decryptWebhookSecrets(
+    value: unknown,
+    organizationId: string,
+    storeId: string,
+    now = new Date(),
+  ): readonly string[] {
+    const bundle = webhookSecretBundleSchema.safeParse(value);
+    if (!bundle.success) throw new ServiceUnavailableException('Invalid credential envelope');
+    const active = this.decryptWebhookSecret(bundle.data, organizationId, storeId);
+    if (
+      bundle.data.previous === undefined ||
+      bundle.data.previousValidUntil === undefined ||
+      new Date(bundle.data.previousValidUntil) <= now
+    ) {
+      return [active];
+    }
+    return [active, this.decryptWebhookSecret(bundle.data.previous, organizationId, storeId)];
+  }
+
+  public rotateWebhookSecret(
+    webhookSecret: string,
+    current: unknown,
+    organizationId: string,
+    storeId: string,
+    previousValidUntil: Date,
+  ): WebhookSecretBundle {
+    const active = this.encryptWebhookSecret(webhookSecret, organizationId, storeId);
+    if (current === null || current === undefined) return active;
+    const previous = envelopeSchema.safeParse(current);
+    if (!previous.success) throw new ServiceUnavailableException('Invalid credential envelope');
+    return {
+      ...active,
+      previous: previous.data,
+      previousValidUntil: previousValidUntil.toISOString(),
+    };
   }
 
   private encryptValue(
