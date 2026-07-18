@@ -4,30 +4,31 @@ Actualizado: 2026-07-17
 
 ## Estado general
 
-`EN_DESARROLLO` — fundaciones funcionales en progreso; no listo para piloto ni producción.
+`EN_DESARROLLO` — desarrollo funcional en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene el avance validado hasta E3-H6A.
+`codex/foundations-e0-h2` contiene la base publicada; E3-H7A, E0-H3B y E6-H1A están validadas
+localmente y pendientes de publicación autorizada.
 
 ## Fase actual
 
-Fase 4 — mensajería simulada en progreso. E3-H1A a E3-H6A están completas; la siguiente vertical es
-E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
+Fase 6 — operación interna. E6-H1A completó la cola unificada de solo lectura; la siguiente vertical
+es E6-H2A, resumen operativo agregado sobre la misma política v1.
 
 ## Avance aproximado por épica
 
-| Épica                    | Avance | Evidencia                                         |
-| ------------------------ | -----: | ------------------------------------------------- |
-| E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
-| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
-| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria |
-| E3 WhatsApp              |   86 % | ciclo simulado hasta bandeja tenant-safe          |
-| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
-| E5 Impresión             |    0 % | pendiente inventario de impresoras                |
-| E6 Operación y dashboard |    0 % | pendiente                                         |
-| E7 Finanzas              |    0 % | pendiente decisiones contables                    |
-| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución |
-| E9 Producción            |    0 % | no autorizada                                     |
+| Épica                    | Avance | Evidencia                                           |
+| ------------------------ | -----: | --------------------------------------------------- |
+| E0 Fundaciones           |  100 % | identidad, DLQ y observabilidad conectada completas |
+| E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso       |
+| E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria   |
+| E3 WhatsApp              |   90 % | ciclo simulado hasta asignación tenant-safe         |
+| E4 Mastershop            |    0 % | bloqueada por contrato del proveedor                |
+| E5 Impresión             |    0 % | pendiente inventario de impresoras                  |
+| E6 Operación y dashboard |   15 % | cola unificada tenant-safe completada               |
+| E7 Finanzas              |    0 % | pendiente decisiones contables                      |
+| E8 Publicidad            |    0 % | bloqueada por credenciales y modelo de atribución   |
+| E9 Producción            |    0 % | no autorizada                                       |
 
 ## Diagnóstico inicial
 
@@ -115,14 +116,23 @@ E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
 - E3-H6A: listado/timeline keyset con filtros y RBAC específico para owner/admin/operations/support.
 - Contenido inbound solo se descifra vigente y autorizado; expirado queda oculto, con auditoría y
   métricas sin PII, cursor inválido, tenant ajeno y kill switch probados.
+- E3-H7A: claim propio para soporte y gestión manager-only mediante membresías activas/elegibles del
+  tenant, con versión esperada, lock serializable, idempotencia y carrera determinista.
+- Asignación actual e historial inmutable se escriben con outbox/auditoría atómicos; respuestas,
+  proyección y métricas omiten email, teléfono, contenido e IDs externos.
+- E6-H1A: cola única de pedidos, incidencias Shopify/Wompi, intenciones de pago y conversaciones,
+  mediante una consulta `UNION ALL` tenant-bounded y proyección mínima sin PII.
+- Atención v1 determinista, filtros acotados, cursor por timestamp inmutable+tipo/UUID, RBAC exclusivo
+  owner/admin/operations, `no-store`, auditoría, métrica, flag y kill switch probados.
 
 ## Siguiente vertical
 
-- E3-H7A: asignación de conversaciones WhatsApp exclusivamente simulada, sin respuestas ni Meta.
+- E6-H2A: resumen operativo agregado de solo lectura sobre la política v1 de la cola, con ventana
+  temporal acotada, conteos tenant-safe y RBAC; sin UI completa ni mutaciones.
 
 ## Pendiente
 
-- OpenTelemetry, alertas conectadas y restricción de `/metrics` antes de un despliegue real.
+- Backend productivo de traces, routing real de alertas y SLO antes de un despliegue real.
 - Estados operativos Shopify posteriores y conexión real mientras falten credenciales.
 - Backups, restore, carga, seguridad, piloto y producción.
 
@@ -138,14 +148,14 @@ E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
 - El Node local está por debajo del parche fijado para CI; debe actualizarse a 22.23.1.
 - Una única VM constituye un punto único de fallo.
 - MinIO comunitario está archivado y tiene riesgo conocido; se permite solo en desarrollo local.
-- `/metrics` no tiene autenticación propia y debe quedar tras una red/proxy restringidos en producción.
+- La observabilidad local no sustituye TLS, retención, routing ni backend productivo de telemetría.
 
 ## Pruebas
 
-- `pnpm test`: 69 pruebas unitarias, 100 % en la lógica crítica incluida.
+- `pnpm test`: 73 pruebas unitarias, 100 % en la lógica crítica incluida.
 - `pnpm test:integration`: 3 pruebas de integración.
-- `pnpm observability:verify`: readiness, correlación, métricas, redacción y fallo/recuperación Redis.
-- `pnpm database:verify`: 14 pruebas sobre PostgreSQL real, 26 migraciones, constraints y cero drift.
+- `pnpm observability:verify`: W3C/OTLP, Bearer de métricas, alertas, redacción y fallos Redis/Collector.
+- `pnpm database:verify`: 15 pruebas sobre PostgreSQL real, 28 migraciones, constraints y cero drift.
 - `pnpm outbox:verify`: 4 pruebas PostgreSQL/Redis de atomicidad, carrera, recuperación y DLQ.
 - `pnpm dlq:verify`: 5 pruebas PostgreSQL/Redis/HTTP de paginación, RBAC, tenant y replay.
 - `pnpm auth:verify`: 14 pruebas HTTP/PostgreSQL de sesiones, RBAC, invitación y recuperación.
@@ -157,12 +167,14 @@ E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
-- `pnpm whatsapp:verify`: 21 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
+- `pnpm whatsapp:verify`: 25 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
+- `pnpm operations:verify`: 5 pruebas HTTP/PostgreSQL de unificación, cursor, filtros, RBAC, tenant,
+  redacción, auditoría, métrica y kill switch.
 - GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H5A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
   `pnpm audit --prod` volvió a responder normalmente y reportó cero vulnerabilidades conocidas.
-- Las migraciones 24 a 26 fueron aplicadas a la base local persistente; `database:status` confirma
-  26/26 y esquema actualizado.
+- Las migraciones 24 a 28 fueron aplicadas a la base local persistente; `database:status` confirma
+  28/28 y esquema actualizado.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
 
 ## Errores conocidos
@@ -171,14 +183,15 @@ E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
 - El primer CI remoto detectó que lint precedía a `prisma generate`; el quality gate quedó corregido
   para checkouts limpios y validado localmente desde el artefacto ausente.
 - Los puertos host alternos son 5433, 6380, 9100 y 9101 para no interferir con servicios ajenos.
-- Veintiséis migraciones expand-only están verificadas desde vacío.
+- Veintiocho migraciones expand-only están verificadas desde vacío.
 
 ## Deuda técnica
 
-Consulte `TECHNICAL_DEBT.md`. No se consideran implementados OpenTelemetry, alertas conectadas,
+Consulte `TECHNICAL_DEBT.md`. No se consideran implementados un backend productivo de trazas,
 workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E3-H7A: asignación simulada de conversaciones a agentes elegibles con ownership,
-re-asignación controlada, carrera, RBAC, auditoría y tenant. No responder mensajes ni usar Meta.
+Implementar E6-H2A como resumen agregado de solo lectura sobre la política v1 ya probada, con rango
+temporal acotado, conteos deterministas, aislamiento tenant y RBAC. No crear UI completa, mutar
+estados, desplegar producción ni conectar proveedores reales.

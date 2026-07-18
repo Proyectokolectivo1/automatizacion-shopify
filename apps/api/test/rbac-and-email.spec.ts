@@ -18,6 +18,18 @@ describe('RBAC policy', () => {
     expect(roleHasPermission('OPERATIONS', 'whatsapp-conversations.read')).toBe(true);
     expect(roleHasPermission('READ_ONLY', 'whatsapp-conversations.read')).toBe(false);
     expect(roleHasPermission('FINANCE', 'whatsapp-conversations.read')).toBe(false);
+    expect(roleHasPermission('SUPPORT', 'whatsapp-conversations.claim')).toBe(true);
+    expect(roleHasPermission('SUPPORT', 'whatsapp-conversations.assign')).toBe(false);
+    expect(roleHasPermission('OPERATIONS', 'whatsapp-conversations.assign')).toBe(true);
+    expect(roleHasPermission('ADMIN', 'whatsapp-conversations.assign')).toBe(true);
+    expect(roleHasPermission('READ_ONLY', 'whatsapp-conversations.claim')).toBe(false);
+    expect(roleHasPermission('OWNER', 'operations.queue.read')).toBe(true);
+    expect(roleHasPermission('ADMIN', 'operations.queue.read')).toBe(true);
+    expect(roleHasPermission('OPERATIONS', 'operations.queue.read')).toBe(true);
+    expect(roleHasPermission('SUPPORT', 'operations.queue.read')).toBe(false);
+    expect(roleHasPermission('FINANCE', 'operations.queue.read')).toBe(false);
+    expect(roleHasPermission('LOGISTICS', 'operations.queue.read')).toBe(false);
+    expect(roleHasPermission('READ_ONLY', 'operations.queue.read')).toBe(false);
   });
 });
 

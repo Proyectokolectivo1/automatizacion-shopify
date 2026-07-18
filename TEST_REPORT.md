@@ -783,3 +783,86 @@ casos porque Docker/PostgreSQL estaban apagados; tras levantar Docker conservand
 pasaron. El endpoint de auditoría npm, bloqueado durante iteraciones anteriores, volvió a responder y
 el gate cerró sin vulnerabilidades conocidas. No hubo credenciales, PII o tráfico Meta real. E3-H7A
 es la siguiente vertical.
+
+## Iteración E3-H7A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                | Resultado                                  |
+| --------------------------- | ---------------------- | ------------------------------------------ |
+| Unitarias/cobertura         | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 25/25                                  |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 15/15, 27 migraciones y cero drift     |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds            |
+| Integración/regresiones     | 14 gates dedicados     | OK                                         |
+| Observabilidad/infra        | gates runtime          | OK: fallo, recuperación y persistencia     |
+| Estado del esquema          | `pnpm database:status` | OK: 27/27                                  |
+| Dependencias                | `pnpm audit --prod`    | OK: cero vulnerabilidades conocidas        |
+
+Se validaron claim propio, replay, colisión de idempotencia, carrera con un único ganador,
+reassign/unassign manager-only, membresías ajena/inactiva/no elegible, tenant no revelador, RBAC,
+kill switch, proyección de bandeja, historial inmutable, outbox, auditoría y métrica sin PII.
+
+La primera verificación de base detectó que un `CHECK` SQL aceptaba razón `NULL` por lógica ternaria
+y que el nombre de una FK no coincidía con Prisma. Ambos defectos se corrigieron antes de aplicar el
+cierre; la migración veintisiete pasó desde vacío y la base persistente quedó 27/27 sin drift. No
+hubo credenciales, PII ni tráfico Meta real. E0-H3B es la siguiente vertical.
+
+## Iteración E0-H3B
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                      | Resultado                                    |
+| --------------------------- | ---------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                  | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Formatter/lint/types/builds | `pnpm validate`              | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | 14 gates dedicados           | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify`  | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`          | OK: seis servicios saludables y persistentes |
+| Migraciones/estado          | `database:verify` / `status` | OK: 15/15, 27/27 y cero drift                |
+| Dependencias                | `pnpm audit --prod`          | OK: cero vulnerabilidades conocidas          |
+
+Se validaron propagación `traceparent`, trace/span IDs en respuesta y logs, exportación OTLP a un
+Collector local, atributos de baja cardinalidad y ausencia de PII/Authorization/token en logs,
+métricas y salida del Collector. `/metrics` rechaza acceso sin Bearer en el build productivo, agrega
+`no-store` y conserva loopback seguro en desarrollo.
+
+Al detener Redis, readiness respondió `503` y se produjo exactamente una alerta activa pese a checks
+repetidos; al recuperarlo se produjo una resolución. Al detener Collector, la API siguió respondiendo
+y exportó nuevas trazas después de recuperarlo. Alertmanager y el receptor local no condicionan la
+respuesta de negocio.
+
+El primer test aislado de nuevas ramas encontró cobertura 87,5 %; se agregaron casos de URL HTTPS,
+password, query y fragmento hasta cerrar 100 %. El primer `pnpm validate` final encontró solo formato
+Markdown en siete archivos; Prettier lo corrigió y el gate completo pasó al repetir. No hubo
+migraciones, despliegue, credenciales cloud ni tráfico a proveedores reales. E6-H1A es la siguiente
+vertical.
+
+## Iteración E6-H1A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                     | Resultado                                    |
+| --------------------------- | --------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                 | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Cola HTTP/PostgreSQL        | `pnpm operations:verify`    | OK: 5/5                                      |
+| Migraciones/constraints     | `pnpm database:verify`      | OK: 15/15, 28 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`             | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados en serie    | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify` | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`         | OK: seis servicios saludables y persistentes |
+| Estado del esquema          | `pnpm database:status`      | OK: 28/28                                    |
+| Dependencias                | `pnpm audit --prod`         | OK: cero vulnerabilidades conocidas          |
+
+Se validaron cinco tipos unificados, atención v1, filtros estrictos, cursor keyset, inserción
+concurrente más reciente, RBAC owner/admin/operations, denegación de otros roles, tenant ajeno,
+query/cursor inválidos, kill switch, auditoría, métrica y ausencia de PII/IDs externos. La consulta
+limita organización dentro de cada rama `UNION ALL` y la migración 28 agrega cinco índices de lectura.
+
+La primera ejecución dedicada falló porque el fixture de conversación desconocida combinaba formas
+de identidad incompatibles con el constraint de privacidad existente. Se creó un cliente sintético
+y se conservó el constraint. Al intentar paralelizar cuatro gates, varias ejecuciones de
+`prisma generate` chocaron sobre el mismo directorio (`ENOTEMPTY`); se repitieron en serie y todos
+pasaron. El primer `database:status` detectó correctamente la migración 28 pendiente; se desplegó con
+`pnpm database:migrate` y quedó 28/28 sin borrar volúmenes. No hubo mutaciones operativas,
+credenciales ni tráfico real. E6-H2A es la siguiente vertical.

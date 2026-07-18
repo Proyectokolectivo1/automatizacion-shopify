@@ -78,6 +78,9 @@ jobs:
       - name: Verify simulated WhatsApp connection registry
         run: pnpm whatsapp:verify
 
+      - name: Verify unified operational queue
+        run: pnpm operations:verify
+
       - name: Run API integration tests
         run: pnpm test:integration
 

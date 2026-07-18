@@ -72,6 +72,49 @@ services:
     networks:
       - backend
 
+  otel-collector:
+    image: otel/opentelemetry-collector:0.156.0
+    restart: unless-stopped
+    command: ['--config=/etc/otelcol/config.yaml']
+    ports:
+      - '127.0.0.1:${OTEL_COLLECTOR_HTTP_PORT:-4318}:4318'
+      - '127.0.0.1:${OTEL_COLLECTOR_HEALTH_PORT:-13133}:13133'
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      - backend
+
+  alertmanager:
+    image: prom/alertmanager:v0.32.1
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - '127.0.0.1:${ALERTMANAGER_PORT:-9093}:9093'
+    volumes:
+      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    mem_limit: 128m
+    cpus: 0.25
+    networks:
+      - backend
+
+  alert-receiver:
+    image: node:22.16.0-alpine3.21
+    restart: unless-stopped
+    working_dir: /app
+    command: ['node', 'alert-receiver.mjs']
+    ports:
+      - '127.0.0.1:${ALERT_RECEIVER_PORT:-9087}:8080'
+    volumes:
+      - ./observability/alert-receiver.mjs:/app/alert-receiver.mjs:ro
+    mem_limit: 64m
+    cpus: 0.25
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge

@@ -25,6 +25,9 @@ export class MetricsService {
   private readonly whatsappStatusWebhooks: Counter<'outcome'>;
   private readonly whatsappInboundWebhooks: Counter<'outcome'>;
   private readonly whatsappInboxOperations: Counter<'action' | 'outcome'>;
+  private readonly whatsappAssignmentOperations: Counter<'action' | 'outcome'>;
+  private readonly observabilityAlertOperations: Counter<'action' | 'outcome'>;
+  private readonly operationalQueueOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -155,6 +158,24 @@ export class MetricsService {
       name: 'ecommerce_api_whatsapp_inbox_operations_total',
       registers: [this.registry],
     });
+    this.whatsappAssignmentOperations = new Counter({
+      help: 'Mutaciones acotadas de asignación WhatsApp exclusivamente simulada.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_whatsapp_assignment_operations_total',
+      registers: [this.registry],
+    });
+    this.observabilityAlertOperations = new Counter({
+      help: 'Transiciones acotadas entregadas al backend local de alertas.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_observability_alert_operations_total',
+      registers: [this.registry],
+    });
+    this.operationalQueueOperations = new Counter({
+      help: 'Consultas acotadas de la cola operativa unificada.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_operational_queue_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -242,6 +263,24 @@ export class MetricsService {
 
   public recordWhatsAppInboxOperation(action: 'list' | 'timeline', outcome: string): void {
     this.whatsappInboxOperations.inc({ action, outcome });
+  }
+
+  public recordWhatsAppAssignmentOperation(
+    action: 'claim' | 'reassign' | 'unassign',
+    outcome: string,
+  ): void {
+    this.whatsappAssignmentOperations.inc({ action, outcome });
+  }
+
+  public recordObservabilityAlert(
+    action: 'firing' | 'resolved',
+    outcome: 'failure' | 'success',
+  ): void {
+    this.observabilityAlertOperations.inc({ action, outcome });
+  }
+
+  public recordOperationalQueue(action: 'list', outcome: 'failure' | 'success'): void {
+    this.operationalQueueOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

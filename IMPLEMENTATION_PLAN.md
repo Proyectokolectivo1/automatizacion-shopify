@@ -10,6 +10,7 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 1A   | E0-H1 monorepo, estándares y CI     | COMPLETADA                 | install, quality gate, audit y smoke verdes                 |
 | 1B   | E0-H2 entorno local                 | COMPLETADA                 | protocolos, auth, salud y persistencia probados             |
 | 1C   | E0-H3 observabilidad base           | COMPLETADA                 | logs, correlación, errores, métricas y readiness probados   |
+| 1C2  | E0-H3B observabilidad conectada     | COMPLETADA                 | trazas, alertas y acceso seguro a métricas probados         |
 | 1D   | E0-H4A esquema y migración inicial  | COMPLETADA                 | migración limpia/repetible y constraints probados           |
 | 1E   | E0-H4B outbox y colas               | COMPLETADA                 | transacción, publicación, reintentos y DLQ probados         |
 | 1F   | E0-H5A login, sesiones y RBAC       | COMPLETADA                 | sesión segura y permisos backend probados                   |
@@ -34,11 +35,13 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3J   | E3-H4A estados webhook simulados    | COMPLETADA                 | autenticidad, orden monotónico y replay probados            |
 | 3K   | E3-H5A mensajes entrantes simulados | COMPLETADA                 | ingreso durable, dedupe, tenant y redacción probados        |
 | 3L   | E3-H6A bandeja simulada             | COMPLETADA                 | consulta, timeline y filtros tenant-safe probados           |
-| 3M   | E3-H7A asignación simulada          | SIGUIENTE                  | ownership, carrera, RBAC y auditoría probados               |
+| 3M   | E3-H7A asignación simulada          | COMPLETADA                 | ownership, carrera, RBAC y auditoría probados               |
 | 3N   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales            |
 | 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato             |
 | 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                   |
-| 6    | Operación y dashboard               | PENDIENTE                  | filtros, alertas, métricas y exportación                    |
+| 6A   | E6-H1A cola operativa unificada     | COMPLETADA                 | lectura, filtros y paginación tenant-safe probados          |
+| 6B   | E6-H2A resumen operativo agregado   | SIGUIENTE                  | conteos y ventana tenant-safe probados                      |
+| 6C   | Alertas, dashboard visual y exports | PENDIENTE                  | alertas de negocio, interfaz y exportación                  |
 | 7    | Rentabilidad y publicidad           | BLOQUEADO_POR_DECISION     | snapshots, atribución con confianza y ROAS                  |
 | 8    | Hardening y lanzamiento             | PENDIENTE                  | carga, seguridad, restore, piloto y aprobación humana       |
 
@@ -318,3 +321,43 @@ direcciones, historial, expiración, tenant, kill switch, auditoría y métricas
 Implementar asignación de conversaciones exclusivamente simulada: agente elegible dentro del tenant,
 claim/reassign/unassign con versión o lock, RBAC, historial durable, auditoría, métricas y carrera
 determinista. No responder mensajes ni conectar Meta.
+
+Resultado: completada el 2026-07-17. La migración veintisiete agrega asignación actual versionada e
+historial inmutable tenant-safe. Support reclama para sí y owner/admin/operations gestionan
+reassign/unassign mediante membresías activas y elegibles. Lock serializable, expected version,
+idempotencia, carrera, RBAC, outbox, auditoría y métricas sin PII están probados; no hubo tráfico
+Meta.
+
+## Vigesimoctava vertical: E0-H3B
+
+Completar la observabilidad base con propagación W3C, exportación OTLP a un Collector local,
+correlación logs/traces, alertas de fallo/recuperación y acceso seguro a métricas. Los exporters deben
+tener timeout, flags y kill switch; una caída de telemetría no puede tumbar la API. No conectar
+servicios cloud ni afirmar preparación productiva.
+
+Resultado: completada el 2026-07-17 sin migraciones nuevas. La API crea spans HTTP manuales de baja
+cardinalidad, continúa `traceparent`, exporta a Collector y correlaciona trace/span IDs con Pino. Las
+transiciones de readiness notifican una sola alerta activa/resuelta vía Alertmanager y receptor local.
+`/metrics` queda loopback por defecto, admite Bearer técnico con comparación constante y lo exige en
+producción. El gate runtime prueba propagación, redacción, dedupe, recuperación y caída de Collector.
+La siguiente vertical es E6-H1A.
+
+## Vigesimonovena vertical: E6-H1A
+
+Construir una cola operativa unificada de solo lectura sobre pedidos, incidencias de conciliación,
+intenciones de pago y conversaciones existentes. Debe tener ownership organizacional, RBAC,
+filtros enumerados, paginación keyset, orden estable y proyección mínima sin PII innecesaria. No crear
+una UI completa, mutar estados, corregir incidencias ni conectar proveedores reales.
+
+Resultado: completada el 2026-07-17. La migración veintiocho agrega cinco índices tenant+timestamp+
+UUID. Una sola consulta `UNION ALL` proyecta los cinco tipos con organización aplicada dentro de
+cada rama, atención v1 determinista, filtros estrictos y cursor estable. Owner/admin/operations
+pueden leer la mínima proyección; soporte y demás roles quedan default-deny. Cinco pruebas dedicadas,
+28 migraciones desde vacío y la regresión completa pasaron sin PII, N+1 ni mutaciones.
+
+## Trigésima vertical: E6-H2A
+
+Construir un resumen operativo agregado de solo lectura sobre la política v1 de E6-H1A. Debe aceptar
+una ventana temporal acotada, devolver conteos por tipo/estado/atención con contrato versionado,
+mantener aislamiento tenant, RBAC, auditoría, métricas y controles fail-closed. No duplicar una
+segunda semántica de atención, crear todavía el dashboard visual, emitir alertas ni mutar recursos.

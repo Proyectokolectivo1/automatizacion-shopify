@@ -125,3 +125,68 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
 - `pnpm validate`, regresiones, observabilidad e infraestructura quedaron verdes; audit volvió a
   responder y reportó cero vulnerabilidades conocidas.
 - Siguiente vertical: E3-H7A, asignación de conversaciones exclusivamente simulada.
+
+## 2026-07-17 — sesión actual: E3-H7A
+
+- La skill `token-optimizer` se ejecutó primero en modo read-only: salud 63/100, overhead de arranque
+  17.854 tokens (6,9 %) y sin subagentes filtrados, metas activas ni memoria desperdiciada. No se
+  cambiaron hooks, status line ni configuración global de Codex.
+- Objetivo: asignación de conversaciones exclusivamente simulada, sin respuestas ni tráfico Meta.
+- La migración 27 agrega assignment actual versionado e historial inmutable tenant-safe con FKs,
+  constraints, índices y trigger append-only.
+- Support reclama para sí; owner/admin/operations pueden reassign/unassign. Membresía/usuario
+  activos, rol elegible, tenant, expected version, lock serializable e idempotencia fallan cerrados.
+- Carrera, replay, colisión, agente ajeno/inactivo/no elegible, RBAC, tenant y kill switch están
+  probados; bandeja, outbox, auditoría y métricas omiten email, teléfono, contenido e IDs externos.
+- Incidencias corregidas antes del cierre: `CHECK` SQL con razón `NULL` y nombre de FK distinto al
+  esperado por Prisma. La base persistente quedó actualizada sin borrar volúmenes.
+- Evidencia final: `pnpm validate` 69/69 y cobertura crítica 100 %; WhatsApp 25/25; migraciones
+  15/15 y 27/27; 14 gates funcionales, observabilidad, infraestructura y auditoría en verde.
+- Riesgo abierto: revocar una membresía no libera su conversación automáticamente (R-061/TD-024).
+- Siguiente vertical: E0-H3B, OpenTelemetry local verificable, alertas conectadas y acceso seguro a
+  `/metrics`, sin despliegue productivo.
+
+## 2026-07-17 — sesión actual: E0-H3B
+
+- La skill `token-optimizer` se ejecutó primero en modo read-only: salud 63/100, overhead de arranque
+  17.854 tokens (6,9 %), sin lecturas obsoletas, bloat, duplicados, subagentes, metas o memoria
+  desperdiciada. No se cambió configuración global de Codex.
+- Objetivo: conectar observabilidad local verificable sin desplegar producción ni añadir proveedores.
+- Se agregaron trazas W3C manuales de baja cardinalidad, SDK/exportador OTLP, Collector 0.156.0,
+  correlación trace/span con Pino y flags/kill switch/timeouts fail-open para telemetría.
+- `/metrics` usa loopback por defecto, modo disabled o Bearer técnico con comparación de hash constante;
+  producción exige Bearer y token mínimo de 32 caracteres.
+- Readiness genera alertas solo en transiciones; Alertmanager 0.32.1 agrupa/deduplica y entrega a un
+  receptor local que conserva únicamente estado/timestamp. Fallas de alerta no cambian readiness.
+- El compose local pasó de tres a seis servicios; puertos y recursos siguen limitados a localhost y el
+  Collector debug/receptor se documentan exclusivamente como herramientas de desarrollo.
+- El gate runtime probó traceparent conocido, redacción, Bearer, alerta firing/resolved única, caída de
+  Redis y continuidad/recuperación al detener Collector.
+- Incidencias corregidas: dos errores de tipos iniciales, cobertura branch 87,5 % en URLs seguras y
+  formato Markdown del primer cierre. Todos quedaron corregidos antes de la regresión final.
+- Evidencia: `pnpm validate` 73/73 y 100 % crítico; 14 gates funcionales; infraestructura,
+  observabilidad, 27/27 migraciones y auditoría de dependencias verdes.
+- No hubo migraciones nuevas, credenciales cloud, despliegue ni tráfico de proveedor. El estado de
+  transición de alertas en memoria queda TD-025 y el backend persistente de traces TD-026.
+- Siguiente vertical: E6-H1A, cola operativa unificada de solo lectura, tenant-safe y sin mutaciones.
+
+## 2026-07-17 — sesión actual: E6-H1A
+
+- La skill `token-optimizer` se ejecutó en modo read-only: salud 63/100, overhead de arranque 17.854
+  tokens (6,9 %) y sin subagentes, metas, lecturas obsoletas, bloat, duplicados o memoria desperdiciada.
+  No se modificaron hooks, status line ni configuración global de Codex.
+- Objetivo: cola operativa unificada de solo lectura sobre hechos existentes, sin UI ni mutaciones.
+- Se agregó permiso `operations.queue.read` solo para owner/admin/operations, query estricta,
+  `no-store`, flag/kill switch, auditoría y métrica acotada.
+- Una sola consulta `UNION ALL` limita organización en cada rama y proyecta pedidos, incidencias
+  Shopify/Wompi, intenciones de pago y conversaciones sin PII, payloads ni IDs externos.
+- Atención v1 deriva de estados durables; el cursor usa timestamp inmutable más `tipo:UUID`. La
+  migración 28 añade cinco índices tenant+timestamp+UUID y quedó aplicada 28/28 sin borrar volúmenes.
+- `operations:verify` pasó 5/5; `database:verify` 15/15; `validate` 73/73 con 100 % crítico; todos los
+  gates funcionales, infraestructura, observabilidad y auditoría de dependencias quedaron verdes.
+- Incidencias corregidas: fixture de identidad WhatsApp incompatible con su constraint; colisión
+  `ENOTEMPTY` al paralelizar generadores Prisma, resuelta ejecutando los gates oficiales en serie.
+- Se documentaron arquitectura, contrato, seguridad, pruebas y runbook. No se publicaron cambios ni
+  se conectaron proveedores reales.
+- Riesgo abierto: el siguiente resumen no debe duplicar/divergir de la atención v1 (R-067).
+- Siguiente vertical: E6-H2A, resumen operativo agregado de solo lectura y ventana acotada.

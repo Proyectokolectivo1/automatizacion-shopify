@@ -1,6 +1,6 @@
 # Contrato de eventos de fundación
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-17
 
 ## Evento
 
@@ -67,3 +67,13 @@ replay idempotente no emite un segundo evento.
   incluye conteos, tipos acotados, ventana e IDs internos, nunca datos de transacción o PII.
 
 Creación/cambio y sus eventos se escriben atómicamente. Replays no emiten eventos adicionales.
+
+## Eventos WhatsApp
+
+- `whatsapp.conversation.assignment.changed.v1`: cambio efectivo de ownership exclusivamente
+  simulado. Incluye IDs internos de tienda, conversación y membresía anterior/nueva, acción, razón
+  acotada, versión y `mode=simulation`. No incluye email, teléfono, contenido de mensajes ni
+  identificadores externos.
+
+La asignación actual, su historial y el evento se escriben en una sola transacción. Replay
+idempotente y conflictos de versión no emiten eventos duplicados.

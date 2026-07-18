@@ -31,6 +31,9 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
 | TD-021 | Servicios de mutación repiten el protocolo idempotente | Medio   | Extraer una primitiva común sin alterar scopes ni snapshots |
 | TD-022 | El mock WhatsApp se invoca dentro de la transacción DB | Medio   | Mover el adaptador real a worker/outbox antes de Meta       |
 | TD-023 | Contenido inbound vencido aún no tiene job de purga    | Alto    | Implementar purga auditable antes de aceptar tráfico real   |
+| TD-024 | Asignación no se libera al revocar una membresía       | Medio   | Coordinar identidad/asignación antes del piloto             |
+| TD-025 | Estado de transición de alertas vive en proceso API    | Medio   | Hacerlo durable o reconstruirlo desde Alertmanager          |
+| TD-026 | Collector local solo ofrece exportador debug           | Medio   | Seleccionar backend, retención y acceso antes del piloto    |
 
 ## Deuda resuelta
 
@@ -53,3 +56,5 @@ riesgo R-023 y trabajo de seguridad SEC-001, no como deuda de código.
   determinista y sin red; conectar Meta exige resolver TD-022.
 - E3-H4A resolvió la ausencia de evidencia durable de estados simulados con dedupe, historial
   inmutable y transiciones monotónicas; el payload/firma Meta real sigue siendo trabajo funcional.
+- E6-H1A añade cursor global a la cola, pero no cambia el endpoint especializado de incidencias;
+  TD-016 permanece abierta hasta que esa consulta adopte paginación propia.

@@ -66,5 +66,6 @@ describe('API observability integration', () => {
     expect(response.headers['content-type']).toContain('text/plain');
     expect(response.text).toContain('ecommerce_api_http_requests_total');
     expect(response.text).toContain('ecommerce_api_dependency_ready{dependency="postgres"} 1');
+    expect(response.headers['cache-control']).toBe('no-store');
   });
 });

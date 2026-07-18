@@ -33,13 +33,16 @@ El repositorio canónico público es
 publicada; la rama `codex/foundations-e0-h2` contiene el avance validado y el PR borrador #1 está
 abierto. GitHub CLI 2.96.0 usa la cuenta segura del keyring; no se utiliza el PAT expuesto.
 
-Las fundaciones están aproximadamente al 98 %, Shopify al 75 % y pagos/tarifas al 80 %. Ya existe un monorepo reproducible
+Las fundaciones están al 100 %, Shopify al 75 %, pagos/tarifas al 80 %, WhatsApp al 90 % y operación
+al 15 %. Ya existe un monorepo reproducible
 con CI, entorno local, observabilidad, persistencia transaccional, entrega asíncrona y registro
 Shopify simulado. Los webhooks firmados ya producen pedidos normalizados durables en simulación;
 los pedidos se clasifican y concilian en simulación. La configuración WhatsApp simulada ya tiene
 ciclo operativo seguro, catálogo local versionado, envío transaccional durable, estados monotónicos
 y mensajes entrantes cifrados por webhooks sintéticos autenticados. La bandeja simulada ya ofrece
-listado/timeline tenant-safe; todavía no existen conexiones, entregas ni estados Meta reales.
+listado/timeline y asignación versionada tenant-safe; todavía no existen conexiones, entregas ni
+estados Meta reales. La primera cola operativa unificada ya proyecta los cinco dominios con RBAC,
+filtros, cursor estable y mínima exposición de datos.
 
 ## Implementado
 
@@ -47,9 +50,10 @@ listado/timeline tenant-safe; todavía no existen conexiones, entregas ni estado
 - Aplicación web Next.js y API NestJS compilables.
 - CI con formatter, lint, typecheck, pruebas, build y verificaciones de infraestructura.
 - PostgreSQL, Redis y MinIO locales autenticados, persistentes y limitados a localhost.
-- Logs JSON redactados, correlation ID, manejo seguro de errores y métricas Prometheus.
+- Logs JSON redactados, correlation ID, trazas W3C/OTLP y métricas Prometheus protegidas.
 - Liveness y readiness reales para PostgreSQL, Redis y MinIO.
-- Pruebas de degradación y recuperación cuando Redis se detiene.
+- Collector, Alertmanager y receptor local reproducibles, con fallo/recuperación y dedupe probados.
+- Pruebas de degradación y recuperación cuando Redis o el Collector se detienen.
 - Prisma 7.8.0 y migración inicial expand-only.
 - Tablas `organizations`, `stores`, `idempotency_keys` y `outbox_events`.
 - Lifecycle Prisma único en NestJS y health check reutilizando ese cliente.
@@ -106,14 +110,18 @@ listado/timeline tenant-safe; todavía no existen conexiones, entregas ni estado
 - Dedupe por evento/mensaje, identidad tenant-safe, redacción, inmutabilidad y outbox inbound probados.
 - Bandeja WhatsApp simulada con cursores estables, filtros, timeline e historial tenant-safe.
 - Descifrado solo con RBAC y retención vigente; listado, auditoría y métricas sin PII.
+- Claim propio y reassign/unassign manager-only con membresías elegibles, versión y lock de carrera.
+- Asignación actual, historial inmutable, idempotencia, outbox, auditoría y métricas sin PII probados.
+- Cola operativa unificada de solo lectura con cinco tipos, atención v1, filtros, cursor keyset,
+  índices tenant-safe, auditoría, métricas y controles fail-closed.
 - Documentación de arquitectura, contratos, seguridad, pruebas y runbooks iniciales.
 
 ## Qué falta por implementar
 
 ### Fundaciones pendientes
 
-- OpenTelemetry y alertas conectadas a un backend verificable.
-- Protección productiva del endpoint `/metrics`.
+- Persistencia/consulta productiva de trazas, routing de alertas y SLO se completarán en hardening.
+- Backups/restore, carga, TLS, secret manager y despliegue siguen pendientes antes de piloto.
 
 ### Shopify
 
@@ -125,7 +133,6 @@ listado/timeline tenant-safe; todavía no existen conexiones, entregas ni estado
 
 ### Pagos y WhatsApp
 
-- Asignación simulada de conversaciones a agentes WhatsApp.
 - WhatsApp Cloud API real y registro/revisión remota de plantillas.
 - Mocks, fixtures y pruebas contractuales por vertical mientras falten credenciales.
 
@@ -137,7 +144,8 @@ listado/timeline tenant-safe; todavía no existen conexiones, entregas ni estado
 
 ### Operación, finanzas y publicidad
 
-- Dashboard operativo, filtros, alertas, búsquedas y exportaciones.
+- Resumen agregado y dashboard visual sobre la cola ya disponible; faltan alertas, búsquedas y
+  exportaciones.
 - Costos históricos, rentabilidad por pedido y snapshots financieros.
 - Integraciones publicitarias, atribución con nivel de confianza y ROAS.
 - Auditoría funcional y herramientas de reproceso manual.
@@ -164,8 +172,9 @@ reales terminadas.
 
 ## Siguiente vertical
 
-E3-H7A: asignación de conversaciones WhatsApp exclusivamente simulada, con ownership, carrera,
-RBAC y auditoría. Meta/WhatsApp real permanece `BLOQUEADO_POR_CREDENCIALES`.
+E6-H2A: construir un resumen operativo agregado de solo lectura, tenant-safe y con RBAC sobre la
+misma política v1 de la cola. Debe usar una ventana temporal acotada, conteos deterministas y mínima
+proyección, sin crear todavía UI completa, alertas automáticas ni mutaciones.
 
 ## Dónde consultar más detalle
 

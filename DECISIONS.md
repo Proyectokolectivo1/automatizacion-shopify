@@ -79,6 +79,18 @@ Actualizado: 2026-07-17
 | D-073  | DECISIÓN           | Bandeja usa cursores timestamp+ID y revalida tenant en cada página                               | ACEPTADA E3-H6A    |
 | D-074  | DECISIÓN           | Inbound se descifra solo en timeline autorizado y vigente; listado nunca carga contenido         | ACEPTADA E3-H6A    |
 | D-075  | DECISIÓN           | Lectura de conversaciones se limita a owner/admin/operations/support                             | ACEPTADA E3-H6A    |
+| D-076  | DECISIÓN           | Support solo reclama para sí; owner/admin/operations reasignan o liberan                         | ACEPTADA E3-H7A    |
+| D-077  | DECISIÓN           | Ownership referencia membresía tenant-safe y cambia con lock y versión esperada                  | ACEPTADA E3-H7A    |
+| D-078  | DECISIÓN           | Razones de reasignación son enums cerrados y el historial SQL es inmutable                       | ACEPTADA E3-H7A    |
+| D-079  | DECISIÓN           | Outbox, auditoría y métricas de asignación omiten PII, contenido e IDs externos                  | ACEPTADA E3-H7A    |
+| D-080  | DECISIÓN           | Spans HTTP manuales propagan W3C y solo usan atributos de ruta/estado acotados                   | ACEPTADA E0-H3B    |
+| D-081  | DECISIÓN           | OTLP, alertas y destinos usan flags, kill switch y timeout; la telemetría falla abierta          | ACEPTADA E0-H3B    |
+| D-082  | DECISIÓN           | Métricas son loopback por defecto y exigen Bearer técnico con hash constante en producción       | ACEPTADA E0-H3B    |
+| D-083  | DECISIÓN           | Alertas se emiten por transición, Alertmanager deduplica y el receptor local no conserva payload | ACEPTADA E0-H3B    |
+| D-084  | DECISIÓN           | La cola es una proyección SQL `UNION ALL`; los dominios existentes siguen siendo source of truth | ACEPTADA E6-H1A    |
+| D-085  | DECISIÓN           | Cada rama limita tenant y pagina por timestamp inmutable más `tipo:UUID`                         | ACEPTADA E6-H1A    |
+| D-086  | DECISIÓN           | Atención v1 deriva solo de estados durables; no se inventan prioridad, SLA ni severidad          | ACEPTADA E6-H1A    |
+| D-087  | DECISIÓN           | Cola solo para owner/admin/operations y con IDs internos/estados/fechas mínimos                  | ACEPTADA E6-H1A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

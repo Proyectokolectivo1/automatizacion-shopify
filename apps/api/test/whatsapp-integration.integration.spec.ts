@@ -62,6 +62,9 @@ const environmentNames = [
   'WHATSAPP_INBOX_ENABLED',
   'WHATSAPP_INBOX_KILL_SWITCH',
   'WHATSAPP_INBOX_SIMULATION_MODE',
+  'WHATSAPP_ASSIGNMENTS_ENABLED',
+  'WHATSAPP_ASSIGNMENTS_KILL_SWITCH',
+  'WHATSAPP_ASSIGNMENTS_SIMULATION_MODE',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -122,6 +125,9 @@ interface InboundResponse {
 }
 
 interface InboxConversationItem {
+  readonly assignedAt: string | null;
+  readonly assigneeMembershipId: string | null;
+  readonly assignmentVersion: number;
   readonly conversationId: string;
   readonly identity: string;
   readonly latestDirection: string | null;
@@ -148,6 +154,15 @@ interface InboxTimelineResponse {
   readonly nextCursor: string | null;
 }
 
+interface AssignmentResponse {
+  readonly action: 'claim' | 'reassign' | 'unassign';
+  readonly assignedAt: string | null;
+  readonly assigneeMembershipId: string | null;
+  readonly assignmentVersion: number;
+  readonly conversationId: string;
+  readonly mode: 'simulation';
+}
+
 describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
@@ -158,6 +173,8 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let foreignStoreId: string;
   let connectionId: string;
   let orderId: string;
+  let claimedConversationId: string;
+  let racedConversationId: string;
   let prisma: PrismaClient;
 
   beforeAll(async () => {
@@ -196,6 +213,9 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     process.env.WHATSAPP_INBOX_ENABLED = 'true';
     process.env.WHATSAPP_INBOX_KILL_SWITCH = 'false';
     process.env.WHATSAPP_INBOX_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_ASSIGNMENTS_ENABLED = 'true';
+    process.env.WHATSAPP_ASSIGNMENTS_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_ASSIGNMENTS_SIMULATION_MODE = 'true';
     process.env.WHATSAPP_CREDENTIAL_KEY_VERSION = 'v1';
     process.env.WHATSAPP_CREDENTIAL_KEYS_JSON = JSON.stringify({
       v1: randomBytes(32).toString('base64url'),
@@ -276,13 +296,16 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     const passwordHash = await new PasswordService().hash(password);
     const createUser = (
       email: string,
-      role: 'OWNER' | 'ADMIN' | 'READ_ONLY' | 'SUPPORT',
+      role: 'ADMIN' | 'LOGISTICS' | 'OPERATIONS' | 'OWNER' | 'READ_ONLY' | 'SUPPORT',
       targetOrganizationId = organizationId,
+      membershipStatus: 'ACTIVE' | 'REVOKED' = 'ACTIVE',
     ) =>
       prisma.user.create({
         data: {
           email,
-          memberships: { create: { organizationId: targetOrganizationId, role } },
+          memberships: {
+            create: { organizationId: targetOrganizationId, role, status: membershipStatus },
+          },
           passwordAlgorithm: PASSWORD_PARAMETERS.algorithm,
           passwordHash,
           passwordParametersJson: PASSWORD_PARAMETERS,
@@ -293,7 +316,11 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
       createUser('whatsapp-admin@example.test', 'ADMIN'),
       createUser('whatsapp-reader@example.test', 'READ_ONLY'),
       createUser('whatsapp-support@example.test', 'SUPPORT'),
+      createUser('whatsapp-operations@example.test', 'OPERATIONS'),
+      createUser('whatsapp-logistics@example.test', 'LOGISTICS'),
+      createUser('whatsapp-inactive@example.test', 'SUPPORT', organizationId, 'REVOKED'),
       createUser('whatsapp-foreign@example.test', 'OWNER', otherOrganizationId),
+      createUser('whatsapp-foreign-support@example.test', 'SUPPORT', otherOrganizationId),
     ]);
 
     app = await createApplication();
@@ -349,6 +376,14 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
 
   const inboxEndpoint = (targetStoreId = storeId, targetOrganizationId = organizationId) =>
     `/operations/organizations/${targetOrganizationId}/whatsapp/stores/${targetStoreId}/conversations`;
+
+  const assignmentEndpoint = (
+    conversationId: string,
+    action: 'claim' | 'reassign' | 'unassign',
+    targetStoreId = storeId,
+    targetOrganizationId = organizationId,
+  ) =>
+    `${inboxEndpoint(targetStoreId, targetOrganizationId)}/${conversationId}/assignment/${action}`;
 
   const templatePayload = () => ({
     bodyTemplate: 'Hola {{customer_name}}, paga el transporte en {{checkout_url}}.',
@@ -1347,6 +1382,243 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     }
   });
 
+  it('lets support claim itself idempotently and exposes only bounded assignment state', async () => {
+    const support = await login('whatsapp-support@example.test');
+    const supportMembership = await prisma.organizationMembership.findFirstOrThrow({
+      where: { organizationId, user: { email: 'whatsapp-support@example.test' } },
+    });
+    const conversation = await prisma.whatsAppConversation.findFirstOrThrow({
+      where: { customerId: { not: null }, organizationId, storeId },
+    });
+    claimedConversationId = conversation.id;
+    const key = `assignment-claim-${randomUUID()}`;
+    const first = await request(baseUrl)
+      .post(assignmentEndpoint(conversation.id, 'claim'))
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .set('idempotency-key', key)
+      .send({ expectedVersion: 0 })
+      .expect(200);
+    const firstBody = first.body as AssignmentResponse;
+    expect(firstBody).toMatchObject({
+      action: 'claim',
+      assigneeMembershipId: supportMembership.id,
+      assignmentVersion: 1,
+      conversationId: conversation.id,
+      mode: 'simulation',
+    });
+    expect(firstBody.assignedAt).toEqual(expect.any(String));
+    const replay = await request(baseUrl)
+      .post(assignmentEndpoint(conversation.id, 'claim'))
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .set('idempotency-key', key)
+      .send({ expectedVersion: 0 })
+      .expect(200);
+    expect(replay.body as AssignmentResponse).toEqual(firstBody);
+    await request(baseUrl)
+      .post(assignmentEndpoint(conversation.id, 'claim'))
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .set('idempotency-key', key)
+      .send({ expectedVersion: 1 })
+      .expect(409);
+
+    const list = await request(baseUrl)
+      .get(inboxEndpoint())
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const item = (list.body as InboxListResponse).items.find(
+      ({ conversationId }) => conversationId === conversation.id,
+    );
+    expect(item).toMatchObject({
+      assigneeMembershipId: supportMembership.id,
+      assignmentVersion: 1,
+    });
+    expect(JSON.stringify(item)).not.toContain('whatsapp-support@example.test');
+    expect(
+      await prisma.whatsAppConversationAssignmentHistory.count({
+        where: { conversationId: conversation.id },
+      }),
+    ).toBe(1);
+  });
+
+  it('serializes competing claims so exactly one eligible agent wins', async () => {
+    const [owner, support] = await Promise.all([login(), login('whatsapp-support@example.test')]);
+    const memberships = await prisma.organizationMembership.findMany({
+      select: { id: true },
+      where: {
+        organizationId,
+        user: {
+          email: { in: ['whatsapp-owner@example.test', 'whatsapp-support@example.test'] },
+        },
+      },
+    });
+    const conversation = await prisma.whatsAppConversation.findFirstOrThrow({
+      where: { customerId: null, organizationId, storeId },
+    });
+    racedConversationId = conversation.id;
+    const responses = await Promise.all([
+      request(baseUrl)
+        .post(assignmentEndpoint(conversation.id, 'claim'))
+        .set('authorization', `Bearer ${owner.accessToken}`)
+        .set('idempotency-key', `assignment-owner-${randomUUID()}`)
+        .send({ expectedVersion: 0 }),
+      request(baseUrl)
+        .post(assignmentEndpoint(conversation.id, 'claim'))
+        .set('authorization', `Bearer ${support.accessToken}`)
+        .set('idempotency-key', `assignment-support-${randomUUID()}`)
+        .send({ expectedVersion: 0 }),
+    ]);
+    expect(responses.map(({ status }) => status).sort()).toEqual([200, 409]);
+    const stored = await prisma.whatsAppConversation.findUniqueOrThrow({
+      where: { id: conversation.id },
+    });
+    expect(stored.assignmentVersion).toBe(1);
+    expect(memberships.map(({ id }) => id)).toContain(stored.assignedMembershipId);
+    expect(
+      await prisma.whatsAppConversationAssignmentHistory.count({
+        where: { conversationId: conversation.id },
+      }),
+    ).toBe(1);
+  });
+
+  it('enforces manager-only reassignment, eligible agents and immutable history', async () => {
+    const [operations, support] = await Promise.all([
+      login('whatsapp-operations@example.test'),
+      login('whatsapp-support@example.test'),
+    ]);
+    const membership = async (email: string, targetOrganizationId = organizationId) =>
+      prisma.organizationMembership.findFirstOrThrow({
+        where: { organizationId: targetOrganizationId, user: { email } },
+      });
+    const [adminMembership, logisticsMembership, inactiveMembership, foreignMembership] =
+      await Promise.all([
+        membership('whatsapp-admin@example.test'),
+        membership('whatsapp-logistics@example.test'),
+        membership('whatsapp-inactive@example.test'),
+        membership('whatsapp-foreign-support@example.test', otherOrganizationId),
+      ]);
+
+    await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'reassign'))
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .set('idempotency-key', `assignment-denied-${randomUUID()}`)
+      .send({
+        assigneeMembershipId: adminMembership.id,
+        expectedVersion: 1,
+        reasonCode: 'SHIFT_CHANGE',
+      })
+      .expect(403);
+    for (const [assigneeMembershipId, expectedStatus] of [
+      [foreignMembership.id, 404],
+      [inactiveMembership.id, 409],
+      [logisticsMembership.id, 409],
+    ] as const) {
+      await request(baseUrl)
+        .post(assignmentEndpoint(claimedConversationId, 'reassign'))
+        .set('authorization', `Bearer ${operations.accessToken}`)
+        .set('idempotency-key', `assignment-ineligible-${randomUUID()}`)
+        .send({
+          assigneeMembershipId,
+          expectedVersion: 1,
+          reasonCode: 'SHIFT_CHANGE',
+        })
+        .expect(expectedStatus);
+    }
+
+    const reassignKey = `assignment-reassign-${randomUUID()}`;
+    const reassignBody = {
+      assigneeMembershipId: adminMembership.id,
+      expectedVersion: 1,
+      reasonCode: 'SPECIALIST_ROUTING',
+    } as const;
+    const reassigned = await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'reassign'))
+      .set('authorization', `Bearer ${operations.accessToken}`)
+      .set('idempotency-key', reassignKey)
+      .send(reassignBody)
+      .expect(200);
+    expect(reassigned.body as AssignmentResponse).toMatchObject({
+      action: 'reassign',
+      assigneeMembershipId: adminMembership.id,
+      assignmentVersion: 2,
+    });
+    const replay = await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'reassign'))
+      .set('authorization', `Bearer ${operations.accessToken}`)
+      .set('idempotency-key', reassignKey)
+      .send(reassignBody)
+      .expect(200);
+    expect(replay.body).toEqual(reassigned.body);
+    await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'reassign'))
+      .set('authorization', `Bearer ${operations.accessToken}`)
+      .set('idempotency-key', reassignKey)
+      .send({ ...reassignBody, reasonCode: 'SHIFT_CHANGE' })
+      .expect(409);
+
+    const unassigned = await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'unassign'))
+      .set('authorization', `Bearer ${operations.accessToken}`)
+      .set('idempotency-key', `assignment-unassign-${randomUUID()}`)
+      .send({ expectedVersion: 2, reasonCode: 'MANUAL_RELEASE' })
+      .expect(200);
+    expect(unassigned.body as AssignmentResponse).toMatchObject({
+      action: 'unassign',
+      assignedAt: null,
+      assigneeMembershipId: null,
+      assignmentVersion: 3,
+    });
+    const history = await prisma.whatsAppConversationAssignmentHistory.findMany({
+      orderBy: { version: 'asc' },
+      where: { conversationId: claimedConversationId },
+    });
+    expect(
+      history.map(({ action, reasonCode, version }) => ({ action, reasonCode, version })),
+    ).toEqual([
+      { action: 'CLAIM', reasonCode: null, version: 1 },
+      { action: 'REASSIGN', reasonCode: 'SPECIALIST_ROUTING', version: 2 },
+      { action: 'UNASSIGN', reasonCode: 'MANUAL_RELEASE', version: 3 },
+    ]);
+    expect(
+      await prisma.outboxEvent.count({
+        where: {
+          aggregateId: claimedConversationId,
+          eventType: 'whatsapp.conversation.assignment.changed.v1',
+        },
+      }),
+    ).toBe(3);
+    await expect(
+      prisma.whatsAppConversationAssignmentHistory.update({
+        data: { version: 99 },
+        where: { id: history[0]?.id ?? '' },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('keeps assignment lookup non-revealing and fails closed on its own kill switch', async () => {
+    const owner = await login();
+    await request(baseUrl)
+      .post(assignmentEndpoint(claimedConversationId, 'claim', foreignStoreId))
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .set('idempotency-key', `assignment-foreign-${randomUUID()}`)
+      .send({ expectedVersion: 3 })
+      .expect(404);
+    process.env.WHATSAPP_ASSIGNMENTS_KILL_SWITCH = 'true';
+    const disabledApp = await createApplication();
+    try {
+      await disabledApp.listen(0, '127.0.0.1');
+      await request(await disabledApp.getUrl())
+        .post(assignmentEndpoint(claimedConversationId, 'claim'))
+        .set('authorization', `Bearer ${owner.accessToken}`)
+        .set('idempotency-key', `assignment-disabled-${randomUUID()}`)
+        .send({ expectedVersion: 3 })
+        .expect(503);
+    } finally {
+      await disabledApp.close();
+      process.env.WHATSAPP_ASSIGNMENTS_KILL_SWITCH = 'false';
+    }
+    expect(racedConversationId).toEqual(expect.any(String));
+  });
+
   it('fails closed when the independent webhook kill switch is active', async () => {
     const message = await prisma.whatsAppMessage.findFirstOrThrow({ where: { orderId } });
     process.env.WHATSAPP_WEBHOOKS_KILL_SWITCH = 'true';
@@ -1388,6 +1660,19 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     expect(metrics.text).toContain('ecommerce_api_whatsapp_status_webhooks_total');
     expect(metrics.text).toContain('ecommerce_api_whatsapp_inbound_webhooks_total');
     expect(metrics.text).toContain('ecommerce_api_whatsapp_inbox_operations_total');
+    expect(metrics.text).toContain('ecommerce_api_whatsapp_assignment_operations_total');
+    const assignmentEvidence = JSON.stringify({
+      audit: await prisma.auditLog.findMany({
+        where: { resourceType: 'whatsapp_conversation_assignment' },
+      }),
+      history: await prisma.whatsAppConversationAssignmentHistory.findMany(),
+      outbox: await prisma.outboxEvent.findMany({
+        where: { eventType: 'whatsapp.conversation.assignment.changed.v1' },
+      }),
+    });
+    expect(assignmentEvidence).not.toContain('whatsapp-support@example.test');
+    expect(assignmentEvidence).not.toContain('+573001112233');
+    expect(assignmentEvidence).not.toContain(stored.body);
     const statusEvidence = JSON.stringify({
       events: await prisma.whatsAppStatusWebhookEvent.findMany(),
       history: await prisma.whatsAppMessageStatusHistory.findMany(),

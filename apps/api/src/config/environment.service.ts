@@ -104,6 +104,48 @@ export class EnvironmentService {
     return this.values.NODE_ENV;
   }
 
+  public get metricsAccess(): Readonly<{
+    bearerToken: string | undefined;
+    mode: Environment['METRICS_ACCESS_MODE'];
+  }> {
+    return {
+      bearerToken: this.values.METRICS_BEARER_TOKEN,
+      mode: this.values.METRICS_ACCESS_MODE,
+    };
+  }
+
+  public get observabilityAlerts(): Readonly<{
+    alertmanagerUrl: string;
+    enabled: boolean;
+    killSwitch: boolean;
+    timeoutMs: number;
+  }> {
+    return {
+      alertmanagerUrl: this.values.OBSERVABILITY_ALERTMANAGER_URL,
+      enabled: this.values.OBSERVABILITY_ALERTS_ENABLED,
+      killSwitch: this.values.OBSERVABILITY_ALERTS_KILL_SWITCH,
+      timeoutMs: this.values.OBSERVABILITY_ALERTS_TIMEOUT_MS,
+    };
+  }
+
+  public get tracing(): Readonly<{
+    enabled: boolean;
+    exporterEndpoint: string;
+    exporterTimeoutMs: number;
+    killSwitch: boolean;
+    sampleRatio: number;
+    serviceName: string;
+  }> {
+    return {
+      enabled: this.values.OTEL_TRACING_ENABLED,
+      exporterEndpoint: this.values.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+      exporterTimeoutMs: this.values.OTEL_EXPORT_TIMEOUT_MS,
+      killSwitch: this.values.OTEL_TRACING_KILL_SWITCH,
+      sampleRatio: this.values.OTEL_TRACE_SAMPLE_RATIO,
+      serviceName: this.values.OTEL_SERVICE_NAME,
+    };
+  }
+
   public get postgres(): Readonly<{
     database: string;
     host: string;
@@ -386,6 +428,28 @@ export class EnvironmentService {
       enabled: this.values.WHATSAPP_INBOX_ENABLED,
       killSwitch: this.values.WHATSAPP_INBOX_KILL_SWITCH,
       simulationMode: this.values.WHATSAPP_INBOX_SIMULATION_MODE,
+    };
+  }
+
+  public get whatsappAssignments(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+    simulationMode: boolean;
+  }> {
+    return {
+      enabled: this.values.WHATSAPP_ASSIGNMENTS_ENABLED,
+      killSwitch: this.values.WHATSAPP_ASSIGNMENTS_KILL_SWITCH,
+      simulationMode: this.values.WHATSAPP_ASSIGNMENTS_SIMULATION_MODE,
+    };
+  }
+
+  public get operationalQueue(): Readonly<{
+    enabled: boolean;
+    killSwitch: boolean;
+  }> {
+    return {
+      enabled: this.values.OPERATIONAL_QUEUE_ENABLED,
+      killSwitch: this.values.OPERATIONAL_QUEUE_KILL_SWITCH,
     };
   }
 

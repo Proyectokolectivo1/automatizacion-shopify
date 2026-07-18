@@ -10,7 +10,8 @@
   },
   "pnpm": {
     "ignoredBuiltDependencies": [
-      "msgpackr-extract"
+      "msgpackr-extract",
+      "protobufjs"
     ],
     "onlyBuiltDependencies": [
       "@prisma/engines",
@@ -40,6 +41,7 @@
     "identity:verify": "pnpm --filter @ecommerce/api test:identity",
     "lint": "eslint scripts eslint.config.mjs --max-warnings=0 && turbo run lint",
     "observability:verify": "node scripts/verify-observability.mjs",
+    "operations:verify": "pnpm --filter @ecommerce/api test:operational-queue",
     "outbox:verify": "pnpm --filter @ecommerce/api test:outbox",
     "prisma:generate": "pnpm --filter @ecommerce/api prisma:generate",
     "shopify:verify": "pnpm --filter @ecommerce/api test:shopify",

@@ -64,6 +64,8 @@ export class AppLoggerService implements LoggerService {
     return {
       ...bindings,
       correlationId: this.requestContext.correlationId,
+      spanId: this.requestContext.spanId,
+      traceId: this.requestContext.traceId,
     };
   }
 

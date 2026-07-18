@@ -72,6 +72,24 @@ enum WhatsAppConversationStatus {
   @@map("whatsapp_conversation_status")
 }
 
+enum WhatsAppConversationAssignmentAction {
+  CLAIM    @map("claim")
+  REASSIGN @map("reassign")
+  UNASSIGN @map("unassign")
+
+  @@map("whatsapp_conversation_assignment_action")
+}
+
+enum WhatsAppConversationAssignmentReason {
+  WORKLOAD_BALANCE   @map("workload_balance")
+  SHIFT_CHANGE       @map("shift_change")
+  SPECIALIST_ROUTING @map("specialist_routing")
+  AGENT_UNAVAILABLE  @map("agent_unavailable")
+  MANUAL_RELEASE     @map("manual_release")
+
+  @@map("whatsapp_conversation_assignment_reason")
+}
+
 enum WhatsAppMessageDirection {
   OUTBOUND @map("outbound")
   INBOUND  @map("inbound")
@@ -299,12 +317,12 @@ enum AccountActionPurpose {
 }
 
 model Organization {
-  id                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                             String                            @db.VarChar(160)
-  timezone                         String                            @default("America/Bogota") @db.VarChar(64)
-  defaultCurrency                  String                            @default("COP") @map("default_currency") @db.Char(3)
-  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                        DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                               String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                             String                                  @db.VarChar(160)
+  timezone                         String                                  @default("America/Bogota") @db.VarChar(64)
+  defaultCurrency                  String                                  @default("COP") @map("default_currency") @db.Char(3)
+  createdAt                        DateTime                                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                        DateTime                                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   stores                           Store[]
   memberships                      OrganizationMembership[]
   sessions                         AuthSession[]
@@ -319,6 +337,7 @@ model Organization {
   whatsappStatusWebhookEvents      WhatsAppStatusWebhookEvent[]
   whatsappInboundWebhookEvents     WhatsAppInboundWebhookEvent[]
   whatsappMessageStatusHistory     WhatsAppMessageStatusHistory[]
+  whatsappConversationAssignments  WhatsAppConversationAssignmentHistory[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
   customerAddresses                CustomerAddress[]
@@ -365,17 +384,22 @@ model User {
 }
 
 model OrganizationMembership {
-  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  userId         String           @map("user_id") @db.Uuid
-  role           OrganizationRole
-  status         MembershipStatus @default(ACTIVE)
-  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt      DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user           User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  id                            String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                String                                  @map("organization_id") @db.Uuid
+  userId                        String                                  @map("user_id") @db.Uuid
+  role                          OrganizationRole
+  status                        MembershipStatus                        @default(ACTIVE)
+  createdAt                     DateTime                                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                     DateTime                                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization                  Organization                            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user                          User                                    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignedWhatsAppConversations WhatsAppConversation[]                  @relation("WhatsAppConversationAssignee")
+  whatsAppAssignmentsAsActor    WhatsAppConversationAssignmentHistory[] @relation("WhatsAppAssignmentActor")
+  whatsAppAssignmentsAsPrevious WhatsAppConversationAssignmentHistory[] @relation("WhatsAppAssignmentPrevious")
+  whatsAppAssignmentsAsNew      WhatsAppConversationAssignmentHistory[] @relation("WhatsAppAssignmentNew")
 
   @@unique([organizationId, userId], map: "organization_memberships_organization_user_key")
+  @@unique([organizationId, id], map: "organization_memberships_organization_id_key")
   @@index([userId, status], map: "organization_memberships_user_status_idx")
   @@index([organizationId, role, status], map: "organization_memberships_role_status_idx")
   @@map("organization_memberships")
@@ -460,17 +484,17 @@ model AccountActionToken {
 }
 
 model Store {
-  id                               String                            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId                   String                            @map("organization_id") @db.Uuid
-  organization                     Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  name                             String                            @db.VarChar(160)
-  shopifyShopDomain                String                            @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
-  status                           StoreStatus                       @default(PENDING)
-  timezone                         String                            @db.VarChar(64)
-  currency                         String                            @db.Char(3)
-  settingsJson                     Json                              @default("{}") @map("settings_json") @db.JsonB
-  createdAt                        DateTime                          @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt                        DateTime                          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                               String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                   String                                  @map("organization_id") @db.Uuid
+  organization                     Organization                            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  name                             String                                  @db.VarChar(160)
+  shopifyShopDomain                String                                  @unique(map: "stores_shopify_shop_domain_key") @map("shopify_shop_domain") @db.VarChar(255)
+  status                           StoreStatus                             @default(PENDING)
+  timezone                         String                                  @db.VarChar(64)
+  currency                         String                                  @db.Char(3)
+  settingsJson                     Json                                    @default("{}") @map("settings_json") @db.JsonB
+  createdAt                        DateTime                                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt                        DateTime                                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
   integrationConnections           IntegrationConnection[]
   whatsappTemplates                WhatsAppTemplate[]
   whatsappConversations            WhatsAppConversation[]
@@ -478,6 +502,7 @@ model Store {
   whatsappStatusWebhookEvents      WhatsAppStatusWebhookEvent[]
   whatsappInboundWebhookEvents     WhatsAppInboundWebhookEvent[]
   whatsappMessageStatusHistory     WhatsAppMessageStatusHistory[]
+  whatsappConversationAssignments  WhatsAppConversationAssignmentHistory[]
   webhookEvents                    WebhookEvent[]
   customers                        Customer[]
   customerAddresses                CustomerAddress[]
@@ -558,62 +583,95 @@ model WhatsAppTemplate {
 }
 
 model WhatsAppConversation {
-  id                   String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId       String                        @map("organization_id") @db.Uuid
-  storeId              String                        @map("store_id") @db.Uuid
-  customerId           String?                       @map("customer_id") @db.Uuid
-  phoneE164            String?                       @map("phone_e164") @db.VarChar(32)
-  contactHash          String?                       @map("contact_hash") @db.Char(64)
-  status               WhatsAppConversationStatus    @default(OPEN)
-  lastMessageAt        DateTime                      @map("last_message_at") @db.Timestamptz(3)
-  createdAt            DateTime                      @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt            DateTime                      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
-  organization         Organization                  @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store                Store                         @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_store_tenant_fkey")
-  customer             Customer?                     @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_customer_tenant_fkey")
+  id                   String                                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String                                  @map("organization_id") @db.Uuid
+  storeId              String                                  @map("store_id") @db.Uuid
+  customerId           String?                                 @map("customer_id") @db.Uuid
+  phoneE164            String?                                 @map("phone_e164") @db.VarChar(32)
+  contactHash          String?                                 @map("contact_hash") @db.Char(64)
+  status               WhatsAppConversationStatus              @default(OPEN)
+  assignedMembershipId String?                                 @map("assigned_membership_id") @db.Uuid
+  assignmentVersion    Int                                     @default(0) @map("assignment_version")
+  assignedAt           DateTime?                               @map("assigned_at") @db.Timestamptz(3)
+  lastMessageAt        DateTime                                @map("last_message_at") @db.Timestamptz(3)
+  createdAt            DateTime                                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime                                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  organization         Organization                            @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                Store                                   @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_store_tenant_fkey")
+  customer             Customer?                               @relation(fields: [organizationId, storeId, customerId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_customer_tenant_fkey")
+  assignedMembership   OrganizationMembership?                 @relation("WhatsAppConversationAssignee", fields: [organizationId, assignedMembershipId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_conversations_assignee_tenant_fkey")
   messages             WhatsAppMessage[]
   inboundWebhookEvents WhatsAppInboundWebhookEvent[]
+  assignmentHistory    WhatsAppConversationAssignmentHistory[]
 
   @@unique([storeId, phoneE164], map: "whatsapp_conversations_store_phone_key")
   @@unique([storeId, contactHash], map: "whatsapp_conversations_store_contact_hash_key")
   @@unique([organizationId, storeId, id], map: "whatsapp_conversations_tenant_id_key")
   @@index([organizationId, status, lastMessageAt], map: "whatsapp_conversations_tenant_status_last_idx")
+  @@index([organizationId, assignedMembershipId, lastMessageAt], map: "whatsapp_conversations_tenant_assignee_last_idx")
+  @@index([organizationId, createdAt, id], map: "whatsapp_conversations_operational_queue_idx")
   @@index([customerId, lastMessageAt], map: "whatsapp_conversations_customer_last_idx")
   @@map("whatsapp_conversations")
 }
 
+model WhatsAppConversationAssignmentHistory {
+  id                           String                                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId               String                                @map("organization_id") @db.Uuid
+  storeId                      String                                @map("store_id") @db.Uuid
+  conversationId               String                                @map("conversation_id") @db.Uuid
+  version                      Int
+  action                       WhatsAppConversationAssignmentAction
+  actorMembershipId            String                                @map("actor_membership_id") @db.Uuid
+  previousAssigneeMembershipId String?                               @map("previous_assignee_membership_id") @db.Uuid
+  newAssigneeMembershipId      String?                               @map("new_assignee_membership_id") @db.Uuid
+  reasonCode                   WhatsAppConversationAssignmentReason? @map("reason_code")
+  createdAt                    DateTime                              @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization                 Organization                          @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                        Store                                 @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_assignment_history_store_tenant_fkey")
+  conversation                 WhatsAppConversation                  @relation(fields: [organizationId, storeId, conversationId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_assignment_history_conversation_tenant_fkey")
+  actorMembership              OrganizationMembership                @relation("WhatsAppAssignmentActor", fields: [organizationId, actorMembershipId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_assignment_history_actor_tenant_fkey")
+  previousAssigneeMembership   OrganizationMembership?               @relation("WhatsAppAssignmentPrevious", fields: [organizationId, previousAssigneeMembershipId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_assignment_history_previous_tenant_fkey")
+  newAssigneeMembership        OrganizationMembership?               @relation("WhatsAppAssignmentNew", fields: [organizationId, newAssigneeMembershipId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_assignment_history_new_tenant_fkey")
+
+  @@unique([organizationId, storeId, id], map: "whatsapp_assignment_history_tenant_id_key")
+  @@unique([conversationId, version], map: "whatsapp_assignment_history_conversation_version_key")
+  @@index([organizationId, actorMembershipId, createdAt], map: "whatsapp_assignment_history_actor_created_idx")
+  @@index([organizationId, newAssigneeMembershipId, createdAt], map: "whatsapp_assignment_history_assignee_created_idx")
+  @@map("whatsapp_conversation_assignment_history")
+}
+
 model WhatsAppMessage {
-  id                  String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId      String                         @map("organization_id") @db.Uuid
-  storeId             String                         @map("store_id") @db.Uuid
-  conversationId      String                         @map("conversation_id") @db.Uuid
-  orderId             String?                        @map("order_id") @db.Uuid
-  templateId          String?                        @map("template_id") @db.Uuid
-  direction           WhatsAppMessageDirection       @default(OUTBOUND)
-  providerMessageId   String                         @map("provider_message_id") @db.VarChar(160)
-  type                WhatsAppMessageType            @default(TEMPLATE)
-  status              WhatsAppMessageStatus          @default(SIMULATED_ACCEPTED)
-  body                String?                        @db.VarChar(4096)
-  encryptedBodyJson   Json?                          @map("encrypted_body_json") @db.JsonB
-  contentFingerprint  String?                        @map("content_fingerprint") @db.Char(64)
-  senderHash          String?                        @map("sender_hash") @db.Char(64)
-  metadataJson        Json                           @map("metadata_json") @db.JsonB
-  businessKeyHash     String                         @unique(map: "whatsapp_messages_business_key_hash_key") @map("business_key_hash") @db.Char(64)
-  requestFingerprint  String                         @map("request_fingerprint") @db.Char(64)
-  sentAt              DateTime?                      @map("sent_at") @db.Timestamptz(3)
-  deliveredAt         DateTime?                      @map("delivered_at") @db.Timestamptz(3)
-  readAt              DateTime?                      @map("read_at") @db.Timestamptz(3)
-  failedAt            DateTime?                      @map("failed_at") @db.Timestamptz(3)
-  receivedAt          DateTime?                      @map("received_at") @db.Timestamptz(3)
-  retentionExpiresAt  DateTime?                      @map("retention_expires_at") @db.Timestamptz(3)
-  createdAt           DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
-  organization        Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  store               Store                          @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_store_tenant_fkey")
-  conversation        WhatsAppConversation           @relation(fields: [organizationId, storeId, conversationId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_conversation_tenant_fkey")
-  order               Order?                         @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_order_tenant_fkey")
-  template            WhatsAppTemplate?              @relation(fields: [organizationId, storeId, templateId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_template_tenant_fkey")
-  statusWebhookEvents WhatsAppStatusWebhookEvent[]
-  statusHistory       WhatsAppMessageStatusHistory[]
+  id                   String                         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String                         @map("organization_id") @db.Uuid
+  storeId              String                         @map("store_id") @db.Uuid
+  conversationId       String                         @map("conversation_id") @db.Uuid
+  orderId              String?                        @map("order_id") @db.Uuid
+  templateId           String?                        @map("template_id") @db.Uuid
+  direction            WhatsAppMessageDirection       @default(OUTBOUND)
+  providerMessageId    String                         @map("provider_message_id") @db.VarChar(160)
+  type                 WhatsAppMessageType            @default(TEMPLATE)
+  status               WhatsAppMessageStatus          @default(SIMULATED_ACCEPTED)
+  body                 String?                        @db.VarChar(4096)
+  encryptedBodyJson    Json?                          @map("encrypted_body_json") @db.JsonB
+  contentFingerprint   String?                        @map("content_fingerprint") @db.Char(64)
+  senderHash           String?                        @map("sender_hash") @db.Char(64)
+  metadataJson         Json                           @map("metadata_json") @db.JsonB
+  businessKeyHash      String                         @unique(map: "whatsapp_messages_business_key_hash_key") @map("business_key_hash") @db.Char(64)
+  requestFingerprint   String                         @map("request_fingerprint") @db.Char(64)
+  sentAt               DateTime?                      @map("sent_at") @db.Timestamptz(3)
+  deliveredAt          DateTime?                      @map("delivered_at") @db.Timestamptz(3)
+  readAt               DateTime?                      @map("read_at") @db.Timestamptz(3)
+  failedAt             DateTime?                      @map("failed_at") @db.Timestamptz(3)
+  receivedAt           DateTime?                      @map("received_at") @db.Timestamptz(3)
+  retentionExpiresAt   DateTime?                      @map("retention_expires_at") @db.Timestamptz(3)
+  createdAt            DateTime                       @default(now()) @map("created_at") @db.Timestamptz(3)
+  organization         Organization                   @relation(fields: [organizationId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  store                Store                          @relation(fields: [organizationId, storeId], references: [organizationId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_store_tenant_fkey")
+  conversation         WhatsAppConversation           @relation(fields: [organizationId, storeId, conversationId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_conversation_tenant_fkey")
+  order                Order?                         @relation(fields: [organizationId, storeId, orderId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_order_tenant_fkey")
+  template             WhatsAppTemplate?              @relation(fields: [organizationId, storeId, templateId], references: [organizationId, storeId, id], onDelete: Restrict, onUpdate: Cascade, map: "whatsapp_messages_template_tenant_fkey")
+  statusWebhookEvents  WhatsAppStatusWebhookEvent[]
+  statusHistory        WhatsAppMessageStatusHistory[]
   inboundWebhookEvents WhatsAppInboundWebhookEvent[]
 
   @@unique([organizationId, storeId, id], map: "whatsapp_messages_tenant_id_key")
@@ -847,6 +905,7 @@ model Order {
   @@unique([organizationId, storeId, sourceWebhookEventId], map: "orders_source_webhook_tenant_key")
   @@unique([storeId, shopifyOrderId], map: "orders_store_shopify_order_key")
   @@index([organizationId, currentState, sourceCreatedAt], map: "orders_tenant_state_created_idx")
+  @@index([organizationId, sourceCreatedAt, id], map: "orders_operational_queue_idx")
   @@index([storeId, sourceUpdatedAt], map: "orders_store_source_updated_idx")
   @@map("orders")
 }
@@ -989,6 +1048,7 @@ model PaymentIntent {
   @@unique([organizationId, storeId, id], map: "payment_intents_organization_store_id_key")
   @@index([status, expiresAt], map: "payment_intents_status_expires_idx")
   @@index([organizationId, status, expiresAt], map: "payment_intents_tenant_status_expires_idx")
+  @@index([organizationId, createdAt, id], map: "payment_intents_operational_queue_idx")
   @@index([orderId, createdAt], map: "payment_intents_order_created_idx")
   @@map("payment_intents")
 }
@@ -1123,6 +1183,7 @@ model PaymentReconciliationIssue {
 
   @@unique([storeId, fingerprint], map: "payment_reconciliation_issues_store_fingerprint_key")
   @@index([organizationId, status, lastDetectedAt], map: "payment_reconciliation_issues_tenant_status_idx")
+  @@index([organizationId, firstDetectedAt, id], map: "payment_reconciliation_issues_operational_queue_idx")
   @@index([paymentIntentId, status], map: "payment_reconciliation_issues_intent_status_idx")
   @@map("payment_reconciliation_issues")
 }
@@ -1172,6 +1233,7 @@ model OrderReconciliationIssue {
 
   @@unique([storeId, fingerprint], map: "order_reconciliation_issues_store_fingerprint_key")
   @@index([organizationId, status, lastDetectedAt], map: "order_reconciliation_issues_tenant_status_idx")
+  @@index([organizationId, firstDetectedAt, id], map: "order_reconciliation_issues_operational_queue_idx")
   @@index([storeId, issueType, status], map: "order_reconciliation_issues_store_type_status_idx")
   @@map("order_reconciliation_issues")
 }

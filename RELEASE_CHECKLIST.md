@@ -61,7 +61,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Estados y webhook saliente WhatsApp simulados son autenticados, monotónicos e idempotentes.
 - [x] Mensajes entrantes WhatsApp simulados son autenticados, cifrados, tenant-safe e idempotentes.
 - [x] Bandeja WhatsApp simulada pagina/lista timeline con RBAC, retención y tenant probados.
-- [ ] Asignación de conversaciones WhatsApp simulada completa.
+- [x] Asignación de conversaciones WhatsApp simulada completa.
+- [x] Cola operativa unificada pagina y filtra cinco dominios con RBAC, tenant y mínima proyección.
 - [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
@@ -70,6 +71,7 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [ ] Política de PII/retención y protección de snapshots reales aprobada.
 - [ ] Mecanismo UI cookie/CSRF y MFA definidos y probados.
 - [x] Inspección/reproceso manual de DLQ autenticado, aislado, idempotente y auditado.
-- [ ] OpenTelemetry y alertas conectadas a un backend verificable.
-- [ ] Acceso a `/metrics` restringido por red/proxy en producción.
+- [x] OpenTelemetry y alertas conectadas a un backend local verificable.
+- [x] `/metrics` protegido por loopback local y Bearer técnico obligatorio en producción.
+- [ ] Backend productivo de trazas, routing de alertas, retención y SLO aprobados.
 - [ ] Proveedor S3-compatible apto para producción seleccionado y aprobado.

@@ -5,6 +5,7 @@ import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
 import { AppLoggerService } from '../observability/app-logger.service';
 import { MetricsService } from '../observability/metrics.service';
+import { AlertingService } from '../observability/alerting.service';
 
 export interface DependencyStatus {
   readonly latencyMs: number;
@@ -23,6 +24,7 @@ export class DependencyHealthService implements OnModuleDestroy {
   private redisClient: RedisClientType;
 
   public constructor(
+    private readonly alerting: AlertingService,
     private readonly environment: EnvironmentService,
     private readonly logger: AppLoggerService,
     private readonly metrics: MetricsService,
@@ -38,6 +40,7 @@ export class DependencyHealthService implements OnModuleDestroy {
       this.check('minio', () => this.pingMinio()),
     ]);
     const ready = dependencies.every((dependency) => dependency.status === 'up');
+    await this.alerting.observeDependencies(dependencies);
 
     return {
       dependencies,

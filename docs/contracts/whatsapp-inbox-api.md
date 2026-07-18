@@ -18,8 +18,9 @@ Query opcional:
 - `identity`: `known_customer` o `unknown_contact`.
 
 La respuesta contiene `conversationId`, identidad acotada, estado, último timestamp, dirección/estado
-del último mensaje y conteo. No incluye nombres, teléfono, texto, hashes ni IDs de proveedor. El orden
-es `lastMessageAt DESC, conversationId DESC` y `nextCursor` continúa esa clave compuesta.
+del último mensaje, conteo, `assigneeMembershipId`, `assignmentVersion` y `assignedAt`. No incluye
+nombres, email, teléfono, texto, hashes ni IDs de proveedor. El orden es
+`lastMessageAt DESC, conversationId DESC` y `nextCursor` continúa esa clave compuesta.
 
 ## Timeline
 

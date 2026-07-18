@@ -9,4 +9,5 @@
 - Cursores inválidos fallan 400 y no contienen PII; límites/filtros son enumeraciones acotadas.
 - `Cache-Control: no-store` evita caching HTTP compartido; logs, auditoría y métricas no reciben texto.
 - Flags de integración e inbox, modo simulación y kill switch deben estar abiertos conjuntamente.
-- No hay búsqueda por teléfono, respuesta de mensajes, asignación de agentes ni tráfico Meta.
+- No hay búsqueda por teléfono, respuesta de mensajes ni tráfico Meta. La asignación simulada se
+  controla separadamente según `whatsapp-conversation-assignments.md`.

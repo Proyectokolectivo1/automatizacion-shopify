@@ -20,6 +20,13 @@ const assertEqual = (actual, expected, label) => {
   }
 };
 
+const assertHttp = async (url, label) => {
+  const response = await fetch(url, { signal: AbortSignal.timeout(5_000) });
+  if (!response.ok) {
+    throw new Error(`${label}: se obtuvo HTTP ${response.status}`);
+  }
+};
+
 console.log('[infra] Validando configuración Compose');
 compose('config', '--quiet');
 
@@ -35,6 +42,11 @@ compose(
   '-c',
   'pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" && psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT 1" >/dev/null',
 );
+await Promise.all([
+  assertHttp('http://127.0.0.1:13133', 'OpenTelemetry Collector'),
+  assertHttp('http://127.0.0.1:9093/-/healthy', 'Alertmanager'),
+  assertHttp('http://127.0.0.1:9087/health', 'Receptor local de alertas'),
+]);
 compose(
   'exec',
   '-T',

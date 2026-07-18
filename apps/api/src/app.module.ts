@@ -19,11 +19,15 @@ import { HealthService } from './health/health.service';
 import { IdentityAdministrationController } from './identity/identity-administration.controller';
 import { IdentityAdministrationService } from './identity/identity-administration.service';
 import { AppLoggerService } from './observability/app-logger.service';
+import { AlertingService } from './observability/alerting.service';
 import { GlobalExceptionFilter } from './observability/global-exception.filter';
 import { MetricsController } from './observability/metrics.controller';
 import { MetricsService } from './observability/metrics.service';
 import { RequestContextService } from './observability/request-context.service';
 import { RequestObservabilityMiddleware } from './observability/request-observability.middleware';
+import { TracingService } from './observability/tracing.service';
+import { OperationalQueueController } from './operations/operational-queue.controller';
+import { OperationalQueueService } from './operations/operational-queue.service';
 import { PaymentIntentController } from './payments/payment-intent.controller';
 import { PaymentIntentService } from './payments/payment-intent.service';
 import { PaymentExpirationSchedulerService } from './payments/payment-expiration-scheduler.service';
@@ -68,6 +72,7 @@ import { WhatsAppInboundController } from './whatsapp/whatsapp-inbound.controlle
 import { WhatsAppInboundService } from './whatsapp/whatsapp-inbound.service';
 import { WhatsAppInboxController } from './whatsapp/whatsapp-inbox.controller';
 import { WhatsAppInboxService } from './whatsapp/whatsapp-inbox.service';
+import { WhatsAppAssignmentService } from './whatsapp/whatsapp-assignment.service';
 
 @Module({
   controllers: [
@@ -76,6 +81,7 @@ import { WhatsAppInboxService } from './whatsapp/whatsapp-inbox.service';
     HealthController,
     IdentityAdministrationController,
     MetricsController,
+    OperationalQueueController,
     ShopifyIntegrationController,
     ShopifyWebhookController,
     ShopifyReconciliationController,
@@ -103,10 +109,13 @@ import { WhatsAppInboxService } from './whatsapp/whatsapp-inbox.service';
     FoundationTransactionService,
     RequestContextService,
     AppLoggerService,
+    AlertingService,
     MetricsService,
+    OperationalQueueService,
     OrderClassifier,
     OrderClassificationService,
     RequestObservabilityMiddleware,
+    TracingService,
     HealthService,
     IdentityAdministrationService,
     DependencyHealthService,
@@ -130,6 +139,7 @@ import { WhatsAppInboxService } from './whatsapp/whatsapp-inbox.service';
     WhatsAppIntegrationService,
     WhatsAppMessageService,
     WhatsAppInboundService,
+    WhatsAppAssignmentService,
     WhatsAppInboxService,
     WhatsAppStatusService,
     WhatsAppTemplateService,

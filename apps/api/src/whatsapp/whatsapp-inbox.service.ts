@@ -55,6 +55,9 @@ export class WhatsAppInboxService {
         orderBy: [{ lastMessageAt: 'desc' }, { id: 'desc' }],
         select: {
           _count: { select: { messages: true } },
+          assignedAt: true,
+          assignedMembershipId: true,
+          assignmentVersion: true,
           customerId: true,
           id: true,
           lastMessageAt: true,
@@ -90,6 +93,9 @@ export class WhatsAppInboxService {
       const last = page.at(-1);
       const result = {
         items: page.map((conversation) => ({
+          assignedAt: conversation.assignedAt,
+          assigneeMembershipId: conversation.assignedMembershipId,
+          assignmentVersion: conversation.assignmentVersion,
           conversationId: conversation.id,
           identity: conversation.customerId === null ? 'unknown_contact' : 'known_customer',
           lastMessageAt: conversation.lastMessageAt,

@@ -116,6 +116,7 @@ describe('initial database migration', () => {
           'payment_reminders',
           'whatsapp_templates',
           'whatsapp_conversations',
+          'whatsapp_conversation_assignment_history',
           'whatsapp_messages',
           'whatsapp_inbound_webhook_events',
           'whatsapp_message_status_history',
@@ -151,6 +152,7 @@ describe('initial database migration', () => {
       'transport_rate_rules',
       'users',
       'webhook_events',
+      'whatsapp_conversation_assignment_history',
       'whatsapp_conversations',
       'whatsapp_inbound_webhook_events',
       'whatsapp_message_status_history',
@@ -162,7 +164,21 @@ describe('initial database migration', () => {
     const migrations = await database.query<{ count: string }>(
       'SELECT count(*)::text AS count FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
     );
-    expect(migrations.rows[0]?.count).toBe('26');
+    expect(migrations.rows[0]?.count).toBe('28');
+    const operationalIndexes = await database.query<{ indexname: string }>(
+      `SELECT indexname FROM pg_indexes
+       WHERE indexname = ANY($1::text[]) ORDER BY indexname`,
+      [
+        [
+          'order_reconciliation_issues_operational_queue_idx',
+          'orders_operational_queue_idx',
+          'payment_intents_operational_queue_idx',
+          'payment_reconciliation_issues_operational_queue_idx',
+          'whatsapp_conversations_operational_queue_idx',
+        ],
+      ],
+    );
+    expect(operationalIndexes.rows.map(({ indexname }) => indexname)).toHaveLength(5);
     expect(runPrisma('migrate', 'status')).toContain('Database schema is up to date');
     expect(
       runPrisma(
@@ -1114,6 +1130,146 @@ describe('initial database migration', () => {
       `UPDATE orders SET current_state = 'abandono_pago_transporte' WHERE id = $1`,
       [order.rows[0]?.id],
     );
+  });
+
+  it('enforces tenant-safe current assignments and immutable assignment history', async () => {
+    const [organization, foreignOrganization] = await Promise.all([
+      database.query<{ id: string }>(
+        `INSERT INTO organizations (name) VALUES ('Assignment Owner') RETURNING id`,
+      ),
+      database.query<{ id: string }>(
+        `INSERT INTO organizations (name) VALUES ('Foreign Assignment Owner') RETURNING id`,
+      ),
+    ]);
+    const organizationId = organization.rows[0]?.id;
+    const foreignOrganizationId = foreignOrganization.rows[0]?.id;
+    const [store, foreignStore] = await Promise.all([
+      database.query<{ id: string }>(
+        `INSERT INTO stores
+         (organization_id, name, shopify_shop_domain, timezone, currency)
+         VALUES ($1, 'Assignment Store', 'assignment-constraints.myshopify.com',
+          'America/Bogota', 'COP') RETURNING id`,
+        [organizationId],
+      ),
+      database.query<{ id: string }>(
+        `INSERT INTO stores
+         (organization_id, name, shopify_shop_domain, timezone, currency)
+         VALUES ($1, 'Foreign Assignment Store', 'foreign-assignment-constraints.myshopify.com',
+          'America/Bogota', 'COP') RETURNING id`,
+        [foreignOrganizationId],
+      ),
+    ]);
+    const createMembership = async (
+      email: string,
+      targetOrganizationId: string,
+      role: 'owner' | 'support',
+    ) => {
+      const user = await database.query<{ id: string }>(
+        `INSERT INTO users (email, password_hash, password_parameters_json)
+         VALUES ($1, 'argon-hash', '{}') RETURNING id`,
+        [email],
+      );
+      return database.query<{ id: string }>(
+        `INSERT INTO organization_memberships (organization_id, user_id, role)
+         VALUES ($1, $2, $3) RETURNING id`,
+        [targetOrganizationId, user.rows[0]?.id, role],
+      );
+    };
+    const [actor, agent, foreignAgent] = await Promise.all([
+      createMembership('assignment-owner@example.test', organizationId ?? '', 'owner'),
+      createMembership('assignment-support@example.test', organizationId ?? '', 'support'),
+      createMembership('assignment-foreign@example.test', foreignOrganizationId ?? '', 'support'),
+    ]);
+    const customer = await database.query<{ id: string }>(
+      `INSERT INTO customers
+       (organization_id, store_id, shopify_customer_id, phone_e164, data_processing_consent)
+       VALUES ($1, $2, 'assignment-customer', '+573001110099', true) RETURNING id`,
+      [organizationId, store.rows[0]?.id],
+    );
+    const conversation = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_conversations
+       (organization_id, store_id, customer_id, phone_e164, last_message_at)
+       VALUES ($1, $2, $3, '+573001110099', NOW()) RETURNING id`,
+      [organizationId, store.rows[0]?.id, customer.rows[0]?.id],
+    );
+    await database.query(
+      `UPDATE whatsapp_conversations
+       SET assigned_membership_id = $1, assignment_version = 1, assigned_at = NOW()
+       WHERE id = $2`,
+      [actor.rows[0]?.id, conversation.rows[0]?.id],
+    );
+    const history = await database.query<{ id: string }>(
+      `INSERT INTO whatsapp_conversation_assignment_history
+       (organization_id, store_id, conversation_id, version, action, actor_membership_id,
+        new_assignee_membership_id)
+       VALUES ($1, $2, $3, 1, 'claim', $4, $4) RETURNING id`,
+      [organizationId, store.rows[0]?.id, conversation.rows[0]?.id, actor.rows[0]?.id],
+    );
+    await expect(
+      database.query(
+        `UPDATE whatsapp_conversations
+         SET assigned_membership_id = $1
+         WHERE id = $2`,
+        [foreignAgent.rows[0]?.id, conversation.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
+    await expect(
+      database.query(
+        `UPDATE whatsapp_conversations
+         SET assigned_membership_id = NULL, assigned_at = NOW()
+         WHERE id = $1`,
+        [conversation.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_conversation_assignment_history
+         (organization_id, store_id, conversation_id, version, action, actor_membership_id,
+          previous_assignee_membership_id, new_assignee_membership_id)
+         VALUES ($1, $2, $3, 2, 'reassign', $4, $4, $5)`,
+        [
+          organizationId,
+          store.rows[0]?.id,
+          conversation.rows[0]?.id,
+          actor.rows[0]?.id,
+          agent.rows[0]?.id,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '23514' });
+    await database.query(
+      `INSERT INTO whatsapp_conversation_assignment_history
+       (organization_id, store_id, conversation_id, version, action, actor_membership_id,
+        previous_assignee_membership_id, new_assignee_membership_id, reason_code)
+       VALUES ($1, $2, $3, 2, 'reassign', $4, $4, $5, 'specialist_routing')`,
+      [
+        organizationId,
+        store.rows[0]?.id,
+        conversation.rows[0]?.id,
+        actor.rows[0]?.id,
+        agent.rows[0]?.id,
+      ],
+    );
+    await expect(
+      database.query(
+        `UPDATE whatsapp_conversation_assignment_history SET version = 99 WHERE id = $1`,
+        [history.rows[0]?.id],
+      ),
+    ).rejects.toMatchObject({ code: 'P0001' });
+    await expect(
+      database.query(
+        `INSERT INTO whatsapp_conversation_assignment_history
+         (organization_id, store_id, conversation_id, version, action, actor_membership_id,
+          previous_assignee_membership_id, reason_code)
+         VALUES ($1, $2, $3, 3, 'unassign', $4, $5, 'manual_release')`,
+        [
+          foreignOrganizationId,
+          foreignStore.rows[0]?.id,
+          conversation.rows[0]?.id,
+          foreignAgent.rows[0]?.id,
+          foreignAgent.rows[0]?.id,
+        ],
+      ),
+    ).rejects.toMatchObject({ code: '23503' });
   });
 
   it('enforces durable and tenant-safe Wompi reconciliation records', async () => {
