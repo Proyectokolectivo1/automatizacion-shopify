@@ -14,6 +14,7 @@ import { EnvironmentService } from '../config/environment.service';
 import { PrismaService } from '../database/prisma.service';
 import { IdempotencyStatus, Prisma, type OrganizationRole } from '../generated/prisma/client';
 import { requestHash } from '../foundation/request-hash';
+import { membershipTransactionLockKey } from './membership-transaction-lock';
 import { MetricsService } from '../observability/metrics.service';
 import { RequestContextService } from '../observability/request-context.service';
 
@@ -45,6 +46,12 @@ interface LockedIdempotencyRow {
   status: 'completed' | 'failed' | 'processing';
 }
 
+interface LockedAssignedConversation {
+  readonly assignment_version: number;
+  readonly id: string;
+  readonly store_id: string;
+}
+
 interface CursorValue {
   readonly createdAt: Date;
   readonly id: string;
@@ -58,6 +65,7 @@ export interface MembershipRoleResult {
 
 export interface MembershipRevokeResult {
   readonly membershipId: string;
+  readonly releasedConversationCount: number;
   readonly status: 'revoked';
 }
 
@@ -200,9 +208,17 @@ export class IdentityAdministrationService {
             data: { status: 'REVOKED' },
             where: { id: command.membershipId },
           });
-          await this.revokeSessions(transaction, command.organizationId, membership.userId);
         }
-        return { membershipId: command.membershipId, status: 'revoked' };
+        const releasedConversationCount = await this.releaseWhatsAppAssignments(
+          transaction,
+          command,
+        );
+        await this.revokeSessions(transaction, command.organizationId, membership.userId);
+        return {
+          membershipId: command.membershipId,
+          releasedConversationCount,
+          status: 'revoked',
+        };
       },
       action: 'identity.membership.revoked',
       replayAction: 'identity.membership.revoke_replayed',
@@ -246,7 +262,7 @@ export class IdentityAdministrationService {
 
             await transaction.$executeRaw`
               SELECT pg_advisory_xact_lock(
-                hashtextextended(${'identity.memberships:' + command.organizationId}, 0)
+                hashtextextended(${membershipTransactionLockKey(command.organizationId)}, 0)
               )
             `;
             const result = await options.execute(transaction);
@@ -263,6 +279,11 @@ export class IdentityAdministrationService {
                 actorUserId: command.principal.userId,
                 correlationId: this.requestContext.correlationId ?? 'internal',
                 metadataJson: {
+                  releasedConversationCount:
+                    'releasedConversationCount' in result &&
+                    typeof result.releasedConversationCount === 'number'
+                      ? result.releasedConversationCount
+                      : undefined,
                   requestedRole: 'role' in command ? command.role : undefined,
                 },
                 organizationId: command.organizationId,
@@ -360,6 +381,84 @@ export class IdentityAdministrationService {
       data: { revokedAt: new Date() },
       where: { organizationId, revokedAt: null, userId },
     });
+  }
+
+  private async releaseWhatsAppAssignments(
+    transaction: Prisma.TransactionClient,
+    command: RevokeCommand,
+  ): Promise<number> {
+    const actor = await transaction.organizationMembership.findUnique({
+      select: { id: true, status: true, user: { select: { status: true } } },
+      where: {
+        organizationId_userId: {
+          organizationId: command.organizationId,
+          userId: command.principal.userId,
+        },
+      },
+    });
+    if (actor === null || actor.status !== 'ACTIVE' || actor.user.status !== 'ACTIVE') {
+      throw new ForbiddenException('Identity administration actor is not active');
+    }
+    const conversations = await transaction.$queryRaw<LockedAssignedConversation[]>`
+      SELECT id, store_id, assignment_version
+      FROM whatsapp_conversations
+      WHERE organization_id = ${command.organizationId}::uuid
+        AND assigned_membership_id = ${command.membershipId}::uuid
+      ORDER BY id
+      FOR UPDATE
+    `;
+    if (conversations.length === 0) return 0;
+
+    const releasedAt = new Date();
+    const update = await transaction.whatsAppConversation.updateMany({
+      data: {
+        assignedAt: null,
+        assignedMembershipId: null,
+        assignmentVersion: { increment: 1 },
+        updatedAt: releasedAt,
+      },
+      where: {
+        assignedMembershipId: command.membershipId,
+        organizationId: command.organizationId,
+      },
+    });
+    if (update.count !== conversations.length) {
+      throw new ConflictException('WhatsApp assignments changed during membership revocation');
+    }
+
+    await transaction.whatsAppConversationAssignmentHistory.createMany({
+      data: conversations.map((conversation) => ({
+        action: 'UNASSIGN',
+        actorMembershipId: actor.id,
+        conversationId: conversation.id,
+        newAssigneeMembershipId: null,
+        organizationId: command.organizationId,
+        previousAssigneeMembershipId: command.membershipId,
+        reasonCode: 'MEMBERSHIP_REVOKED',
+        storeId: conversation.store_id,
+        version: conversation.assignment_version + 1,
+      })),
+    });
+    await transaction.outboxEvent.createMany({
+      data: conversations.map((conversation) => ({
+        aggregateId: conversation.id,
+        aggregateType: 'whatsapp_conversation',
+        correlationId: this.requestContext.correlationId ?? 'internal',
+        eventType: 'whatsapp.conversation.assignment.changed.v1',
+        organizationId: command.organizationId,
+        payloadJson: {
+          action: 'unassign',
+          assigneeMembershipId: null,
+          assignmentVersion: conversation.assignment_version + 1,
+          conversationId: conversation.id,
+          mode: 'simulation',
+          previousAssigneeMembershipId: command.membershipId,
+          reasonCode: 'membership_revoked',
+          storeId: conversation.store_id,
+        },
+      })),
+    });
+    return conversations.length;
   }
 
   private decodeCursor(value: string): CursorValue {

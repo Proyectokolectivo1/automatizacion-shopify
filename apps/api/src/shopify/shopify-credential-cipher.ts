@@ -11,6 +11,10 @@ const envelopeSchema = z.object({
   iv: z.string().min(1),
   version: z.string().regex(/^v[1-9][0-9]*$/u),
 });
+const webhookSecretBundleSchema = envelopeSchema.extend({
+  previous: envelopeSchema.optional(),
+  previousValidUntil: z.iso.datetime({ offset: true }).optional(),
+});
 
 export interface CredentialEnvelope {
   readonly authTag: string;
@@ -19,16 +23,83 @@ export interface CredentialEnvelope {
   readonly version: string;
 }
 
+export interface WebhookSecretBundle extends CredentialEnvelope {
+  readonly previous?: CredentialEnvelope | undefined;
+  readonly previousValidUntil?: string | undefined;
+}
+
 @Injectable()
 export class ShopifyCredentialCipher {
   public constructor(private readonly environment: EnvironmentService) {}
 
   public encrypt(accessToken: string, organizationId: string, storeId: string): CredentialEnvelope {
+    return this.encryptValue(accessToken, organizationId, storeId, 'access-token');
+  }
+
+  public encryptWebhookSecret(
+    webhookSecret: string,
+    organizationId: string,
+    storeId: string,
+  ): CredentialEnvelope {
+    return this.encryptValue(webhookSecret, organizationId, storeId, 'webhook-secret');
+  }
+
+  public decrypt(value: unknown, organizationId: string, storeId: string): string {
+    return this.decryptValue(value, organizationId, storeId, 'access-token');
+  }
+
+  public decryptWebhookSecret(value: unknown, organizationId: string, storeId: string): string {
+    return this.decryptValue(value, organizationId, storeId, 'webhook-secret');
+  }
+
+  public decryptWebhookSecrets(
+    value: unknown,
+    organizationId: string,
+    storeId: string,
+    now = new Date(),
+  ): readonly string[] {
+    const bundle = webhookSecretBundleSchema.safeParse(value);
+    if (!bundle.success) throw new ServiceUnavailableException('Invalid credential envelope');
+    const active = this.decryptWebhookSecret(bundle.data, organizationId, storeId);
+    if (
+      bundle.data.previous === undefined ||
+      bundle.data.previousValidUntil === undefined ||
+      new Date(bundle.data.previousValidUntil) <= now
+    ) {
+      return [active];
+    }
+    return [active, this.decryptWebhookSecret(bundle.data.previous, organizationId, storeId)];
+  }
+
+  public rotateWebhookSecret(
+    webhookSecret: string,
+    current: unknown,
+    organizationId: string,
+    storeId: string,
+    previousValidUntil: Date,
+  ): WebhookSecretBundle {
+    const active = this.encryptWebhookSecret(webhookSecret, organizationId, storeId);
+    if (current === null || current === undefined) return active;
+    const previous = envelopeSchema.safeParse(current);
+    if (!previous.success) throw new ServiceUnavailableException('Invalid credential envelope');
+    return {
+      ...active,
+      previous: previous.data,
+      previousValidUntil: previousValidUntil.toISOString(),
+    };
+  }
+
+  private encryptValue(
+    plaintext: string,
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): CredentialEnvelope {
     const { key, version } = this.currentKey();
     const iv = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', key, iv);
-    cipher.setAAD(this.aad(organizationId, storeId));
-    const ciphertext = Buffer.concat([cipher.update(accessToken, 'utf8'), cipher.final()]);
+    cipher.setAAD(this.aad(organizationId, storeId, purpose));
+    const ciphertext = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
     return {
       authTag: cipher.getAuthTag().toString('base64url'),
       ciphertext: ciphertext.toString('base64url'),
@@ -37,7 +108,12 @@ export class ShopifyCredentialCipher {
     };
   }
 
-  public decrypt(value: unknown, organizationId: string, storeId: string): string {
+  private decryptValue(
+    value: unknown,
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): string {
     const envelope = envelopeSchema.safeParse(value);
     if (!envelope.success) throw new ServiceUnavailableException('Invalid credential envelope');
     const key = this.keyring().get(envelope.data.version);
@@ -50,7 +126,7 @@ export class ShopifyCredentialCipher {
         key,
         Buffer.from(envelope.data.iv, 'base64url'),
       );
-      decipher.setAAD(this.aad(organizationId, storeId));
+      decipher.setAAD(this.aad(organizationId, storeId, purpose));
       decipher.setAuthTag(Buffer.from(envelope.data.authTag, 'base64url'));
       return Buffer.concat([
         decipher.update(Buffer.from(envelope.data.ciphertext, 'base64url')),
@@ -61,8 +137,12 @@ export class ShopifyCredentialCipher {
     }
   }
 
-  private aad(organizationId: string, storeId: string): Buffer {
-    return Buffer.from(`shopify:${organizationId}:${storeId}:access-token`, 'utf8');
+  private aad(
+    organizationId: string,
+    storeId: string,
+    purpose: 'access-token' | 'webhook-secret',
+  ): Buffer {
+    return Buffer.from(`shopify:${organizationId}:${storeId}:${purpose}`, 'utf8');
   }
 
   private currentKey(): { key: Buffer; version: string } {

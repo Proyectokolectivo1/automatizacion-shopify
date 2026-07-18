@@ -33,9 +33,41 @@ describe('parseEnvironment', () => {
       IDENTITY_BOOTSTRAP_KILL_SWITCH: true,
       MINIO_API_PORT: 9100,
       MINIO_USE_SSL: false,
+      METRICS_ACCESS_MODE: 'loopback',
       NODE_ENV: 'development',
+      OBSERVABILITY_ALERTS_ENABLED: false,
+      OBSERVABILITY_ALERTS_KILL_SWITCH: true,
+      OPERATIONAL_QUEUE_ENABLED: false,
+      OPERATIONAL_QUEUE_KILL_SWITCH: true,
+      OPERATIONAL_DETAIL_ENABLED: false,
+      OPERATIONAL_DETAIL_KILL_SWITCH: true,
+      OPERATIONAL_EXPORT_ENABLED: false,
+      OPERATIONAL_EXPORT_KILL_SWITCH: true,
+      OPERATIONAL_SEARCH_ENABLED: false,
+      OPERATIONAL_SEARCH_KILL_SWITCH: true,
+      OTEL_TRACE_SAMPLE_RATIO: 1,
+      OTEL_TRACING_ENABLED: false,
+      OTEL_TRACING_KILL_SWITCH: true,
       OUTBOX_OPERATIONS_ENABLED: false,
       OUTBOX_OPERATIONS_KILL_SWITCH: true,
+      PAYMENT_EXPIRATION_DEFAULT_ACTION: 'MARK',
+      PAYMENT_EXPIRATION_ENABLED: false,
+      PAYMENT_EXPIRATION_KILL_SWITCH: true,
+      PAYMENT_EXPIRATION_SIMULATION_MODE: true,
+      FINANCE_OVERVIEW_ENABLED: false,
+      FINANCE_OVERVIEW_KILL_SWITCH: true,
+      WOMPI_RECONCILIATION_BATCH_SIZE: 25,
+      WOMPI_RECONCILIATION_ENABLED: false,
+      WOMPI_RECONCILIATION_INTERVAL_HOURS: 24,
+      WOMPI_RECONCILIATION_KILL_SWITCH: true,
+      WOMPI_RECONCILIATION_LOOKBACK_HOURS: 24,
+      WOMPI_RECONCILIATION_SIMULATION_MODE: true,
+      WHATSAPP_ASSIGNMENTS_ENABLED: false,
+      WHATSAPP_ASSIGNMENTS_KILL_SWITCH: true,
+      WHATSAPP_ASSIGNMENTS_SIMULATION_MODE: true,
+      WHATSAPP_INBOX_ENABLED: false,
+      WHATSAPP_INBOX_KILL_SWITCH: true,
+      WHATSAPP_INBOX_SIMULATION_MODE: true,
       POSTGRES_PORT: 5433,
       REDIS_PORT: 6380,
       SHOPIFY_INTEGRATIONS_ENABLED: false,
@@ -84,5 +116,93 @@ describe('parseEnvironment', () => {
       IDENTITY_BOOTSTRAP_ORGANIZATION_NAME: 'Local tenant',
       IDENTITY_BOOTSTRAP_SECRET: 'a'.repeat(32),
     });
+  });
+
+  it('accepts only explicit payment abandonment actions', () => {
+    expect(
+      parseEnvironment({ ...validEnvironment, PAYMENT_EXPIRATION_DEFAULT_ACTION: 'CANCEL' })
+        .PAYMENT_EXPIRATION_DEFAULT_ACTION,
+    ).toBe('CANCEL');
+    expect(() =>
+      parseEnvironment({ ...validEnvironment, PAYMENT_EXPIRATION_DEFAULT_ACTION: 'DELETE' }),
+    ).toThrowError(/PAYMENT_EXPIRATION_DEFAULT_ACTION/u);
+  });
+
+  it('keeps active Shopify modes coherent and requires an HTTPS live callback', () => {
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_WEBHOOKS_ENABLED: 'true',
+        SHOPIFY_WEBHOOKS_SIMULATION_MODE: 'false',
+      }),
+    ).toThrowError(/active Shopify components/u);
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+      }),
+    ).toThrowError(/HTTPS callback/u);
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+        SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'http://api.example.test',
+      }),
+    ).toThrowError(/HTTPS callback/u);
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        SHOPIFY_INTEGRATIONS_ENABLED: 'true',
+        SHOPIFY_SIMULATION_MODE: 'false',
+        SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'https://api.example.test',
+      }),
+    ).toMatchObject({
+      SHOPIFY_SIMULATION_MODE: false,
+      SHOPIFY_WEBHOOK_CALLBACK_BASE_URL: 'https://api.example.test',
+    });
+  });
+
+  it('requires technical metrics authentication in production', () => {
+    expect(() => parseEnvironment({ ...validEnvironment, NODE_ENV: 'production' })).toThrowError(
+      /METRICS_ACCESS_MODE/u,
+    );
+    expect(() =>
+      parseEnvironment({
+        ...validEnvironment,
+        METRICS_ACCESS_MODE: 'bearer',
+        NODE_ENV: 'production',
+      }),
+    ).toThrowError(/METRICS_BEARER_TOKEN/u);
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        METRICS_ACCESS_MODE: 'bearer',
+        METRICS_BEARER_TOKEN: 'm'.repeat(32),
+        NODE_ENV: 'production',
+      }),
+    ).toMatchObject({ METRICS_ACCESS_MODE: 'bearer', NODE_ENV: 'production' });
+  });
+
+  it('rejects observability endpoints that can carry credentials or unsafe protocols', () => {
+    const invalidEndpoints = [
+      'file:///tmp/alerts',
+      'http://user:secret@127.0.0.1:4318/v1/traces',
+      'http://:secret@127.0.0.1:4318/v1/traces',
+      'http://127.0.0.1:4318/v1/traces?token=secret',
+      'http://127.0.0.1:4318/v1/traces#fragment',
+    ];
+    for (const endpoint of invalidEndpoints) {
+      expect(() =>
+        parseEnvironment({ ...validEnvironment, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: endpoint }),
+      ).toThrowError(/OTEL_EXPORTER_OTLP_TRACES_ENDPOINT/u);
+    }
+    expect(
+      parseEnvironment({
+        ...validEnvironment,
+        OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: 'https://collector.example.test/v1/traces',
+      }).OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+    ).toBe('https://collector.example.test/v1/traces');
   });
 });

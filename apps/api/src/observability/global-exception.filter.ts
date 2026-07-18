@@ -36,6 +36,16 @@ function publicMessage(exception: HttpException): string | readonly string[] {
   return 'Request failed';
 }
 
+function isPayloadTooLargeError(exception: unknown): boolean {
+  if (typeof exception !== 'object' || exception === null) return false;
+  const candidate = exception as { status?: unknown; statusCode?: unknown; type?: unknown };
+  return (
+    candidate.status === HttpStatus.PAYLOAD_TOO_LARGE &&
+    candidate.statusCode === HttpStatus.PAYLOAD_TOO_LARGE &&
+    candidate.type === 'entity.too.large'
+  );
+}
+
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
   public constructor(
@@ -48,13 +58,22 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request = http.getRequest<Request>();
     const response = http.getResponse<Response>();
     const isHttpException = exception instanceof HttpException;
-    const statusCode = isHttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const payloadTooLarge = isPayloadTooLargeError(exception);
+    const statusCode = isHttpException
+      ? exception.getStatus()
+      : payloadTooLarge
+        ? HttpStatus.PAYLOAD_TOO_LARGE
+        : HttpStatus.INTERNAL_SERVER_ERROR;
     const correlationId = this.requestContext.correlationId ?? 'unavailable';
     const body: ErrorResponse = {
       correlationId,
       error: HttpStatus[statusCode] ?? 'Error',
       message:
-        isHttpException && statusCode < 500 ? publicMessage(exception) : 'Internal server error',
+        isHttpException && statusCode < 500
+          ? publicMessage(exception)
+          : payloadTooLarge
+            ? 'Request body exceeds the configured limit'
+            : 'Internal server error',
       path: request.path,
       statusCode,
       timestamp: new Date().toISOString(),

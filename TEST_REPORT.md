@@ -1,6 +1,6 @@
 # Reporte de pruebas
 
-Actualizado: 2026-07-14
+Actualizado: 2026-07-17
 
 ## Baseline inicial
 
@@ -295,3 +295,912 @@ E1-H1A está completa solo en simulación. La conexión real permanece
 CI remoto `29364969334`: todas las etapas verdes, incluida Shopify. La advertencia de runtime Node 20
 de las acciones se corrigió actualizando a `checkout@v6.0.2`, `setup-node@v6.0.0` y
 `pnpm/action-setup@v4.4.0`, versiones oficiales basadas en Node 24.
+
+## Iteración E1-H2A
+
+Fecha: 2026-07-14.
+
+| Validación                | Comando                        | Resultado                             |
+| ------------------------- | ------------------------------ | ------------------------------------- |
+| Quality gate completo     | `pnpm validate`                | OK, format/lint/typecheck/test/build  |
+| Unitarias                 | `pnpm test`                    | OK, 32/32; cobertura incluida 100 %   |
+| Integración API           | `pnpm test:integration`        | OK, 3/3                               |
+| Migraciones y constraints | `pnpm database:verify`         | OK, 7/7; nueve migraciones, sin drift |
+| Outbox                    | `pnpm outbox:verify`           | OK, 4/4                               |
+| DLQ                       | `pnpm dlq:verify`              | OK, 5/5                               |
+| Auth                      | `pnpm auth:verify`             | OK, 14/14                             |
+| Identidad                 | `pnpm identity:verify`         | OK, 5/5                               |
+| Shopify registro          | `pnpm shopify:verify`          | OK, 4/4                               |
+| Shopify webhook           | `pnpm shopify:webhooks:verify` | OK, 4/4                               |
+| Estado de esquema         | `pnpm database:status`         | OK, nueve migraciones aplicadas       |
+| Observabilidad            | `pnpm observability:verify`    | OK, caída/recuperación Redis          |
+| Dependencias productivas  | `pnpm audit --prod`            | OK, cero vulnerabilidades conocidas   |
+| Infraestructura           | `pnpm infra:verify`            | OK, salud y persistencia              |
+
+La suite dedicada verifica firma válida e inválida sobre bytes crudos, orden HMAC-antes-de-JSON,
+body alterado, JSON inválido, límite de 256 KiB, allowlist, tienda activa, secreto cifrado, replay,
+carrera concurrente, colisión de ID con otro payload, respuesta rápida, outbox/worker y recuperación
+después de Redis inaccesible. La base solo conserva hash y resumen redactado, no HMAC ni cuerpo.
+
+Fallos encontrados y corregidos durante la vertical:
+
+1. La prueba de recuperación intentaba republicar antes de vencer el backoff; se aisló el evento y se
+   controló `available_at` de forma determinista.
+2. El error `PayloadTooLargeError` del parser se convertía en 500; el filtro global ahora reconoce
+   únicamente la forma segura `entity.too.large` y responde 413.
+3. La observabilidad se registraba después del parser, por lo que un 413 no tenía correlation ID; el
+   middleware se movió al inicio del pipeline HTTP y el caso quedó cubierto.
+4. El test construía el runtime outbox con un cliente Prisma distinto al lifecycle Nest; ahora usa el
+   `PrismaService` administrado por la aplicación.
+
+No se contactó Shopify ni se almacenó PII real. El registro remoto del webhook y la consulta real del
+pedido permanecen `BLOQUEADO_POR_CREDENCIALES`. La siguiente vertical es E1-H3A.
+
+La publicación no se realizó: el flujo de entrega detectó que `gh` no está instalado. Los cambios
+permanecen sin commit en `codex/foundations-e0-h2`, basados exactamente en `origin/main`; no se usó el
+PAT expuesto. Debe instalarse y autenticarse GitHub CLI antes de crear rama/commit/push/PR.
+
+## Iteración E1-H3A
+
+Fecha: 2026-07-14.
+
+| Validación               | Comando                        | Resultado                            |
+| ------------------------ | ------------------------------ | ------------------------------------ |
+| Quality gate completo    | `pnpm validate`                | OK, format/lint/typecheck/test/build |
+| Unitarias                | `pnpm test`                    | OK, 35/35; cobertura incluida 100 %  |
+| Integración API          | `pnpm test:integration`        | OK, 3/3                              |
+| Migraciones/constraints  | `pnpm database:verify`         | OK, 8/8; diez migraciones, sin drift |
+| Outbox                   | `pnpm outbox:verify`           | OK, 4/4                              |
+| DLQ                      | `pnpm dlq:verify`              | OK, 5/5                              |
+| Auth                     | `pnpm auth:verify`             | OK, 14/14                            |
+| Identidad                | `pnpm identity:verify`         | OK, 5/5                              |
+| Registro Shopify         | `pnpm shopify:verify`          | OK, 4/4                              |
+| Webhook + Redis + worker | `pnpm shopify:webhooks:verify` | OK, 5/5; sync, recovery y DLQ        |
+| Pedido normalizado       | `pnpm shopify:orders:verify`   | OK, 4/4                              |
+| Estado de esquema        | `pnpm database:status`         | OK, diez migraciones aplicadas       |
+| Observabilidad           | `pnpm observability:verify`    | OK, caída/recuperación Redis         |
+| Dependencias productivas | `pnpm audit --prod`            | OK, cero vulnerabilidades conocidas  |
+| Infraestructura          | `pnpm infra:verify`            | OK, salud y persistencia             |
+
+La suite confirma normalización estricta, dinero `BIGINT`, cliente/dirección/items, carrera y replay,
+actualización monotónica, rechazo de snapshot tardío, contrato inválido, kill switch, consulta por
+adaptador, outbox atómico y recurso inexistente a DLQ. La prueba del pipeline detiene la entrega a
+Redis, recupera y verifica el pedido completo antes de marcar el webhook procesado.
+
+Fallos encontrados y corregidos:
+
+1. Prisma exigió unicidad compuesta en el lado definidor de la relación webhook→pedido; se añadió el
+   constraint tenant completo y quedó sin drift.
+2. La primera expectativa de tablas ubicaba `organizations` antes de `orders`; se corrigió al orden
+   real de PostgreSQL, sin cambios de esquema.
+3. El fixture incluía `financial_status` fuera del schema estricto; se incorporó como dato validado
+   pero sin clasificar, porque esa decisión pertenece a E1-H4A.
+4. Lint detectó un import y un argumento de contrato no usados en la suite nueva; fueron eliminados.
+
+No hubo tráfico externo ni PII real. E1-H3A está completa solo en simulación. E1-H4A es la siguiente
+vertical y la conexión Shopify real sigue `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E1-H4A
+
+Fecha: 2026-07-14.
+
+| Validación                   | Comando                             | Resultado                             |
+| ---------------------------- | ----------------------------------- | ------------------------------------- |
+| Quality gate completo        | `pnpm validate`                     | OK, format/lint/typecheck/test/build  |
+| Unitarias                    | `pnpm test`                         | OK, 40/40; cobertura incluida 100 %   |
+| Integración API              | `pnpm test:integration`             | OK, 3/3                               |
+| Migraciones/constraints      | `pnpm database:verify`              | OK, 8/8; once migraciones, sin drift  |
+| Outbox                       | `pnpm outbox:verify`                | OK, 4/4                               |
+| DLQ                          | `pnpm dlq:verify`                   | OK, 5/5                               |
+| Auth                         | `pnpm auth:verify`                  | OK, 14/14                             |
+| Identidad                    | `pnpm identity:verify`              | OK, 5/5                               |
+| Registro Shopify             | `pnpm shopify:verify`               | OK, 4/4                               |
+| Webhook + pipeline Redis     | `pnpm shopify:webhooks:verify`      | OK, 5/5; termina clasificado          |
+| Pedido normalizado           | `pnpm shopify:orders:verify`        | OK, 4/4                               |
+| Clasificación                | `pnpm orders:classification:verify` | OK, 4/4                               |
+| Estado de esquema            | `pnpm database:status`              | OK, once migraciones aplicadas        |
+| Observabilidad               | `pnpm observability:verify`         | OK, caída/recuperación Redis          |
+| Dependencias productivas     | `pnpm audit --prod`                 | OK, cero vulnerabilidades conocidas   |
+| Configuración Compose        | `pnpm infra:config`                 | OK                                    |
+| Infraestructura/persistencia | `pnpm infra:verify`                 | OK, servicios, protocolos y volúmenes |
+
+La suite confirma reglas v1 por tienda, prioridad determinista, prepago, COD y fail-closed ante
+ausencia/contradicción. Cada decisión recorre tres transiciones válidas, conserva historial
+inmutable y emite outbox/auditoría atómicos. La carrera concurrente produce un único efecto y un
+replay; el pipeline recupera Redis entre webhook y pedido, y procesa después el evento de
+clasificación hasta `READY_FOR_LOGISTICS`.
+
+Fallos encontrados y corregidos:
+
+1. La prueba de migración conservaba el conteo anterior de diez migraciones; se actualizó a once y
+   se añadieron constraints de política activa única e historial inmutable.
+2. Dos transacciones serializables concurrentes podían observar el snapshot anterior después de
+   esperar el advisory lock y chocar con el unique del historial; el retry acotado ahora reconoce
+   esa colisión, abre un snapshot nuevo y devuelve replay sin duplicar efectos.
+3. El retorno del callback transaccional ensanchaba literales y bloqueó el primer `typecheck` global;
+   se tipó el callback con `OrderClassificationResult` y el quality gate completo quedó verde.
+
+No hubo tráfico externo ni PII real. E1-H4A está completa solo en simulación. E1-H5A es la siguiente
+vertical y la conexión Shopify real sigue `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E1-H5A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                                  | Resultado                            |
+| ----------------------- | ---------------------------------------- | ------------------------------------ |
+| Generación Prisma       | `pnpm prisma:generate`                   | OK                                   |
+| Typecheck API           | `pnpm --filter @ecommerce/api typecheck` | OK                                   |
+| Lint API                | `pnpm --filter @ecommerce/api lint`      | OK, cero advertencias                |
+| Migraciones/constraints | `pnpm database:verify`                   | OK, 8/8; doce migraciones, sin drift |
+| Reconciliación          | `pnpm shopify:reconciliation:verify`     | OK, 3/3 HTTP/PostgreSQL              |
+| Quality gate completo   | `pnpm validate`                          | OK, format/lint/types/40 unit/build  |
+| Integración base        | `pnpm test:integration`                  | OK, 3/3                              |
+| Outbox / DLQ            | `pnpm outbox:verify`; `pnpm dlq:verify`  | OK, 4/4 y 5/5                        |
+| Auth / identidad        | gates dedicados                          | OK, 14/14 y 5/5                      |
+| Registro/webhook/pedido | gates Shopify dedicados                  | OK, 4/4, 5/5 y 4/4                   |
+| Clasificación           | `pnpm orders:classification:verify`      | OK, 4/4                              |
+| Estado de esquema       | `pnpm database:status`                   | OK, doce migraciones aplicadas       |
+| Observabilidad          | `pnpm observability:verify`              | OK, caída y recuperación Redis       |
+| Dependencias            | `pnpm audit --prod`                      | OK, cero vulnerabilidades conocidas  |
+| Infraestructura         | `pnpm infra:config`; `pnpm infra:verify` | OK, salud y persistencia             |
+
+La suite confirma checkpoint y ventana por tienda, detección deduplicada de pedido faltante,
+webhook fallido y pedido atascado, inspección redactada, RBAC para operaciones y aislamiento tenant.
+Dos reprocesos concurrentes producen un único evento interno/outbox; el pedido se sincroniza por el
+pipeline existente y una ejecución posterior resuelve la incidencia. Un webhook dead letter rearma
+solo su entrega y aumenta `delivery_version`.
+
+Fallos encontrados y corregidos:
+
+1. El constraint heredado exigía firma válida para todo webhook; se reemplazó hacia adelante por
+   exclusión mutua entre HMAC válido y origen interno explícito, sin fingir autenticidad externa.
+2. PostgreSQL devolvía el retry serializable `40001` anidado por el driver Prisma; el detector ahora
+   reconoce ambos formatos y mantiene el límite de reintentos.
+3. Lint detectó acceso inseguro a un cuerpo HTTP no tipado en la prueba; se añadió el narrowing
+   explícito y el gate quedó sin advertencias.
+
+No hubo tráfico externo ni PII real. E1-H5A está completa solo en simulación; el scheduler y Shopify
+real permanecen pendientes/bloqueados. E2-H1A es la siguiente vertical.
+
+## Iteración E2-H1A
+
+Fecha: 2026-07-14.
+
+| Validación                | Comando                                  | Resultado                                       |
+| ------------------------- | ---------------------------------------- | ----------------------------------------------- |
+| Instalación reproducible  | `pnpm install --frozen-lockfile`         | OK                                              |
+| Quality gate completo     | `pnpm validate`                          | OK: format/lint/types/45 unit/build             |
+| Tarifas                   | `pnpm transport-rates:verify`            | OK: 5 unitarias + 3 HTTP/PostgreSQL             |
+| Migraciones/constraints   | `pnpm database:verify`                   | OK: 9/9, 13 migraciones, reaplicación y drift   |
+| Migración local/estado    | gates de base de datos                   | OK: migración 13 aplicada y esquema al día      |
+| Integración y regresiones | diez gates dedicados                     | OK: base, outbox, DLQ, auth, identidad, Shopify |
+| Observabilidad            | `pnpm observability:verify`              | OK: caída/recuperación Redis                    |
+| Infraestructura           | `pnpm infra:config`; `pnpm infra:verify` | OK: salud, recreación y persistencia            |
+| Auditoría de dependencias | `pnpm audit --prod`                      | BLOQUEADO_POR_PROVEEDOR: npm Audit HTTP 410     |
+
+La vertical prueba resolución por prioridad, especificidad y alcance, vigencia semiabierta,
+normalización `es-CO`, ausencia/contradicción fail-closed, activación única por alcance, RBAC,
+tenant isolation, replay, carrera y persistencia atómica de decisión, pedido y outbox.
+
+Fallos encontrados y corregidos:
+
+1. Prisma rechazó la creación anidada de reglas con el campo tenant explícito; política y reglas se
+   crean ahora separadamente dentro de la misma transacción.
+2. Dos llamadas con la misma clave retornaban cuerpos distintos por una etiqueta de replay; la
+   respuesta idempotente ahora es byte-estable, sin perder la métrica de replay.
+3. `migrate diff` detectó una FK compuesta SQL no representada en Prisma; el schema ahora expresa la
+   relación organización+política+regla y volvió a cero drift.
+4. El registro npm retiró el endpoint Audit consumido por pnpm 10.25.0. No se interpretó el HTTP 410
+   como suite verde ni como vulnerabilidad; el gate externo queda pendiente de restauración/migración
+   controlada de toolchain.
+5. La revisión detectó que dos claves distintas podían reactivar la misma política con una lectura
+   previa al lock; la política se relee dentro del lock y una prueba concurrente garantiza un evento.
+
+No hubo tráfico a Shopify, Wompi, WhatsApp o Mastershop ni PII real. Wompi queda
+`BLOQUEADO_POR_CREDENCIALES`; Mastershop queda `BLOQUEADO_POR_PROVEEDOR`.
+
+## Iteración E2-H2A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Contrato e integración  | `pnpm wompi:verify`    | OK: 2 contractuales + 4 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 14 migraciones y cero drift  |
+| Typecheck inicial       | gate API               | OK                                      |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/47 unit/build     |
+
+Las pruebas confirman concatenación de firma referencia+monto+COP+expiración, parámetros Web
+Checkout, host `.invalid`, RBAC, tenant, una sola intención pendiente, replay concurrente y outbox
+único. La API deriva monto/referencia de datos durables y rechaza pedidos sin tarifa COD resuelta.
+Durante el cierre se detectó que la validación estricta rechazaba también la ausencia legítima de
+cuerpo HTTP; se normalizó `undefined` a `{}` manteniendo el rechazo de cualquier campo adicional y
+se repitieron tanto `pnpm wompi:verify` como `pnpm validate` en verde.
+
+No hubo llamadas a Wompi ni credenciales reales. Webhook, consulta authoritative, confirmación,
+expiración operativa y conciliación permanecen pendientes; E2-H3A es la siguiente vertical.
+
+GitHub CLI 2.96.0 quedó disponible y autenticado por keyring. E2-H1A se publicó como commit
+`482fb71` y se abrió el PR borrador #1 sin usar el PAT expuesto.
+
+## Iteración E2-H3A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Wompi completo          | `pnpm wompi:verify`    | OK: 4 contractuales + 7 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 15 migraciones y cero drift  |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/unitarias/build   |
+
+Se validaron cuerpo crudo, checksum por propiedades, tiempo, persistencia redactada, consulta
+authoritative, comparación de id/referencia/monto/moneda/estado, aprobación, replay concurrente,
+colisión, firma inválida y outbox único. El primer typecheck detectó una relación Prisma sobrante
+hacia `Order`; se eliminó antes de aplicar la migración. El primer gate integral detectó además una
+lectura `any` en una aserción Supertest; se tipó y la repetición completa quedó verde.
+
+No hubo tráfico ni credenciales Wompi reales. Recordatorios, abandono, conciliación diaria y sandbox
+permanecen pendientes; E2-H4A es la siguiente vertical.
+
+## Iteración E2-H4A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                | Resultado                               |
+| ----------------------- | ---------------------- | --------------------------------------- |
+| Wompi + recordatorios   | `pnpm wompi:verify`    | OK: 4 contractuales + 9 HTTP/PostgreSQL |
+| Migraciones/constraints | `pnpm database:verify` | OK: 10/10, 16 migraciones y cero drift  |
+| Quality gate integral   | `pnpm validate`        | OK: format/lint/types/unitarias/build   |
+
+Las pruebas validan dos filas exactas a +8/+16, máximo dos por constraint, reclamo concurrente con
+`SKIP LOCKED`, outbox único, replay vacío, cancelación al aprobar y cancelación fail-closed cuando la
+intención venció. Hora 0 sigue representada por creación del enlace y hora 24 queda para E2-H5A.
+
+No se llamó a WhatsApp, Wompi, Shopify ni Mastershop. Solo se emitió el evento sintético
+`payment.reminder.requested.v1`; la entrega real permanece `BLOQUEADO_POR_CREDENCIALES`.
+
+## Iteración E2-H5A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                     | Resultado                                   |
+| ----------------------- | --------------------------- | ------------------------------------------- |
+| Wompi + vencimiento     | `pnpm wompi:verify`         | OK: 4 contractuales + 13 integración        |
+| Migraciones/constraints | `pnpm database:verify`      | OK: 10/10, 17 migraciones y cero drift      |
+| Typecheck intermedio    | paquete API                 | OK después de corregir fixture relacional   |
+| Quality gate integral   | `pnpm validate`             | OK: format/lint/types/50 unitarias/build    |
+| Regresión funcional     | gates dedicados             | OK: integración, auth, Shopify, outbox, DLQ |
+| Observabilidad runtime  | `pnpm observability:verify` | OK: fallo y recuperación Redis              |
+| Infraestructura runtime | `pnpm infra:verify`         | OK: salud y persistencia                    |
+| Dependencias            | `pnpm audit --prod`         | BLOQUEADO: endpoint npm responde HTTP 410   |
+
+Se validaron vencimiento a 24 horas, reclamo concurrente `SKIP LOCKED`, replay sin efectos,
+cancelación de recordatorios, dos transiciones históricas, outbox/auditoría atómicos, políticas
+`MARK`/`CANCEL`, aislamiento de tenant y aprobación simultánea. Un estado terminal no retrocede; una
+aprobación posterior al vencimiento lleva el pedido a `MANUAL_REVIEW`.
+
+El primer typecheck rechazó claves tenant redundantes en un create relacional Prisma; el fixture se
+corrigió con una creación explícita. La primera verificación de migración detectó un índice SQL no
+declarado en Prisma; se agregó al esquema y la repetición desde vacío quedó sin drift.
+
+No hubo llamadas a Wompi, Shopify, WhatsApp o Mastershop ni PII real. `CANCEL` produce únicamente
+`shopify.order.abandonment-action.requested.v1` con `mode=simulation`; no se presenta como una
+cancelación externa terminada. E2-H6A es la siguiente vertical.
+
+## Iteración E2-H6A
+
+Fecha: 2026-07-14.
+
+| Validación              | Comando                     | Resultado                                   |
+| ----------------------- | --------------------------- | ------------------------------------------- |
+| Wompi + conciliación    | `pnpm wompi:verify`         | OK: 4 contractuales + 17 integración, 21/21 |
+| Migraciones/constraints | `pnpm database:verify`      | OK: 11/11, 18 migraciones y cero drift      |
+| Typecheck intermedio    | paquete API                 | OK                                          |
+| Baseline integral       | gates dedicados             | OK antes de implementar                     |
+| Observabilidad runtime  | `pnpm observability:verify` | OK: fallo y recuperación Redis              |
+| Infraestructura runtime | `pnpm infra:verify`         | OK: salud y persistencia                    |
+| Dependencias            | `pnpm audit --prod`         | BLOQUEADO: endpoint npm responde HTTP 410   |
+
+Se validaron checkpoint diario, ventana de lookback, advisory lock concurrente, replay sin segunda
+ejecución, reporte consistente, divergencia de estado, ausencia de evento aceptado, huellas
+deduplicadas, resolución posterior, outbox de alerta, caída/recuperación del proveedor, diferencia
+financiera y aislamiento de tenant. La migración se aplicó dos veces desde una base vacía.
+
+El primer ciclo encontró una carrera de reloj entre `first_detected_at` generado por PostgreSQL y
+`last_detected_at` suministrado por el scheduler. Ambos timestamps ahora usan el mismo reloj de la
+ejecución y la invariantes temporal permanece estricta.
+
+El primer `pnpm validate` final señaló únicamente formato pendiente en cuatro tablas Markdown; se
+ejecutó Prettier y la repetición completa quedó verde.
+
+No hubo llamadas, credenciales ni PII reales. La conciliación no cambia estado, monto, pedido ni
+evento; Wompi sandbox continúa `BLOQUEADO_POR_CREDENCIALES`. E3-H1A es la siguiente vertical.
+
+## Iteración E3-H1A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                     |
+| --------------------------- | ---------------------- | --------------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 17 archivos, 55 pruebas                   |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 4/4                                       |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 12/12, 19 migraciones y cero drift        |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 55 unitarias y ambos builds               |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm retirado responde 410 |
+
+Se validaron proveedor determinista, fixture sintético, cifrado AES-256-GCM, AAD tenant/tienda,
+rotación v1→v2, flags fail-closed, configuración/replay concurrentes, unicidad de `phoneNumberId`,
+RBAC, aislamiento de tenant, prueba saludable, estados, outbox, auditoría y métrica sin secretos.
+Activar/desactivar el canal no cambia el estado de la tienda Shopify.
+
+Un comando auxiliar intentó usar la opción inexistente `--runInBand` de Vitest; se descartó y la
+suite oficial `pnpm test` se repitió correctamente con 55/55. No fue un defecto de producto.
+
+El primer cierre integral encontró formato pendiente en cuatro tablas Markdown y una advertencia de
+consultas paralelas sobre un mismo cliente `pg` en la nueva prueba. Se aplicó Prettier, se serializaron
+esas consultas y se repitieron `pnpm validate` y `pnpm database:verify` en verde. La migración 19 se
+aplicó a la base local persistente y `pnpm database:status` confirmó esquema actualizado.
+
+No hubo llamadas, credenciales, números, mensajes ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H2A es la siguiente vertical.
+
+## Iteración E3-H2A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 18 archivos, 58 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 7/7                                   |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 13/13, 20 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 58 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron fixture/contrato v1, correspondencia exacta de placeholders, catálogo tenant-safe,
+replay concurrente, RBAC, lookup no revelador, revisión simulada, versión inmutable, activación
+única, paginación, outbox y auditoría sin cuerpo, métrica y conservación del estado Shopify.
+
+La primera prueba PostgreSQL encontró que una expresión regular con máximo 511 excedía el límite de
+repetición del motor y que un `CHECK` JSON podía evaluar `NULL`. Se reemplazó la repetición por límite
+de columna/longitud y se hicieron booleanas las condiciones con `COALESCE`. Un diff detectó además el
+nombre esperado de la FK Prisma; se alineó antes de repetir 13/13 sin drift.
+
+No hubo llamadas Meta, envío de mensajes, credenciales ni PII real. La documentación oficial se usó
+solo para fijar el vocabulario estable del catálogo. Meta continúa `BLOQUEADO_POR_CREDENCIALES`;
+E3-H3A es la siguiente vertical.
+
+La migración veinte se aplicó después a la base persistente local sin borrar datos;
+`pnpm database:status` confirmó 20/20. Luego se repitieron migraciones y WhatsApp en verde.
+
+## Iteración E3-H3A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 18 archivos, 63 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 10/10                                 |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 21 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 63 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron render tipado y completo, consentimiento, E.164, conexión saludable, plantilla activa,
+proveedor determinista sin red, conversación/mensaje tenant-safe, replay HTTP, dedupe de negocio,
+carrera, RBAC, aislamiento, kill switch, constraints, outbox, auditoría y métricas sin PII. El único
+estado es `simulated_accepted`; `sent`, `delivered`, `read` y `failed` permanecen nulos.
+
+La primera verificación PostgreSQL encontró que el test de duplicado enviaba un parámetro SQL no
+referenciado y el driver no podía inferir su tipo. Se corrigió el fixture para usar solo placeholders
+referenciados y se repitieron 14/14. No fue un defecto del esquema de producto.
+
+La migración veintiuno se aplicó a la base persistente local sin borrar datos; `database:status`
+confirmó 21/21. No hubo llamadas, credenciales, números ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H4A es la siguiente vertical.
+
+## Iteración E3-H4A
+
+Fecha: 2026-07-14.
+
+| Validación                  | Comando                | Resultado                                 |
+| --------------------------- | ---------------------- | ----------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 19 archivos, 66 pruebas               |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 14/14                                 |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 23 migraciones y cero drift    |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 66 unitarias y ambos builds           |
+| Regresión funcional         | gates dedicados        | OK: 14 áreas previas                      |
+| Observabilidad/infra        | gates runtime          | OK: readiness, Redis e infraestructura    |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410 |
+
+Se validaron fixture/contrato sintético v1, HMAC de cuerpo crudo, secreto cifrado separado, firma
+inválida, replay, colisión, mensaje desconocido, carrera `sent`/`delivered`, tardíos, terminales,
+RBAC, tenant, kill switch, constraints, historial inmutable, outbox, auditoría y métricas redactados.
+Los estados `simulated_*` nunca se presentan como evidencia Meta.
+
+La generación Prisma detectó primero que la relación compuesta requería unicidad explícita; se
+alinearon esquema y migración. El typecheck detectó después que el replay de E3-H3A debía conservar
+su respuesta histórica aunque el mensaje avanzara de estado; se desacopló la respuesta del estado
+actual. Finalmente lint señaló dos aserciones innecesarias/inseguras en pruebas; se corrigieron antes
+del cierre verde.
+
+Las migraciones veintidós y veintitrés se aplicaron a la base persistente sin borrar datos y
+`database:status` confirmó 23/23. No hubo llamadas, credenciales, números, cuerpos ni PII reales.
+Meta continúa `BLOQUEADO_POR_CREDENCIALES`; E3-H5A es la siguiente vertical.
+
+## Iteración E3-H5A
+
+Fecha: 2026-07-15.
+
+| Validación                  | Comando                | Resultado                                    |
+| --------------------------- | ---------------------- | -------------------------------------------- |
+| Contrato/unidad             | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico   |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 17/17                                    |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 26 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados        | OK: integración y 12 áreas previas           |
+| Observabilidad/infra        | gates runtime          | OK: degradación, recuperación y persistencia |
+| Dependencias                | `pnpm audit --prod`    | BLOQUEADO: endpoint npm responde HTTP 410    |
+
+Se validaron fixture inbound estricto, HMAC sobre cuerpo crudo, firma inválida, replay, colisión,
+carrera, dedupe de mensaje externo, identidad conocida/desconocida, tenant no revelador, kill
+switch, cifrado AES-GCM, seudónimo compatible con rotación, retención marcada, inmutabilidad,
+redacción, outbox, auditoría y métrica acotada. No se aceptó un payload Meta.
+
+El primer baseline integrado falló porque Docker Desktop estaba detenido; después de iniciarlo, el
+mismo gate y toda la regresión pasaron. La prueba contractual Wompi contenía una expiración fija del
+2026-07-15 que venció durante esta sesión; se movió a 2099 para conservar un fixture determinista.
+La ejecución aislada del nuevo contrato pasó 3/3 pero, por diseño del comando genérico, falló su
+umbral global al cubrir un único archivo; `pnpm validate` confirmó después 69/69 y 100 % crítico.
+
+Las migraciones 24/25/26 se aplicaron a la base persistente sin borrar datos y `database:status`
+confirmó 26/26. No hubo llamadas, credenciales, teléfonos, cuerpos ni PII reales. Meta continúa
+`BLOQUEADO_POR_CREDENCIALES`; E3-H6A es la siguiente vertical.
+
+## Iteración E3-H6A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                | Resultado                                  |
+| --------------------------- | ---------------------- | ------------------------------------------ |
+| Unitarias/cobertura         | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 21/21                                  |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 26 migraciones y cero drift     |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds            |
+| Integración/regresiones     | gates dedicados        | OK                                         |
+| Dependencias                | `pnpm audit --prod`    | OK: cero vulnerabilidades conocidas        |
+
+Se validaron listado y timeline keyset, filtros, cursor inválido, contenido inbound/outbound,
+historial, descifrado autorizado, expiración sin descifrado, RBAC owner/admin/operations/support,
+denegación READ_ONLY, tenant no revelador, kill switch, auditoría sin PII y métrica acotada. La API
+usa `no-store` y no devuelve teléfono ni IDs externos.
+
+No hubo migración nueva: E3-H6A es una proyección de lectura. El primer `whatsapp:verify` no ejecutó
+casos porque Docker/PostgreSQL estaban apagados; tras levantar Docker conservando volúmenes, 21/21
+pasaron. El endpoint de auditoría npm, bloqueado durante iteraciones anteriores, volvió a responder y
+el gate cerró sin vulnerabilidades conocidas. No hubo credenciales, PII o tráfico Meta real. E3-H7A
+es la siguiente vertical.
+
+## Iteración E3-H7A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                | Resultado                                  |
+| --------------------------- | ---------------------- | ------------------------------------------ |
+| Unitarias/cobertura         | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 25/25                                  |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 15/15, 27 migraciones y cero drift     |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds            |
+| Integración/regresiones     | 14 gates dedicados     | OK                                         |
+| Observabilidad/infra        | gates runtime          | OK: fallo, recuperación y persistencia     |
+| Estado del esquema          | `pnpm database:status` | OK: 27/27                                  |
+| Dependencias                | `pnpm audit --prod`    | OK: cero vulnerabilidades conocidas        |
+
+Se validaron claim propio, replay, colisión de idempotencia, carrera con un único ganador,
+reassign/unassign manager-only, membresías ajena/inactiva/no elegible, tenant no revelador, RBAC,
+kill switch, proyección de bandeja, historial inmutable, outbox, auditoría y métrica sin PII.
+
+La primera verificación de base detectó que un `CHECK` SQL aceptaba razón `NULL` por lógica ternaria
+y que el nombre de una FK no coincidía con Prisma. Ambos defectos se corrigieron antes de aplicar el
+cierre; la migración veintisiete pasó desde vacío y la base persistente quedó 27/27 sin drift. No
+hubo credenciales, PII ni tráfico Meta real. E0-H3B es la siguiente vertical.
+
+## Iteración E0-H3B
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                      | Resultado                                    |
+| --------------------------- | ---------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                  | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Formatter/lint/types/builds | `pnpm validate`              | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | 14 gates dedicados           | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify`  | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`          | OK: seis servicios saludables y persistentes |
+| Migraciones/estado          | `database:verify` / `status` | OK: 15/15, 27/27 y cero drift                |
+| Dependencias                | `pnpm audit --prod`          | OK: cero vulnerabilidades conocidas          |
+
+Se validaron propagación `traceparent`, trace/span IDs en respuesta y logs, exportación OTLP a un
+Collector local, atributos de baja cardinalidad y ausencia de PII/Authorization/token en logs,
+métricas y salida del Collector. `/metrics` rechaza acceso sin Bearer en el build productivo, agrega
+`no-store` y conserva loopback seguro en desarrollo.
+
+Al detener Redis, readiness respondió `503` y se produjo exactamente una alerta activa pese a checks
+repetidos; al recuperarlo se produjo una resolución. Al detener Collector, la API siguió respondiendo
+y exportó nuevas trazas después de recuperarlo. Alertmanager y el receptor local no condicionan la
+respuesta de negocio.
+
+El primer test aislado de nuevas ramas encontró cobertura 87,5 %; se agregaron casos de URL HTTPS,
+password, query y fragmento hasta cerrar 100 %. El primer `pnpm validate` final encontró solo formato
+Markdown en siete archivos; Prettier lo corrigió y el gate completo pasó al repetir. No hubo
+migraciones, despliegue, credenciales cloud ni tráfico a proveedores reales. E6-H1A es la siguiente
+vertical.
+
+## Iteración E6-H1A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                     | Resultado                                    |
+| --------------------------- | --------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                 | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Cola HTTP/PostgreSQL        | `pnpm operations:verify`    | OK: 5/5                                      |
+| Migraciones/constraints     | `pnpm database:verify`      | OK: 15/15, 28 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`             | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados en serie    | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify` | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`         | OK: seis servicios saludables y persistentes |
+| Estado del esquema          | `pnpm database:status`      | OK: 28/28                                    |
+| Dependencias                | `pnpm audit --prod`         | OK: cero vulnerabilidades conocidas          |
+
+Se validaron cinco tipos unificados, atención v1, filtros estrictos, cursor keyset, inserción
+concurrente más reciente, RBAC owner/admin/operations, denegación de otros roles, tenant ajeno,
+query/cursor inválidos, kill switch, auditoría, métrica y ausencia de PII/IDs externos. La consulta
+limita organización dentro de cada rama `UNION ALL` y la migración 28 agrega cinco índices de lectura.
+
+La primera ejecución dedicada falló porque el fixture de conversación desconocida combinaba formas
+de identidad incompatibles con el constraint de privacidad existente. Se creó un cliente sintético
+y se conservó el constraint. Al intentar paralelizar cuatro gates, varias ejecuciones de
+`prisma generate` chocaron sobre el mismo directorio (`ENOTEMPTY`); se repitieron en serie y todos
+pasaron. El primer `database:status` detectó correctamente la migración 28 pendiente; se desplegó con
+`pnpm database:migrate` y quedó 28/28 sin borrar volúmenes. No hubo mutaciones operativas,
+credenciales ni tráfico real. E6-H2A es la siguiente vertical.
+
+## Iteración E6-H2A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                     | Resultado                                    |
+| --------------------------- | --------------------------- | -------------------------------------------- |
+| Unitarias/cobertura         | `pnpm test`                 | OK: 20 archivos, 73 pruebas; 100 % crítico   |
+| Cola/resumen PostgreSQL     | `pnpm operations:verify`    | OK: 7/7                                      |
+| Migraciones/constraints     | `pnpm database:verify`      | OK: 15/15, 28 migraciones y cero drift       |
+| Formatter/lint/types/builds | `pnpm validate`             | OK: 73 unitarias y ambos builds              |
+| Integración/regresiones     | gates dedicados en serie    | OK                                           |
+| Observabilidad conectada    | `pnpm observability:verify` | OK: W3C, OTLP, métricas, alertas y fallos    |
+| Infraestructura             | `pnpm infra:verify`         | OK: seis servicios saludables y persistentes |
+| Estado del esquema          | `pnpm database:status`      | OK: 28/28                                    |
+| Dependencias                | `pnpm audit --prod`         | OK: cero vulnerabilidades conocidas          |
+
+Se centralizaron los cinco tipos, estados y atención v1 en un único read model importado por cola y
+resumen. El nuevo endpoint exige ventana `[from,to)` de máximo 31 días y ejecuta un solo agregado
+`GROUPING SETS`; devuelve totales y desgloses por tipo/estado sin IDs ni PII. Se probaron filtros,
+cero resultados, rangos/campos inválidos, RBAC, tenant ajeno, kill switch, auditoría y métrica.
+
+No hubo migración nueva: los índices de E6-H1A cubren las cinco ramas y `database:status` permanece
+28/28. El primer `pnpm validate` de cierre detectó únicamente formato Prettier en dos documentos
+nuevos; se corrigió y el gate completo pasó al repetir. Antes de E6-H2A se publicó el bloque
+E3-H7A/E0-H3B/E6-H1A en `d1755f1` y se actualizó el PR borrador #1. No hubo mutaciones operativas,
+credenciales ni tráfico real. E6-H3A es la siguiente vertical.
+
+## Iteración E6-H3A
+
+Fecha: 2026-07-17.
+
+| Validación                     | Comando/medio                 | Resultado                                   |
+| ------------------------------ | ----------------------------- | ------------------------------------------- |
+| Formatter/lint/types/builds    | `pnpm validate`               | OK: 81 pruebas y ambos builds               |
+| Cobertura crítica API          | `pnpm test`                   | OK: 20 archivos/73 pruebas, 100 %           |
+| BFF/cookies/CSRF/tenant        | `pnpm web:verify`             | OK: 8/8                                     |
+| Auth/membresías/switch         | `pnpm auth:verify`            | OK: 16/16 PostgreSQL/HTTP                   |
+| Cola/resumen                   | `pnpm operations:verify`      | OK: 7/7                                     |
+| Migraciones/constraints        | `pnpm database:verify/status` | OK: 15/15, 28/28 y cero drift               |
+| Regresión funcional            | gates dedicados en serie      | OK: todos los dominios                      |
+| Infraestructura/observabilidad | gates runtime                 | OK: seis servicios, persistencia y recovery |
+| Dependencias                   | `pnpm audit --prod`           | OK: cero vulnerabilidades conocidas         |
+| Interfaz escritorio/móvil      | navegador local               | OK: render, labels, hidratación y error     |
+| Headers productivos            | build + request local         | OK: CSP sin eval, DENY y nosniff            |
+
+El BFF no devuelve access/refresh, email, `itemId`, `storeId` ni relaciones. El tenant se obtiene de
+`/auth/me`; un `organizationId` malicioso en la query se rechaza antes de contactar la API. Login
+solo muestra membresías activas después de verificar contraseña y el switch revoca la sesión previa
+antes de crear la siguiente.
+
+Incidencias corregidas durante el cierre: una aserción Supertest usaba un matcher asimétrico como
+cuerpo exacto; la CSP inicial bloqueaba React Refresh en desarrollo; y Autoprefixer pidió
+`flex-end`. Se corrigieron y repitieron los gates. Producción conserva `unsafe-eval` bloqueado. No
+hubo migración, credenciales, tráfico real, mutaciones operativas ni despliegue.
+
+## Iteración E6-H4A
+
+Fecha: 2026-07-18.
+
+| Validación                     | Comando                  | Resultado                                        |
+| ------------------------------ | ------------------------ | ------------------------------------------------ |
+| Formatter/lint/types/builds    | `pnpm validate`          | OK: 81 pruebas y ambos builds                    |
+| Cobertura crítica API          | `pnpm test`              | OK: 20 archivos/73 pruebas, 100 %                |
+| Alertas PostgreSQL/HTTP        | `pnpm alerts:verify`     | OK: 7/7                                          |
+| Migraciones/constraints        | `pnpm database:verify`   | OK: 16/16, 30/30 y cero drift                    |
+| Cola/read model compartido     | `pnpm operations:verify` | OK: 7/7                                          |
+| Auth y dashboard BFF           | gates dedicados          | OK: auth 16/16 y web 8/8                         |
+| Regresión de dominios          | gates en serie           | OK: todos                                        |
+| Infraestructura/observabilidad | gates runtime            | OK: persistencia, alertas, fallos y recuperación |
+| Dependencias                   | `pnpm audit --prod`      | OK: cero vulnerabilidades conocidas              |
+
+Se añadieron cinco reglas v1 explícitas sobre el único read model de atención, una tabla tenant-safe
+de ciclos open/resolved y dedupe durable por índice parcial. El scheduler recorre organizaciones en
+lotes; cada evaluación adquiere locks transaccionales ordenados y ejecuta una lectura agregada y una
+transición SQL por lote. La API pública se limita a reglas/listado con RBAC, cursor, filtros,
+`no-store` y proyección sin PII ni IDs fuente.
+
+La primera prueba integrada detectó casts ausentes en el CTE; la siguiente expuso que un lock tomado
+dentro de la misma sentencia conserva un snapshot previo. Se corrigió adquiriendo locks en una
+sentencia anterior de la misma transacción y la carrera quedó verde. `database:verify` detectó además
+la dirección física divergente de dos índices; la migración forward-only 30 la alineó con Prisma y
+eliminó el drift. El primer `pnpm validate` final detectó únicamente accesos `any` de Supertest; se
+tiparon y el gate completo pasó al repetir.
+
+No hubo notificaciones, autocorrecciones, exportaciones, credenciales, tráfico real, despliegue ni
+publicación Git. E6-H5A, búsqueda operativa global de solo lectura, es la siguiente vertical propuesta.
+
+## Iteración E6-H5A
+
+Fecha: 2026-07-18.
+
+| Validación                  | Comando                  | Resultado                               |
+| --------------------------- | ------------------------ | --------------------------------------- |
+| Formatter/lint/types/builds | `pnpm validate`          | OK: 82 pruebas y ambos builds           |
+| Cobertura crítica API       | `pnpm test`              | OK: 20 archivos/73 pruebas, 100 %       |
+| Cola/resumen/búsqueda       | `pnpm operations:verify` | OK: 9/9 PostgreSQL/HTTP                 |
+| BFF y proyección web        | `pnpm web:verify`        | OK: 9/9                                 |
+| Migraciones                 | no aplica                | sin migración; baseline permanece 30/30 |
+
+La búsqueda consulta únicamente ID interno exacto, tipo, estado y motivo operativo dentro de una
+ventana `[from,to)` máxima de 31 días. Ranking y cursor son estables y el cursor queda ligado a la
+huella de término/filtros. La API impone RBAC tenant-safe, auditoría sin `q`, métrica acotada y kill
+switch independiente; el BFF elimina ID y metadatos de coincidencia antes del navegador.
+
+Las pruebas negativas cubren PII, reutilización de cursor con otra consulta, rangos/filtros inválidos,
+roles sin permiso, tenant ajeno y feature cerrada. El primer `pnpm validate` detectó únicamente la
+regla `no-control-regex`; se sustituyó por validación explícita de code points y el gate completo pasó.
+No hubo credenciales, tráfico real, mutaciones, migración, despliegue, commit ni push.
+
+## Iteración E6-H6A
+
+Fecha: 2026-07-18.
+
+| Validación                  | Comando                  | Resultado                         |
+| --------------------------- | ------------------------ | --------------------------------- |
+| Formatter/lint/types/builds | `pnpm validate`          | OK: 84 pruebas y ambos builds     |
+| Cobertura crítica API       | `pnpm test`              | OK: 20 archivos/73 pruebas, 100 % |
+| Operaciones y detalle       | `pnpm operations:verify` | OK: 11/11 PostgreSQL/HTTP         |
+| BFF/referencias/detalle     | `pnpm web:verify`        | OK: 11/11                         |
+| Migraciones/constraints     | `pnpm database:verify`   | OK: 16/16, 30/30 y cero drift     |
+
+La API proyecta cinco detalles por allowlist y solo timelines seguros de máximo 25. El BFF cifra la
+referencia con AES-256-GCM, AAD, expiración y tenant; el navegador no recibe UUID, referencia resuelta,
+organización, correo, cuerpos, metadata libre ni IDs relacionados. Producción falla cerrada sin clave.
+
+La primera ejecución no pudo iniciar PostgreSQL porque Docker Desktop estaba detenido; se levantó y
+se mejoró el teardown para no ocultar fallos de setup. La siguiente ejecución detectó una expectativa
+que elegía otro pedido concurrente por orden incidental; se ancló al timeline observable. Todos los
+gates pasaron después, sin desactivar validaciones. No hubo migración, tráfico real ni despliegue.
+
+## Iteración E6-H7A
+
+Fecha: 2026-07-18.
+
+| Validación                    | Comando                  | Resultado                           |
+| ----------------------------- | ------------------------ | ----------------------------------- |
+| Operaciones/export/rate limit | `pnpm operations:verify` | OK: 12/12 PostgreSQL/HTTP           |
+| BFF/CSV/fórmulas/headers      | `pnpm web:verify`        | OK: 13/13                           |
+| Migraciones/constraints       | `pnpm database:verify`   | OK: 16/16, 30/30 y cero drift       |
+| Infraestructura/persistencia  | `pnpm infra:verify`      | OK: health, protocolos y recreación |
+| Formatter/lint/types/builds   | `pnpm validate`          | OK: 86 pruebas y ambos builds       |
+
+El export interno limita 7 días/1.000 filas y devuelve solo fecha/tipo/estado/atención/motivo. El BFF
+genera CSV en memoria, owner/admin, con rate limit durable y protección contra fórmulas incluso tras
+espacios. No hay UUID, PII, persistencia, jobs ni proveedores.
+
+El primer cierre encontró únicamente formato pendiente en tres documentos creados durante E6-H6A;
+se aplicó Prettier y el gate completo pasó al repetir. No se relajó ninguna validación.
+
+## Iteración E9-H1A
+
+Fecha: 2026-07-18.
+
+| Validación              | Comando                | Resultado                                    |
+| ----------------------- | ---------------------- | -------------------------------------------- |
+| Backup/restore aislado  | `pnpm backup:verify`   | OK: 39 tablas, 30 migraciones, cleanup total |
+| Migraciones/constraints | `pnpm database:verify` | OK: 16/16, 30/30 y cero drift                |
+| Formatter/lint/builds   | `pnpm validate`        | OK: 86 pruebas y ambos builds                |
+| Gate continuo           | GitHub Actions         | agregado después de `database:verify`        |
+
+El segundo ciclo medido tardó 360 ms en backup, 890 ms en restore, 323 ms en comparar filas por
+tabla, historial de migraciones, constraints, índices y secuencias, y 3.523 ms en total. La fuente
+conserva 30 migraciones aplicadas y una fila histórica revertida; ambas bases coincidieron exactamente.
+
+El dump `0600` y la base aleatoria se eliminaron antes del éxito. Solo quedó un reporte JSON local,
+ignorado y sin datos. Esta evidencia no representa almacenamiento externo ni RPO/RTO contractual.
+
+## Iteración E9-H2A
+
+Fecha: 2026-07-18.
+
+| Validación                  | Comando                      | Resultado                              |
+| --------------------------- | ---------------------------- | -------------------------------------- |
+| Carga/backlog/recovery      | `pnpm load:verify`           | OK: 500 pedidos, 50 replays, 0 errores |
+| Outbox                      | `pnpm outbox:verify`         | OK: 4/4                                |
+| Webhook/sync/clasificación  | gates Shopify/order en serie | OK: 5/5 + 4/4 + 4/4                    |
+| Migraciones/constraints     | `pnpm database:verify`       | OK: 16/16, 30/30 y cero drift          |
+| Formatter/lint/types/builds | `pnpm validate`              | OK: 87 pruebas y ambos builds          |
+
+La medición final ingresó 500 webhooks a 140,36 req/s, p95 251 ms; acumuló exactamente 500 eventos y
+los drenó en 7.843 ms a 63,75 pedidos/s. Los 500 pedidos terminaron `READY_FOR_LOGISTICS`, con 1.500
+transiciones, 50 replays sin duplicación, cero errores y cero DLQ. Base/colas aisladas se eliminaron.
+
+La primera corrida serial agotó 120 s en 230 pedidos. Al aumentar concurrencia aparecieron 103 DLQ;
+el diagnóstico reprodujo `P2034` en sync/clasificación, que usaban `SERIALIZABLE` aunque ya tenían lock
+por pedido. `READ COMMITTED` + advisory lock + cinco reintentos eliminó el conflicto sin relajar
+umbrales. Los resultados solo caracterizan Compose local y mocks, no capacidad productiva.
+
+## Iteración E9-H3A
+
+Fecha: 2026-07-18.
+
+| Validación                  | Comando                | Resultado                                |
+| --------------------------- | ---------------------- | ---------------------------------------- |
+| Secretos/artefactos/config  | `pnpm security:verify` | OK: 443 archivos, cero hallazgos         |
+| Dependencias productivas    | `pnpm audit --prod`    | OK: 402, cero vulnerabilidades conocidas |
+| Headers/BFF                 | `pnpm web:verify`      | OK: 13/13                                |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 87 pruebas y ambos builds            |
+
+Siete detectores high-confidence pasan self-test construido en memoria. El gate revisa candidatos
+Git, artefactos ignorados, versiones exactas, lifecycle scripts, lockfile, CI, cuatro imágenes/bindings
+Compose y CSP/headers. Checkout quedó con `persist-credentials: false`; el reporte agregado no incluye
+coincidencias, valores ni fuente.
+
+Se documentan como abiertos tags de Actions no pineados por SHA, CSP `unsafe-inline`, scanner propio,
+SAST/DAST, pentest, TLS/ACL/secret manager e infraestructura objetivo. No se autorizó release.
+
+## Iteración E9-H4A
+
+Fecha: 2026-07-18.
+
+| Validación                   | Comando              | Resultado                                    |
+| ---------------------------- | -------------------- | -------------------------------------------- |
+| Build/migración/startup      | `pnpm release:smoke` | OK: API 3.278 ms, web 1.012 ms               |
+| Health/readiness/métricas    | `pnpm release:smoke` | OK: dependencias sanas y Bearer obligatorio  |
+| Headers/BFF/shutdown         | `pnpm release:smoke` | OK: CSP productiva, 401/no-store, puertos    |
+| Estrategia de rollback local | revisión de runbook  | OK: forward-only, sin restore indiscriminado |
+
+La primera ejecución encontró que `next start` buscaba `.next` desde la raíz del monorepo. El
+launcher conservó el binario absoluto y cambió el directorio de trabajo a `apps/web`; la repetición
+completa pasó. API y web recibieron SIGTERM y sus puertos quedaron cerrados.
+
+El reporte ignorado solo conserva booleanos y duraciones. No incluye puertos, token, clave, bodies,
+logs, PII o secretos. No hubo despliegue, TLS/proxy, rollback real ni aprobación de release.
+
+## Iteración E9-H5A
+
+Fecha: 2026-07-18.
+
+| Validación              | Resultado | Presupuesto local |
+| ----------------------- | --------: | ----------------: |
+| Readiness detecta Redis |    697 ms |         15.000 ms |
+| Alerta única `firing`   |    978 ms |         15.000 ms |
+| Readiness recuperada    |  6.322 ms |         30.000 ms |
+| Alerta `resolved`       |  6.325 ms |         30.000 ms |
+| Exportación Collector   |  4.185 ms |         30.000 ms |
+
+`observability:verify` construyó API, inició Compose, usó puerto/token/IDs efímeros, conservó W3C,
+métricas y redacción, demostró que la API sobrevive OTLP caído y restauró servicios/proceso. El JSON
+ignorado no contiene identificadores ni secretos. Los presupuestos no son SLO productivos.
+
+## Iteración E3-H8A y E0-H4D
+
+Fecha: 2026-07-18.
+
+| Validación                    | Comando                | Resultado                                  |
+| ----------------------------- | ---------------------- | ------------------------------------------ |
+| Purga inbound PostgreSQL/HTTP | `pnpm whatsapp:verify` | OK: 26/26, trigger/audit/replay/métrica    |
+| Esquema desde vacío           | `pnpm database:verify` | OK: 16/16, 32/32 y cero no validadas       |
+| Backup/restore actualizado    | `pnpm backup:verify`   | OK: 39 tablas/32 migraciones, cleanup      |
+| Baseline seguridad            | `pnpm security:verify` | OK: 458 archivos/402 deps, cero hallazgos  |
+| Regresión completa            | `pnpm validate`        | OK: 87 pruebas, 100 % crítico y dos builds |
+
+El trigger rechazó purga de contenido vigente. El vencido perdió ciphertext/fingerprint de forma
+irreversible, conservó evidencia, auditó un conteo tenant y el replay fue no-op. La migración 32
+validó seis constraints legacy tras comprobar nulos/huérfanos; no borró ni reescribió tablas.
+
+## Iteración E1-H1B..H5B — Shopify live readiness
+
+Fecha: 2026-07-18.
+
+| Validación                 | Resultado                                                     |
+| -------------------------- | ------------------------------------------------------------- |
+| Cinco gates Shopify        | OK: registro, webhook, pedido, clasificación y reconciliación |
+| Proveedor live unitario    | OK: 7/7; scopes, cursor, retry, redacción, MARK/CANCEL        |
+| Acciones Shopify unitarias | OK: 2/2; doble gate y transición terminal                     |
+| Scheduler unitario         | OK: 2/2; drain, resume y safety limit                         |
+| Outbox integrado           | OK: 4/4                                                       |
+| Regresión completa         | OK: 99/99; API 86, web 13, cobertura crítica 100 %            |
+| Build API/web              | OK                                                            |
+| Seguridad                  | OK: 474 archivos/402 dependencias, cero high/critical         |
+| Base de datos              | OK: 32 migraciones, esquema actualizado                       |
+
+La implementación local Shopify queda al 100 %: GraphQL Admin 2026-07, health de
+orders/inventory/locations, webhooks remotos idempotentes, overlap de secreto, pedido y line items
+paginados, consumidor MARK/CANCEL y scheduler de reconciliación. No se usaron credenciales ni tráfico
+Shopify real. La verificación de scopes, entrega, throttle y mutaciones en tienda development queda
+`BLOQUEADO_POR_CREDENCIALES` y no se contabiliza como evidencia live.
+
+Backup final: 502 ms dump, 1.272 ms restore, 452 ms verificación y 4.759 ms total. El smoke posterior
+pasó con API 3.278 ms/web 1.012 ms. No hubo proveedores, datos reales, despliegue, commit ni push.
+
+## Iteración E0-H5D, E0-H3C y E1-H5C
+
+Fecha: 2026-07-18.
+
+| Validación                       | Comando                              | Resultado                                            |
+| -------------------------------- | ------------------------------------ | ---------------------------------------------------- |
+| Regresión completa               | `pnpm validate`                      | OK: 105/105; API 92, web 13, cobertura crítica 100 % |
+| Membresías y asignaciones        | `pnpm identity:verify`               | OK: 5/5; revocación/replay/carrera/tenant            |
+| WhatsApp                         | `pnpm whatsapp:verify`               | OK: 26/26                                            |
+| Reconciliación Shopify           | `pnpm shopify:reconciliation:verify` | OK: 6/6; cursor keyset y scheduler                   |
+| Esquema desde vacío              | `pnpm database:verify`               | OK: 16/16, 33/33 y cero no validadas                 |
+| Reinicio y alertas técnicas      | `pnpm observability:verify`          | OK: un firing, hidratación y un resolved             |
+| Secretos/config/dependencias     | `pnpm security:verify`               | OK: 478 archivos/402 deps, cero high/critical        |
+| Backup/restore actualizado       | `pnpm backup:verify`                 | OK: 39 tablas/33 migraciones y cleanup               |
+| Build/migración/startup/shutdown | `pnpm release:smoke`                 | OK: API 1.930 ms, web 923 ms                         |
+
+La revocación de membresía libera dos conversaciones de prueba, incrementa versiones, escribe
+historial/outbox y revoca sesiones en una sola transacción serializable. Un claim concurrente y dos
+revocaciones idempotentes terminan sin asignaciones; el tenant ajeno permanece intacto. Las dos
+primeras fixtures incompletas fueron rechazadas por constraints reales y se corrigieron los datos de
+prueba sin relajar el esquema.
+
+El drill de observabilidad detectó Redis caído en 692 ms y el firing en 972 ms. Reinició la API con
+Redis aún caído, confirmó que Alertmanager conservó exactamente un firing, recuperó readiness en
+6.265 ms, emitió un solo resolved en 6.534 ms y recuperó Collector en 3.693 ms. Las respuestas
+inválidas/excesivas y concurrencia de hidratación también están cubiertas unitariamente.
+
+La inspección especializada de incidencias Shopify usa un cursor ligado al filtro y mantiene una
+secuencia sin duplicados ante inserciones concurrentes. El primer `validate` detectó únicamente
+formato y lint en pruebas nuevas; ambos se corrigieron y la repetición integral pasó. Backup: 548 ms,
+restore 1.302 ms, verificación 451 ms y 4.858 ms total. No hubo credenciales, tráfico de proveedores,
+despliegue, commit ni push.
+
+## Iteración E0-H6A y E7-H1A
+
+Fecha: 2026-07-18.
+
+| Validación                   | Comando                    | Resultado                                           |
+| ---------------------------- | -------------------------- | --------------------------------------------------- |
+| Fronteras modulares          | `pnpm architecture:verify` | OK: 123 archivos, 529 imports, 5 pares, 8 fixtures  |
+| Cartera financiera simulada  | `pnpm finance:verify`      | OK: 4/4 PostgreSQL/HTTP                             |
+| Formatter/lint/tipos/pruebas | `pnpm validate`            | OK: 105/105, cobertura crítica 100 % y ambos builds |
+| Seguridad final              | `pnpm security:verify`     | OK: 486 archivos/402 deps, cero high/critical       |
+| Startup productivo local     | `pnpm release:smoke`       | OK: API 2.065 ms, web 910 ms y shutdown limpio      |
+
+El grafo real permitió separar raíces de composición, ocho módulos de plataforma y diez dominios. El
+gate impide plataforma→dominio, módulos desconocidos, imports fuera de `api/src`, pares no declarados
+y excepciones obsoletas. Cinco colaboraciones exactas permanecen explícitas. El tipo de dependencia se
+movió a `foundation`, eliminando el borde inverso `observability -> health` sin alterar runtime.
+
+La cartera E7-H1A agrega intenciones Wompi/COP simuladas por estado y total dentro de una ventana
+tenant-safe. Un importe de 9.007.199.254.740.993 unidades menores prueba que la respuesta decimal string
+no pierde precisión IEEE-754. También pasaron RBAC/tenant, vacío, rangos inválidos, auditoría sin
+importes y kill switch 503. No se afirma recaudo, saldo, costo, utilidad ni proveedor real; esas
+funciones siguen bloqueadas por decisiones y datos externos. No hubo despliegue, commit ni push.

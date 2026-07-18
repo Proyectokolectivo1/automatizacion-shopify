@@ -27,8 +27,11 @@ la organización.
 
 `POST /identity/organizations/:organizationId/memberships/:membershipId/revoke`
 
-Requiere `Idempotency-Key`. Devuelve `{ "membershipId": "...", "status": "revoked" }`. La
-revocación es atómica con la invalidación de sesiones y protege el último owner activo.
+Requiere `Idempotency-Key`. Devuelve
+`{ "membershipId": "...", "releasedConversationCount": 2, "status": "revoked" }`. La revocación es
+atómica con la invalidación de sesiones y la liberación de todas las conversaciones WhatsApp asignadas;
+protege el último owner activo. Cada liberación incrementa su versión y conserva historial/outbox con
+la razón cerrada `MEMBERSHIP_REVOKED`.
 
 ## Errores y replay
 

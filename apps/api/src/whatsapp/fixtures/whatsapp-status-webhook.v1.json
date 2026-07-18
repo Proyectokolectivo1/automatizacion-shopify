@@ -1,0 +1,19 @@
+{
+  "version": "v1",
+  "authentication": {
+    "algorithm": "HMAC-SHA256",
+    "header": "x-simulated-whatsapp-signature-v1",
+    "prefix": "sha256="
+  },
+  "event": {
+    "_fixture": {
+      "synthetic": true,
+      "version": "v1"
+    },
+    "eventType": "message.status",
+    "externalEventId": "synthetic-status-event-v1",
+    "occurredAt": "2026-07-14T20:00:00.000Z",
+    "providerMessageId": "simulated:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "status": "sent"
+  }
+}

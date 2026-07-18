@@ -1,0 +1,6 @@
+{
+  "version": "v1",
+  "checkoutBaseUrl": "https://checkout.wompi.simulated.invalid/p/",
+  "publicKey": "pub_test_synthetic_codex_not_a_real_key",
+  "integritySecret": "test_integrity_synthetic_codex_not_a_real_secret"
+}

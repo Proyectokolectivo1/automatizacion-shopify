@@ -14,3 +14,10 @@ export interface AuthTokens {
   readonly refreshExpiresAt: string;
   readonly refreshToken: string;
 }
+
+export interface AuthOrganizationOption {
+  readonly dashboardAllowed: boolean;
+  readonly name: string;
+  readonly organizationId: string;
+  readonly role: OrganizationRole;
+}

@@ -24,7 +24,14 @@ const loginSchema = z.object({
   organizationId: z.string().uuid(),
   password: z.string().min(12).max(128),
 });
+const loginOptionsSchema = z
+  .object({
+    email: z.string().trim().email().max(320),
+    password: z.string().min(12).max(128),
+  })
+  .strict();
 const refreshSchema = z.object({ refreshToken: z.string().min(1).max(200) });
+const switchOrganizationSchema = z.object({ organizationId: z.string().uuid() }).strict();
 const invitationSchema = z.object({
   email: z.string().trim().email().max(320),
   role: z.enum(['OWNER', 'ADMIN', 'OPERATIONS', 'LOGISTICS', 'SUPPORT', 'FINANCE', 'READ_ONLY']),
@@ -55,6 +62,17 @@ export class AuthController {
       ...input,
       ipAddress: request.ip ?? 'unknown',
       userAgent: request.header('user-agent'),
+    });
+  }
+
+  @Post('login-options')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  public loginOptions(@Body() body: unknown, @Req() request: Request) {
+    const input = this.parse(loginOptionsSchema, body);
+    return this.auth.discoverOrganizations({
+      ...input,
+      ipAddress: request.ip ?? 'unknown',
     });
   }
 
@@ -121,6 +139,30 @@ export class AuthController {
     if (request.auth === undefined)
       throw new BadRequestException('Missing authenticated principal');
     await this.auth.logout(request.auth);
+  }
+
+  @Get('organizations')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard)
+  public organizations(@Req() request: AuthenticatedRequest) {
+    if (request.auth === undefined)
+      throw new BadRequestException('Missing authenticated principal');
+    return this.auth.listOrganizations(request.auth);
+  }
+
+  @Post('switch-organization')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(AuthGuard)
+  public switchOrganization(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    if (request.auth === undefined)
+      throw new BadRequestException('Missing authenticated principal');
+    return this.auth.switchOrganization({
+      ...this.parse(switchOrganizationSchema, body),
+      ipAddress: request.ip ?? 'unknown',
+      principal: request.auth,
+      userAgent: request.header('user-agent'),
+    });
   }
 
   @Get('me')

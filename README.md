@@ -51,6 +51,16 @@ pnpm dlq:verify
 pnpm auth:verify
 pnpm identity:verify
 pnpm shopify:verify
+pnpm shopify:webhooks:verify
+pnpm shopify:orders:verify
+pnpm orders:classification:verify
+pnpm shopify:reconciliation:verify
+pnpm transport-rates:verify
+pnpm wompi:verify
+pnpm whatsapp:verify
+pnpm operations:verify
+pnpm alerts:verify
+pnpm web:verify
 ```
 
 Las migraciones se aplican con `pnpm database:migrate`; revise primero
@@ -64,6 +74,49 @@ La API DLQ se valida con `pnpm dlq:verify` y permanece desactivada con kill swit
 
 La autenticación base se valida con `pnpm auth:verify`. No existe registro público ni cuenta inicial
 por defecto; consulte `docs/runbooks/authentication.md` y no inserte contraseñas en claro.
+
+El ingreso webhook Shopify se valida con `pnpm shopify:webhooks:verify`. Solo admite fixtures
+sintéticos cuando la simulación está activa; consulte `docs/runbooks/shopify-webhooks.md`. La
+suscripción y API reales continúan bloqueadas por credenciales.
+
+La normalización de pedidos sintéticos se valida con `pnpm shopify:orders:verify`; consulte
+`docs/runbooks/shopify-order-sync.md`. Dinero se almacena en unidades menores y snapshots tardíos no
+reemplazan versiones más nuevas.
+
+La clasificación prepago/COD se valida con `pnpm orders:classification:verify`; consulte
+`docs/runbooks/order-classification.md`. Las reglas son versionadas por tienda, el historial es
+inmutable y todo tráfico real permanece desactivado.
+
+La reconciliación simulada se valida con `pnpm shopify:reconciliation:verify`; consulte
+`docs/runbooks/shopify-reconciliation.md`. Detecta faltantes, webhooks fallidos y pedidos atascados,
+y reprocesa exclusivamente mediante outbox con RBAC, idempotencia y kill switch.
+
+Las tarifas de transporte simuladas se validan con `pnpm transport-rates:verify`; consulte
+`docs/runbooks/transport-rates.md`. Las políticas son versionadas por alcance, la resolución falla
+cerrada y Wompi/WhatsApp permanecen desactivados.
+
+Las intenciones Wompi simuladas se validan con `pnpm wompi:verify`; consulte
+`docs/runbooks/wompi-payment-intents.md`. Los links usan un dominio `.invalid`, no capturan tarjetas y
+todo tráfico/credencial real permanece bloqueado.
+
+El mismo gate valida recordatorios durables a +8/+16 horas; consulte
+`docs/runbooks/payment-reminders.md`. Solo se crea outbox sintético, sin envío WhatsApp real.
+
+También valida vencimiento a 24 horas, abandono y carreras contra webhooks; consulte
+`docs/runbooks/payment-expiration.md`. `MARK`/`CANCEL` solo generan solicitudes simuladas y nunca
+mutan Shopify en esta fase.
+
+La conciliación diaria simulada usa el mismo gate; consulte
+`docs/runbooks/wompi-reconciliation.md`. Persiste checkpoint, reportes e incidencias deduplicadas,
+alerta por outbox y nunca corrige automáticamente estados o importes.
+
+Las alertas operativas internas se validan con `pnpm alerts:verify`; consulte
+`docs/runbooks/operational-alerts.md`. Persisten ciclos de atención v1 deduplicados y solo ofrecen
+lectura tenant-safe; no envían notificaciones ni corrigen recursos.
+
+El dashboard interno usa Next.js como BFF y se valida con `pnpm web:verify`; consulte
+`docs/runbooks/web-dashboard.md`. Los tokens API solo viven en cookies HttpOnly, toda mutación de
+sesión exige CSRF/origen y el navegador recibe una proyección operativa sin IDs ni PII.
 
 ## Estado real
 

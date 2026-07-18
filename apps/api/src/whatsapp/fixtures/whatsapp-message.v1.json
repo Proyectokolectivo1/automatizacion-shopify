@@ -1,0 +1,5 @@
+{
+  "fixtureVersion": "v1",
+  "mode": "simulation",
+  "providerMessageIdPrefix": "simulated:"
+}

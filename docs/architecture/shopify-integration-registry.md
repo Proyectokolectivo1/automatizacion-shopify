@@ -3,8 +3,9 @@
 ## Alcance E1-H1A
 
 El módulo registra tiendas y credenciales, prueba el ciclo de vida mediante un proveedor simulado y
-mantiene la conexión real apagada. No recibe webhooks, no sincroniza pedidos y no realiza tráfico de
-red.
+mantiene la conexión real apagada. La recepción simulada de webhooks se agregó en E1-H2A y se describe
+en `docs/architecture/shopify-webhook-ingress.md`; este registro todavía no sincroniza pedidos ni
+realiza tráfico de red.
 
 `ShopifyIntegrationService` depende de `ShopifyProvider`; actualmente el único binding es
 `ShopifyMockProvider`. Esta inversión permite incorporar el adaptador GraphQL real sin acoplar el

@@ -1,0 +1,15 @@
+{
+  "_fixture": {
+    "synthetic": true,
+    "version": "v1"
+  },
+  "eventType": "message.received",
+  "externalEventId": "synthetic-inbound-event-v1",
+  "occurredAt": "2026-07-15T20:00:00.000Z",
+  "providerMessageId": "simulated:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "senderPhoneE164": "+573001112233",
+  "message": {
+    "type": "text",
+    "text": "Mensaje entrante exclusivamente sintético"
+  }
+}

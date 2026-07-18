@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 
@@ -17,6 +17,7 @@ import { PrismaService } from '../src/database/prisma.service';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { IdentityAdministrationService } from '../src/identity/identity-administration.service';
 import { OwnerBootstrapService } from '../src/identity/owner-bootstrap.service';
+import { WhatsAppAssignmentService } from '../src/whatsapp/whatsapp-assignment.service';
 
 loadEnvironmentFiles();
 
@@ -108,6 +109,19 @@ describe('owner bootstrap and tenant-safe identity administration', () => {
     delete process.env.IDENTITY_BOOTSTRAP_ORGANIZATION_NAME;
     process.env.IDENTITY_ADMIN_ENABLED = 'true';
     process.env.IDENTITY_ADMIN_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_INTEGRATIONS_ENABLED = 'true';
+    process.env.WHATSAPP_INTEGRATIONS_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_INBOX_ENABLED = 'true';
+    process.env.WHATSAPP_INBOX_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_INBOX_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_ASSIGNMENTS_ENABLED = 'true';
+    process.env.WHATSAPP_ASSIGNMENTS_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_ASSIGNMENTS_SIMULATION_MODE = 'true';
+    process.env.WHATSAPP_CREDENTIAL_KEY_VERSION = 'v1';
+    process.env.WHATSAPP_CREDENTIAL_KEYS_JSON = JSON.stringify({
+      v1: randomBytes(32).toString('base64url'),
+    });
 
     prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
     await prisma.$connect();
@@ -314,21 +328,126 @@ describe('owner bootstrap and tenant-safe identity administration', () => {
     ).rejects.toThrow(/last owner/u);
   });
 
-  it('revokes once under concurrency, invalidates sessions and exports bounded evidence', async () => {
+  it('atomically revokes, releases assignments, survives a claim race and exports bounded evidence', async () => {
     const [owner, support] = await Promise.all([login(), login('identity-support@example.test')]);
+    const [ownerMembership, supportMembership] = await Promise.all([
+      prisma.organizationMembership.findFirstOrThrow({
+        where: { organizationId, user: { email: 'bootstrap-owner@example.test' } },
+      }),
+      prisma.organizationMembership.findUniqueOrThrow({ where: { id: supportMembershipId } }),
+    ]);
+    const store = await prisma.store.create({
+      data: {
+        currency: 'COP',
+        name: 'Identity assignment store',
+        organizationId,
+        shopifyShopDomain: `identity-${randomUUID().slice(0, 8)}.myshopify.com`,
+        status: 'ACTIVE',
+        timezone: 'America/Bogota',
+      },
+    });
+    const assignedAt = new Date();
+    const assignedConversations = await Promise.all(
+      [0, 1].map((index) =>
+        prisma.whatsAppConversation.create({
+          data: {
+            assignedAt,
+            assignedMembershipId: supportMembershipId,
+            assignmentVersion: 1,
+            contactHash: randomBytes(32).toString('hex'),
+            lastMessageAt: new Date(assignedAt.getTime() + index),
+            organizationId,
+            storeId: store.id,
+          },
+        }),
+      ),
+    );
+    await prisma.whatsAppConversationAssignmentHistory.createMany({
+      data: assignedConversations.map((conversation) => ({
+        action: 'CLAIM',
+        actorMembershipId: supportMembershipId,
+        conversationId: conversation.id,
+        newAssigneeMembershipId: supportMembershipId,
+        organizationId,
+        storeId: store.id,
+        version: 1,
+      })),
+    });
+    const raceConversation = await prisma.whatsAppConversation.create({
+      data: {
+        contactHash: randomBytes(32).toString('hex'),
+        lastMessageAt: new Date(assignedAt.getTime() + 3),
+        organizationId,
+        storeId: store.id,
+      },
+    });
+    const foreignStore = await prisma.store.create({
+      data: {
+        currency: 'COP',
+        name: 'Foreign identity assignment store',
+        organizationId: otherOrganizationId,
+        shopifyShopDomain: `foreign-identity-${randomUUID().slice(0, 8)}.myshopify.com`,
+        status: 'ACTIVE',
+        timezone: 'America/Bogota',
+      },
+    });
+    const foreignConversation = await prisma.whatsAppConversation.create({
+      data: {
+        assignedAt,
+        assignedMembershipId: foreignMembershipId,
+        assignmentVersion: 1,
+        contactHash: randomBytes(32).toString('hex'),
+        lastMessageAt: assignedAt,
+        organizationId: otherOrganizationId,
+        storeId: foreignStore.id,
+      },
+    });
+
     const key = `revoke-${randomUUID()}`;
-    const responses = await Promise.all([
-      request(baseUrl)
-        .post(`/identity/organizations/${organizationId}/memberships/${supportMembershipId}/revoke`)
-        .set('authorization', `Bearer ${owner.accessToken}`)
-        .set('idempotency-key', key),
-      request(baseUrl)
-        .post(`/identity/organizations/${organizationId}/memberships/${supportMembershipId}/revoke`)
-        .set('authorization', `Bearer ${owner.accessToken}`)
-        .set('idempotency-key', key),
+    const assignments = app?.get(WhatsAppAssignmentService);
+    if (assignments === undefined) throw new Error('WhatsApp assignment service missing');
+    const [responses, claim] = await Promise.all([
+      Promise.all([
+        request(baseUrl)
+          .post(
+            `/identity/organizations/${organizationId}/memberships/${supportMembershipId}/revoke`,
+          )
+          .set('authorization', `Bearer ${owner.accessToken}`)
+          .set('idempotency-key', key),
+        request(baseUrl)
+          .post(
+            `/identity/organizations/${organizationId}/memberships/${supportMembershipId}/revoke`,
+          )
+          .set('authorization', `Bearer ${owner.accessToken}`)
+          .set('idempotency-key', key),
+      ]),
+      Promise.allSettled([
+        assignments.claim({
+          conversationId: raceConversation.id,
+          expectedVersion: 0,
+          idempotencyKey: `claim-during-revoke-${randomUUID()}`,
+          organizationId,
+          principal: {
+            email: 'identity-support@example.test',
+            organizationId,
+            role: 'SUPPORT',
+            sessionId: randomUUID(),
+            userId: supportMembership.userId,
+          },
+          storeId: store.id,
+        }),
+      ]),
     ]);
     expect(responses.map(({ status }) => status)).toEqual([200, 200]);
     expect(responses[0]?.body).toEqual(responses[1]?.body);
+    expect(responses[0]?.body).toMatchObject({
+      membershipId: supportMembershipId,
+      status: 'revoked',
+    });
+    expect([2, 3]).toContain(
+      (responses[0]?.body as { releasedConversationCount: number }).releasedConversationCount,
+    );
+    expect(['fulfilled', 'rejected']).toContain(claim[0]?.status);
     await request(baseUrl)
       .get('/auth/me')
       .set('authorization', `Bearer ${support.accessToken}`)
@@ -336,6 +455,46 @@ describe('owner bootstrap and tenant-safe identity administration', () => {
     expect(
       await prisma.organizationMembership.findUniqueOrThrow({ where: { id: supportMembershipId } }),
     ).toMatchObject({ status: 'REVOKED' });
+    const released = await prisma.whatsAppConversation.findMany({
+      where: { id: { in: [...assignedConversations.map(({ id }) => id), raceConversation.id] } },
+    });
+    expect(released.every(({ assignedMembershipId }) => assignedMembershipId === null)).toBe(true);
+    expect(
+      released
+        .filter(({ id }) => assignedConversations.some((conversation) => conversation.id === id))
+        .map(({ assignmentVersion }) => assignmentVersion),
+    ).toEqual([2, 2]);
+    expect(
+      await prisma.whatsAppConversationAssignmentHistory.count({
+        where: {
+          conversationId: { in: released.map(({ id }) => id) },
+          reasonCode: 'MEMBERSHIP_REVOKED',
+        },
+      }),
+    ).toBe((responses[0]?.body as { releasedConversationCount: number }).releasedConversationCount);
+    expect(
+      await prisma.outboxEvent.count({
+        where: {
+          aggregateId: { in: released.map(({ id }) => id) },
+          eventType: 'whatsapp.conversation.assignment.changed.v1',
+          payloadJson: { path: ['reasonCode'], equals: 'membership_revoked' },
+        },
+      }),
+    ).toBe((responses[0]?.body as { releasedConversationCount: number }).releasedConversationCount);
+    expect(
+      await prisma.whatsAppConversation.findUniqueOrThrow({
+        where: { id: foreignConversation.id },
+      }),
+    ).toMatchObject({ assignedMembershipId: foreignMembershipId, assignmentVersion: 1 });
+    const releaseAudit = await prisma.auditLog.findFirstOrThrow({
+      orderBy: { createdAt: 'desc' },
+      where: { action: 'identity.membership.revoked', resourceId: supportMembershipId },
+    });
+    expect(releaseAudit.metadataJson).toMatchObject({
+      releasedConversationCount: (responses[0]?.body as { releasedConversationCount: number })
+        .releasedConversationCount,
+    });
+    expect(ownerMembership.id).not.toBe(supportMembershipId);
     const metrics = await request(baseUrl).get('/metrics').expect(200);
     expect(metrics.text).toContain('ecommerce_api_identity_operations_total');
     const evidence = JSON.stringify(

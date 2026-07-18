@@ -1,5 +1,8 @@
 # Contrato API de registro Shopify simulado
 
+La configuración y recepción de webhooks se versiona por separado en
+`docs/contracts/shopify-webhook-api.md`.
+
 Base: `/integrations/organizations/:organizationId/shopify/stores`. Todos los endpoints exigen
 Bearer token, permiso `integration.manage`, coincidencia de organización y header `Idempotency-Key`
 de 8 a 200 caracteres. Solo owner/admin poseen el permiso.

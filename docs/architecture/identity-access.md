@@ -27,6 +27,11 @@ usuario afectado en la misma transacción. La API aplica tenant y `identity.mana
 terceros y admin no puede gestionar ni asignar owner/admin. El último owner y toda auto-mutación
 quedan protegidos.
 
+E0-H5D comparte un lock advisory tenant con la asignación WhatsApp. Revocar una membresía libera todas
+sus conversaciones en la misma transacción, incrementa cada versión y conserva historial inmutable,
+outbox y una auditoría agregada. Así, un claim/reassign concurrente termina antes de la revocación y es
+liberado, o termina después y rechaza la membresía ya inactiva.
+
 Flags y kill switches están cerrados por defecto. El correo se ejecuta solo en simulación mientras
 DP-001 siga pendiente. Auditoría y métricas registran outcomes y UUID internos, nunca correo, IP,
 password, token, secreto o clave idempotente cruda.
