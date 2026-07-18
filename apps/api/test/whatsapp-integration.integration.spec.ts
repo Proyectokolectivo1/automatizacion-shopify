@@ -59,6 +59,9 @@ const environmentNames = [
   'WHATSAPP_INBOUND_KILL_SWITCH',
   'WHATSAPP_INBOUND_SIMULATION_MODE',
   'WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS',
+  'WHATSAPP_INBOX_ENABLED',
+  'WHATSAPP_INBOX_KILL_SWITCH',
+  'WHATSAPP_INBOX_SIMULATION_MODE',
 ] as const;
 const previousEnvironment = new Map(
   environmentNames.map((name) => [name, process.env[name]] as const),
@@ -118,6 +121,33 @@ interface InboundResponse {
   readonly status: string;
 }
 
+interface InboxConversationItem {
+  readonly conversationId: string;
+  readonly identity: string;
+  readonly latestDirection: string | null;
+  readonly status: string;
+}
+
+interface InboxListResponse {
+  readonly items: readonly InboxConversationItem[];
+  readonly mode: string;
+  readonly nextCursor: string | null;
+}
+
+interface InboxTimelineItem {
+  readonly content: string | null;
+  readonly contentState: string;
+  readonly direction: string;
+  readonly messageId: string;
+  readonly statusHistory: readonly unknown[];
+  readonly type: string;
+}
+
+interface InboxTimelineResponse {
+  readonly items: readonly InboxTimelineItem[];
+  readonly nextCursor: string | null;
+}
+
 describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
   let app: INestApplication | undefined;
   let baseUrl: string;
@@ -163,6 +193,9 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     process.env.WHATSAPP_INBOUND_KILL_SWITCH = 'false';
     process.env.WHATSAPP_INBOUND_SIMULATION_MODE = 'true';
     process.env.WHATSAPP_INBOUND_CONTENT_RETENTION_DAYS = '30';
+    process.env.WHATSAPP_INBOX_ENABLED = 'true';
+    process.env.WHATSAPP_INBOX_KILL_SWITCH = 'false';
+    process.env.WHATSAPP_INBOX_SIMULATION_MODE = 'true';
     process.env.WHATSAPP_CREDENTIAL_KEY_VERSION = 'v1';
     process.env.WHATSAPP_CREDENTIAL_KEYS_JSON = JSON.stringify({
       v1: randomBytes(32).toString('base64url'),
@@ -243,7 +276,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     const passwordHash = await new PasswordService().hash(password);
     const createUser = (
       email: string,
-      role: 'OWNER' | 'ADMIN' | 'READ_ONLY',
+      role: 'OWNER' | 'ADMIN' | 'READ_ONLY' | 'SUPPORT',
       targetOrganizationId = organizationId,
     ) =>
       prisma.user.create({
@@ -259,6 +292,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
       createUser('whatsapp-owner@example.test', 'OWNER'),
       createUser('whatsapp-admin@example.test', 'ADMIN'),
       createUser('whatsapp-reader@example.test', 'READ_ONLY'),
+      createUser('whatsapp-support@example.test', 'SUPPORT'),
       createUser('whatsapp-foreign@example.test', 'OWNER', otherOrganizationId),
     ]);
 
@@ -312,6 +346,9 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
 
   const messageEndpoint = (targetStoreId = storeId, targetOrganizationId = organizationId) =>
     `${endpoint(targetStoreId, targetOrganizationId)}/messages/transactional`;
+
+  const inboxEndpoint = (targetStoreId = storeId, targetOrganizationId = organizationId) =>
+    `/operations/organizations/${targetOrganizationId}/whatsapp/stores/${targetStoreId}/conversations`;
 
   const templatePayload = () => ({
     bodyTemplate: 'Hola {{customer_name}}, paga el transporte en {{checkout_url}}.',
@@ -1159,6 +1196,157 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     }
   });
 
+  it('lists a stable paginated inbox with bounded filters and least-privilege RBAC', async () => {
+    const [support, reader] = await Promise.all([
+      login('whatsapp-support@example.test'),
+      login('whatsapp-reader@example.test'),
+    ]);
+    const first = await request(baseUrl)
+      .get(inboxEndpoint())
+      .query({ limit: 1 })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const firstBody = first.body as InboxListResponse;
+    expect(firstBody).toMatchObject({ mode: 'simulation' });
+    expect(firstBody.items).toHaveLength(1);
+    expect(firstBody.nextCursor).toEqual(expect.any(String));
+    if (firstBody.nextCursor === null) throw new Error('Expected a second inbox page');
+    const second = await request(baseUrl)
+      .get(inboxEndpoint())
+      .query({ cursor: firstBody.nextCursor, limit: 1 })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const secondBody = second.body as InboxListResponse;
+    expect(secondBody.items).toHaveLength(1);
+    expect(secondBody.items[0]?.conversationId).not.toBe(firstBody.items[0]?.conversationId);
+
+    const unknown = await request(baseUrl)
+      .get(inboxEndpoint())
+      .query({ identity: 'unknown_contact' })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const unknownBody = unknown.body as InboxListResponse;
+    expect(unknownBody.items).toHaveLength(1);
+    expect(unknownBody.items[0]).toMatchObject({
+      identity: 'unknown_contact',
+      latestDirection: 'inbound',
+      status: 'open',
+    });
+    expect(JSON.stringify(unknownBody)).not.toContain('+573009998877');
+    await request(baseUrl)
+      .get(inboxEndpoint())
+      .query({ cursor: 'not-a-cursor' })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(400);
+    await request(baseUrl)
+      .get(inboxEndpoint())
+      .set('authorization', `Bearer ${reader.accessToken}`)
+      .expect(403);
+  });
+
+  it('returns an authorized timeline without provider identifiers or telemetry content leaks', async () => {
+    const support = await login('whatsapp-support@example.test');
+    const knownConversation = await prisma.whatsAppConversation.findFirstOrThrow({
+      where: { customerId: { not: null }, organizationId, storeId },
+    });
+    const response = await request(baseUrl)
+      .get(`${inboxEndpoint()}/${knownConversation.id}/messages`)
+      .query({ limit: 10 })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const timeline = response.body as InboxTimelineResponse;
+    expect(timeline.items.some(({ direction }) => direction === 'inbound')).toBe(true);
+    expect(timeline.items.some(({ direction }) => direction === 'outbound')).toBe(true);
+    expect(
+      timeline.items.some(({ content }) => content === 'Synthetic known inbound secret text'),
+    ).toBe(true);
+    expect(timeline.items.some(({ statusHistory }) => statusHistory.length > 0)).toBe(true);
+    expect(JSON.stringify(timeline)).not.toContain('simulated:');
+    expect(JSON.stringify(timeline)).not.toContain('+573001112233');
+
+    const inboundOnly = await request(baseUrl)
+      .get(`${inboxEndpoint()}/${knownConversation.id}/messages`)
+      .query({ direction: 'inbound', limit: 1 })
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const inboundOnlyBody = inboundOnly.body as InboxTimelineResponse;
+    expect(inboundOnlyBody.items).toHaveLength(1);
+    expect(inboundOnlyBody.items[0]).toMatchObject({
+      contentState: 'available',
+      direction: 'inbound',
+      type: 'text',
+    });
+    const audit = JSON.stringify(
+      await prisma.auditLog.findMany({ where: { action: { startsWith: 'whatsapp.inbox.' } } }),
+    );
+    expect(audit).not.toContain('Synthetic known inbound secret text');
+    expect(audit).not.toContain('+573001112233');
+  });
+
+  it('never decrypts inbound content after its retention deadline', async () => {
+    const support = await login('whatsapp-support@example.test');
+    const conversation = await prisma.whatsAppConversation.findFirstOrThrow({
+      where: { customerId: null, organizationId, storeId },
+    });
+    const messageId = randomUUID();
+    const expiredText = 'Expired synthetic inbound content';
+    const cipher = app?.get(WhatsAppCredentialCipher);
+    if (cipher === undefined) throw new Error('WhatsApp cipher is unavailable');
+    await prisma.whatsAppMessage.create({
+      data: {
+        businessKeyHash: randomBytes(32).toString('hex'),
+        contentFingerprint: randomBytes(32).toString('hex'),
+        conversationId: conversation.id,
+        direction: 'INBOUND',
+        encryptedBodyJson: {
+          ...cipher.encryptInboundMessageContent(expiredText, organizationId, storeId, messageId),
+        },
+        id: messageId,
+        metadataJson: { contentEncrypted: true, fixtureVersion: 'v1', mode: 'simulation' },
+        organizationId,
+        providerMessageId: `simulated:${randomBytes(32).toString('hex')}`,
+        receivedAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000),
+        requestFingerprint: randomBytes(32).toString('hex'),
+        retentionExpiresAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+        senderHash: conversation.contactHash ?? randomBytes(32).toString('hex'),
+        status: 'SIMULATED_RECEIVED',
+        storeId,
+        type: 'TEXT',
+      },
+    });
+    const response = await request(baseUrl)
+      .get(`${inboxEndpoint()}/${conversation.id}/messages`)
+      .set('authorization', `Bearer ${support.accessToken}`)
+      .expect(200);
+    const timeline = response.body as InboxTimelineResponse;
+    const expired = timeline.items.find((item) => item.messageId === messageId);
+    expect(expired).toMatchObject({ content: null, contentState: 'expired' });
+    expect(JSON.stringify(timeline)).not.toContain(expiredText);
+  });
+
+  it('keeps foreign conversations non-revealing and closes the inbox with its kill switch', async () => {
+    const owner = await login();
+    const conversation = await prisma.whatsAppConversation.findFirstOrThrow({
+      where: { organizationId, storeId },
+    });
+    await request(baseUrl)
+      .get(`${inboxEndpoint(foreignStoreId)}/${conversation.id}/messages`)
+      .set('authorization', `Bearer ${owner.accessToken}`)
+      .expect(404);
+    process.env.WHATSAPP_INBOX_KILL_SWITCH = 'true';
+    const disabledApp = await createApplication();
+    try {
+      await disabledApp.listen(0, '127.0.0.1');
+      await request(await disabledApp.getUrl())
+        .get(inboxEndpoint())
+        .set('authorization', `Bearer ${owner.accessToken}`)
+        .expect(503);
+    } finally {
+      await disabledApp.close();
+      process.env.WHATSAPP_INBOX_KILL_SWITCH = 'false';
+    }
+  });
+
   it('fails closed when the independent webhook kill switch is active', async () => {
     const message = await prisma.whatsAppMessage.findFirstOrThrow({ where: { orderId } });
     process.env.WHATSAPP_WEBHOOKS_KILL_SWITCH = 'true';
@@ -1199,6 +1387,7 @@ describe('tenant-safe WhatsApp integration registry in simulation mode', () => {
     expect(metrics.text).toContain('ecommerce_api_whatsapp_message_operations_total');
     expect(metrics.text).toContain('ecommerce_api_whatsapp_status_webhooks_total');
     expect(metrics.text).toContain('ecommerce_api_whatsapp_inbound_webhooks_total');
+    expect(metrics.text).toContain('ecommerce_api_whatsapp_inbox_operations_total');
     const statusEvidence = JSON.stringify({
       events: await prisma.whatsAppStatusWebhookEvent.findMany(),
       history: await prisma.whatsAppMessageStatusHistory.findMany(),

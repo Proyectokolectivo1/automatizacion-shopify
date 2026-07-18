@@ -1,6 +1,6 @@
 # Deuda técnica
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 No se registra como deuda lo que pertenece a una vertical futura; se registra como backlog.
 

@@ -1,6 +1,6 @@
 # Plan de implementación
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>, rama `main`.
 
@@ -33,8 +33,8 @@ Fuente publicada: <https://github.com/Proyectokolectivo1/automatizacion-shopify>
 | 3I   | E3-H3A envío transaccional simulado | COMPLETADA                 | render, mensaje durable, replay y aceptación local probados |
 | 3J   | E3-H4A estados webhook simulados    | COMPLETADA                 | autenticidad, orden monotónico y replay probados            |
 | 3K   | E3-H5A mensajes entrantes simulados | COMPLETADA                 | ingreso durable, dedupe, tenant y redacción probados        |
-| 3L   | E3-H6A bandeja simulada             | SIGUIENTE                  | consulta, timeline y filtros tenant-safe probados           |
-| 3M   | E3-H7A asignación simulada          | PENDIENTE                  | ownership, carrera, RBAC y auditoría probados               |
+| 3L   | E3-H6A bandeja simulada             | COMPLETADA                 | consulta, timeline y filtros tenant-safe probados           |
+| 3M   | E3-H7A asignación simulada          | SIGUIENTE                  | ownership, carrera, RBAC y auditoría probados               |
 | 3N   | COD + Wompi + WhatsApp reales       | BLOQUEADO_POR_CREDENCIALES | link, mensaje, confirmación y vencimiento reales            |
 | 4    | Mastershop                          | BLOQUEADO_POR_PROVEEDOR    | mock contractual y flujo real solo con contrato             |
 | 5    | Impresión                           | BLOQUEADO_POR_INVENTARIO   | agente, PDF, spool y reimpresión auditada                   |
@@ -307,3 +307,14 @@ Implementar una bandeja de conversaciones exclusivamente simulada: listado pagin
 timeline de mensajes, filtros acotados y acceso RBAC. El contenido inbound debe descifrarse solo para
 usuarios autorizados, nunca después de su vencimiento ni en logs/métricas; no responder mensajes,
 asignar agentes todavía ni invocar Meta.
+
+Resultado: completada el 2026-07-17 sin migraciones nuevas. La API protegida lista conversaciones y
+timeline mediante cursores keyset, filtros acotados y lookup tenant-safe. Solo roles operativos
+autorizados reciben contenido; inbound vencido nunca se descifra. RBAC, paginación, cursor inválido,
+direcciones, historial, expiración, tenant, kill switch, auditoría y métricas sin PII están probados.
+
+## Vigesimoséptima vertical: E3-H7A
+
+Implementar asignación de conversaciones exclusivamente simulada: agente elegible dentro del tenant,
+claim/reassign/unassign con versión o lock, RBAC, historial durable, auditoría, métricas y carrera
+determinista. No responder mensajes ni conectar Meta.

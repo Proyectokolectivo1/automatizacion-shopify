@@ -1,18 +1,18 @@
 # Estado del proyecto
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 ## Estado general
 
 `EN_DESARROLLO` — fundaciones funcionales en progreso; no listo para piloto ni producción.
 
 Repositorio canónico público: <https://github.com/Proyectokolectivo1/automatizacion-shopify>. La rama
-`codex/foundations-e0-h2` contiene el avance validado hasta E3-H5A.
+`codex/foundations-e0-h2` contiene el avance validado hasta E3-H6A.
 
 ## Fase actual
 
-Fase 4 — mensajería simulada en progreso. E3-H1A a E3-H5A están completas; la siguiente vertical es
-E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.
+Fase 4 — mensajería simulada en progreso. E3-H1A a E3-H6A están completas; la siguiente vertical es
+E3-H7A, asignación de conversaciones WhatsApp exclusivamente simulada.
 
 ## Avance aproximado por épica
 
@@ -21,7 +21,7 @@ E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.
 | E0 Fundaciones           |   98 % | identidad/DLQ completas; falta E0-H3B             |
 | E1 Shopify               |   75 % | flujo simulado hasta conciliación y reproceso     |
 | E2 Pagos y tarifas       |   80 % | ciclo simulado completo hasta conciliación diaria |
-| E3 WhatsApp              |   71 % | conexión, plantillas, envío, estados e inbound    |
+| E3 WhatsApp              |   86 % | ciclo simulado hasta bandeja tenant-safe          |
 | E4 Mastershop            |    0 % | bloqueada por contrato del proveedor              |
 | E5 Impresión             |    0 % | pendiente inventario de impresoras                |
 | E6 Operación y dashboard |    0 % | pendiente                                         |
@@ -112,10 +112,13 @@ E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.
   retención y conversación conocida/seudónima tenant-safe, sin aceptar payload Meta.
 - Eventos/mensajes inmutables, dedupe por evento y mensaje externo, identidad compatible con rotación,
   replay, colisión, carrera, desconocidos, tenant, kill switch y redacción probados.
+- E3-H6A: listado/timeline keyset con filtros y RBAC específico para owner/admin/operations/support.
+- Contenido inbound solo se descifra vigente y autorizado; expirado queda oculto, con auditoría y
+  métricas sin PII, cursor inválido, tenant ajeno y kill switch probados.
 
 ## Siguiente vertical
 
-- E3-H6A: bandeja de conversaciones WhatsApp exclusivamente simulada, sin respuestas ni Meta.
+- E3-H7A: asignación de conversaciones WhatsApp exclusivamente simulada, sin respuestas ni Meta.
 
 ## Pendiente
 
@@ -154,10 +157,10 @@ E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.
 - `pnpm shopify:reconciliation:verify`: 3 pruebas HTTP/PostgreSQL de detección, RBAC, replay y reproceso.
 - `pnpm transport-rates:verify`: 3 pruebas HTTP/PostgreSQL y 5 unitarias de políticas y resolución.
 - `pnpm wompi:verify`: 17 pruebas PostgreSQL/HTTP y 4 contractuales; 21/21 en el ciclo Wompi.
-- `pnpm whatsapp:verify`: 17 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
+- `pnpm whatsapp:verify`: 21 pruebas PostgreSQL/HTTP; 17 contractuales se ejecutan en `pnpm test`.
 - GitHub Actions incluye los gates dedicados y el PR #1 estaba verde/sin conflictos al iniciar E3-H5A.
 - En esta iteración `pnpm validate`, `pnpm infra:verify` y todos los gates funcionales están verdes;
-  `pnpm audit --prod` quedó bloqueado porque el endpoint npm Audit respondió 410 retirado.
+  `pnpm audit --prod` volvió a responder normalmente y reportó cero vulnerabilidades conocidas.
 - Las migraciones 24 a 26 fueron aplicadas a la base local persistente; `database:status` confirma
   26/26 y esquema actualizado.
 - `pnpm validate` genera Prisma como primer paso y funciona sin artefactos generados previos.
@@ -177,5 +180,5 @@ workers dedicados, estados operativos posteriores ni integraciones reales.
 
 ## Siguiente paso
 
-Implementar E3-H6A: bandeja de conversaciones WhatsApp simulada con listado, timeline, paginación,
-filtros y RBAC tenant-safe. No responder mensajes, asignar agentes ni iniciar tráfico Meta.
+Implementar E3-H7A: asignación simulada de conversaciones a agentes elegibles con ownership,
+re-asignación controlada, carrera, RBAC, auditoría y tenant. No responder mensajes ni usar Meta.

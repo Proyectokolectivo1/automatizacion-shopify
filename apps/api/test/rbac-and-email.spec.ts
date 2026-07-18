@@ -14,6 +14,10 @@ describe('RBAC policy', () => {
   it('keeps read permissions for operational roles', () => {
     expect(roleHasPermission('OPERATIONS', 'organization.read')).toBe(true);
     expect(roleHasPermission('FINANCE', 'organization.read')).toBe(true);
+    expect(roleHasPermission('SUPPORT', 'whatsapp-conversations.read')).toBe(true);
+    expect(roleHasPermission('OPERATIONS', 'whatsapp-conversations.read')).toBe(true);
+    expect(roleHasPermission('READ_ONLY', 'whatsapp-conversations.read')).toBe(false);
+    expect(roleHasPermission('FINANCE', 'whatsapp-conversations.read')).toBe(false);
   });
 });
 

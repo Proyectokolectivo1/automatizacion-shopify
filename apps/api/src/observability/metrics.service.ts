@@ -24,6 +24,7 @@ export class MetricsService {
   private readonly whatsappMessageOperations: Counter<'action' | 'outcome'>;
   private readonly whatsappStatusWebhooks: Counter<'outcome'>;
   private readonly whatsappInboundWebhooks: Counter<'outcome'>;
+  private readonly whatsappInboxOperations: Counter<'action' | 'outcome'>;
 
   public constructor() {
     collectDefaultMetrics({ prefix: 'ecommerce_api_', register: this.registry });
@@ -148,6 +149,12 @@ export class MetricsService {
       name: 'ecommerce_api_whatsapp_inbound_webhooks_total',
       registers: [this.registry],
     });
+    this.whatsappInboxOperations = new Counter({
+      help: 'Consultas acotadas de la bandeja WhatsApp exclusivamente simulada.',
+      labelNames: ['action', 'outcome'],
+      name: 'ecommerce_api_whatsapp_inbox_operations_total',
+      registers: [this.registry],
+    });
   }
 
   public observeRequest(
@@ -231,6 +238,10 @@ export class MetricsService {
 
   public recordWhatsAppInboundWebhook(outcome: string): void {
     this.whatsappInboundWebhooks.inc({ outcome });
+  }
+
+  public recordWhatsAppInboxOperation(action: 'list' | 'timeline', outcome: string): void {
+    this.whatsappInboxOperations.inc({ action, outcome });
   }
 
   public get contentType(): string {

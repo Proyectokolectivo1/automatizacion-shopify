@@ -1,6 +1,6 @@
 # Decisiones y supuestos
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 | ID     | Tipo               | Decisión o supuesto                                                                              | Estado             |
 | ------ | ------------------ | ------------------------------------------------------------------------------------------------ | ------------------ |
@@ -76,6 +76,9 @@ Actualizado: 2026-07-15
 | D-070  | DECISIÓN           | Inbound v1 es sintético estricto; payload Meta requiere contrato/versionado distinto             | ACEPTADA; ADR-006  |
 | D-071  | DECISIÓN           | Texto inbound se cifra por mensaje y teléfono desconocido se reemplaza por HMAC tenant-safe      | ACEPTADA E3-H5A    |
 | D-072  | DECISIÓN           | Seudónimos usan keyring versionado y consultan claves históricas conservadas al rotar            | ACEPTADA E3-H5A    |
+| D-073  | DECISIÓN           | Bandeja usa cursores timestamp+ID y revalida tenant en cada página                               | ACEPTADA E3-H6A    |
+| D-074  | DECISIÓN           | Inbound se descifra solo en timeline autorizado y vigente; listado nunca carga contenido         | ACEPTADA E3-H6A    |
+| D-075  | DECISIÓN           | Lectura de conversaciones se limita a owner/admin/operations/support                             | ACEPTADA E3-H6A    |
 | S-001  | SUPUESTO RESUELTO  | Especificación y prompt adjunto son las fuentes operativas obligatorias                          | CONFIRMADO         |
 | S-002  | SUPUESTO           | Se conserva la rama base existente; no se renombra sin autorización                              | ACTIVO             |
 | DP-001 | DECISIÓN PENDIENTE | Dominio y proveedor de correo                                                                    | PENDIENTE          |

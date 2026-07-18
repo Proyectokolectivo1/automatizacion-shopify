@@ -1,6 +1,6 @@
 # Registro de riesgos
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 | ID    | Riesgo                                                      | Prob. | Impacto | Mitigación                                                              | Estado   |
 | ----- | ----------------------------------------------------------- | ----- | ------- | ----------------------------------------------------------------------- | -------- |
@@ -61,3 +61,5 @@ Actualizado: 2026-07-15
 | R-055 | Texto inbound queda retenido después de su plazo            | Media | Crítico | Cifrado, vencimiento explícito y purga obligatoria antes de Meta real   | Abierto  |
 | R-056 | Rotación de keyring parte la identidad seudónima            | Baja  | Alto    | Consultar versiones históricas y migrar el hash al recibir otro mensaje | Mitigado |
 | R-057 | Payload inbound sintético se confunde con webhook Meta      | Media | Crítico | Fixture/IDs/header explícitos, schema estricto, flags y ADR-006         | Mitigado |
+| R-058 | Bandeja filtra contenido por caché, log o rol amplio        | Media | Crítico | RBAC específico, no-store, selección mínima y pruebas negativas         | Mitigado |
+| R-059 | Cursor mutable duplica/omite conversaciones en una página   | Media | Medio   | Orden keyset timestamp+UUID y cliente tolerante a cambios concurrentes  | Mitigado |

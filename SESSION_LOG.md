@@ -1,6 +1,6 @@
 # Registro cronológico de sesiones
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 Este archivo es append-only: cada sesión de desarrollo agrega una entrada al final. No reemplaza los
 nueve controles obligatorios; conserva el relevo cronológico entre sesiones y enlaza la evidencia
@@ -110,3 +110,18 @@ reproducible. El protocolo completo está en `docs/architecture/project-continui
   bloquea tráfico real junto con credenciales/contrato Meta.
 - Commit lógico: `feat: add simulated WhatsApp inbound messages`; PR borrador #1.
 - Siguiente vertical: E3-H6A, bandeja de conversaciones WhatsApp exclusivamente simulada.
+
+## 2026-07-17 — sesión actual: E3-H6A
+
+- E3-H5A se publicó primero en `d57ac6d` y el PR borrador #1 quedó actualizado.
+- Objetivo: bandeja simulada de conversaciones con listado/timeline, sin respuesta ni asignación.
+- Se agregaron permiso `whatsapp-conversations.read`, rutas keyset, filtros, descifrado autorizado,
+  bloqueo por retención, auditoría, métrica y controles independientes.
+- Owner/admin/operations/support acceden; read-only/finance/logistics permanecen default-deny.
+- Paginación, cursor inválido, contenido inbound/outbound, historial, vencimiento, tenant ajeno y kill
+  switch están cubiertos en `pnpm whatsapp:verify` 21/21.
+- El primer gate encontró Docker/PostgreSQL apagado; se levantó preservando volúmenes y pasó al repetir.
+- No hay migraciones nuevas; `database:verify` sigue 14/14 sobre 26 migraciones sin drift.
+- `pnpm validate`, regresiones, observabilidad e infraestructura quedaron verdes; audit volvió a
+  responder y reportó cero vulnerabilidades conocidas.
+- Siguiente vertical: E3-H7A, asignación de conversaciones exclusivamente simulada.

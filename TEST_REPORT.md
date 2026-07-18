@@ -1,6 +1,6 @@
 # Reporte de pruebas
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 ## Baseline inicial
 
@@ -759,3 +759,27 @@ umbral global al cubrir un único archivo; `pnpm validate` confirmó después 69
 Las migraciones 24/25/26 se aplicaron a la base persistente sin borrar datos y `database:status`
 confirmó 26/26. No hubo llamadas, credenciales, teléfonos, cuerpos ni PII reales. Meta continúa
 `BLOQUEADO_POR_CREDENCIALES`; E3-H6A es la siguiente vertical.
+
+## Iteración E3-H6A
+
+Fecha: 2026-07-17.
+
+| Validación                  | Comando                | Resultado                                  |
+| --------------------------- | ---------------------- | ------------------------------------------ |
+| Unitarias/cobertura         | `pnpm test`            | OK: 20 archivos, 69 pruebas; 100 % crítico |
+| WhatsApp HTTP/PostgreSQL    | `pnpm whatsapp:verify` | OK: 21/21                                  |
+| Migraciones/constraints     | `pnpm database:verify` | OK: 14/14, 26 migraciones y cero drift     |
+| Formatter/lint/types/builds | `pnpm validate`        | OK: 69 unitarias y ambos builds            |
+| Integración/regresiones     | gates dedicados        | OK                                         |
+| Dependencias                | `pnpm audit --prod`    | OK: cero vulnerabilidades conocidas        |
+
+Se validaron listado y timeline keyset, filtros, cursor inválido, contenido inbound/outbound,
+historial, descifrado autorizado, expiración sin descifrado, RBAC owner/admin/operations/support,
+denegación READ_ONLY, tenant no revelador, kill switch, auditoría sin PII y métrica acotada. La API
+usa `no-store` y no devuelve teléfono ni IDs externos.
+
+No hubo migración nueva: E3-H6A es una proyección de lectura. El primer `whatsapp:verify` no ejecutó
+casos porque Docker/PostgreSQL estaban apagados; tras levantar Docker conservando volúmenes, 21/21
+pasaron. El endpoint de auditoría npm, bloqueado durante iteraciones anteriores, volvió a responder y
+el gate cerró sin vulnerabilidades conocidas. No hubo credenciales, PII o tráfico Meta real. E3-H7A
+es la siguiente vertical.

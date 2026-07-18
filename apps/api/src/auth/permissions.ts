@@ -10,6 +10,7 @@ export type Permission =
   | 'transport-rates.manage'
   | 'transport-rates.resolve'
   | 'payment-intents.create'
+  | 'whatsapp-conversations.read'
   | 'whatsapp-messages.dispatch';
 
 const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>>> = {
@@ -23,6 +24,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'transport-rates.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-conversations.read',
     'whatsapp-messages.dispatch',
   ]),
   FINANCE: new Set(['organization.read']),
@@ -32,6 +34,7 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'reconciliation.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-conversations.read',
     'whatsapp-messages.dispatch',
   ]),
   OWNER: new Set([
@@ -44,10 +47,11 @@ const rolePermissions: Readonly<Record<OrganizationRole, ReadonlySet<Permission>
     'transport-rates.manage',
     'transport-rates.resolve',
     'payment-intents.create',
+    'whatsapp-conversations.read',
     'whatsapp-messages.dispatch',
   ]),
   READ_ONLY: new Set(['organization.read']),
-  SUPPORT: new Set(['organization.read']),
+  SUPPORT: new Set(['organization.read', 'whatsapp-conversations.read']),
 };
 
 export function roleHasPermission(role: OrganizationRole, permission: Permission): boolean {

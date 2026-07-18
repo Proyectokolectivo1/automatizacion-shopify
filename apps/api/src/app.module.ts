@@ -66,6 +66,8 @@ import { WhatsAppStatusController } from './whatsapp/whatsapp-status.controller'
 import { WhatsAppStatusService } from './whatsapp/whatsapp-status.service';
 import { WhatsAppInboundController } from './whatsapp/whatsapp-inbound.controller';
 import { WhatsAppInboundService } from './whatsapp/whatsapp-inbound.service';
+import { WhatsAppInboxController } from './whatsapp/whatsapp-inbox.controller';
+import { WhatsAppInboxService } from './whatsapp/whatsapp-inbox.service';
 
 @Module({
   controllers: [
@@ -83,6 +85,7 @@ import { WhatsAppInboundService } from './whatsapp/whatsapp-inbound.service';
     WhatsAppIntegrationController,
     WhatsAppMessageController,
     WhatsAppInboundController,
+    WhatsAppInboxController,
     WhatsAppStatusController,
     WhatsAppTemplateController,
   ],
@@ -127,6 +130,7 @@ import { WhatsAppInboundService } from './whatsapp/whatsapp-inbound.service';
     WhatsAppIntegrationService,
     WhatsAppMessageService,
     WhatsAppInboundService,
+    WhatsAppInboxService,
     WhatsAppStatusService,
     WhatsAppTemplateService,
     WhatsAppMockProvider,

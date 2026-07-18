@@ -1,6 +1,6 @@
 # Checklist de release
 
-Actualizado: 2026-07-15
+Actualizado: 2026-07-17
 
 Estado global: **NO LISTO PARA RELEASE**.
 
@@ -60,7 +60,8 @@ Estado global: **NO LISTO PARA RELEASE**.
 - [x] Mensajes WhatsApp simulados son tipados, tenant-safe, idempotentes y no afirman entrega real.
 - [x] Estados y webhook saliente WhatsApp simulados son autenticados, monotónicos e idempotentes.
 - [x] Mensajes entrantes WhatsApp simulados son autenticados, cifrados, tenant-safe e idempotentes.
-- [ ] Bandeja y asignación de conversaciones WhatsApp simuladas completas.
+- [x] Bandeja WhatsApp simulada pagina/lista timeline con RBAC, retención y tenant probados.
+- [ ] Asignación de conversaciones WhatsApp simulada completa.
 - [ ] Conexión Meta real, scopes, plantillas aprobadas, rate limits y webhooks validados en sandbox.
 - [ ] Consumidor real de alertas y reconciliación contra Wompi sandbox validados.
 - [ ] Consumidor Shopify real de `MARK`/`CANCEL` validado en sandbox y con aprobación humana.
